@@ -148,6 +148,82 @@ describe('Firestore Security Rules', () => {
         })
       );
     });
+
+    it('allows the sole remaining member or a parent to delete the family document, but denies a non-parent when multiple members exist', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-multi').set({
+          name: 'Multi Family',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+        await db.collection('families').doc('fam-sole').set({
+          name: 'Sole Family',
+          members: {
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      const bobDb = testEnv.authenticatedContext('bob').firestore();
+      const charlieDb = testEnv.authenticatedContext('charlie').firestore();
+
+      // Non-member cannot delete
+      await assertFails(charlieDb.collection('families').doc('fam-sole').delete());
+      // Non-parent in multi-member family cannot delete
+      await assertFails(bobDb.collection('families').doc('fam-multi').delete());
+      // Sole remaining member can delete their family document
+      await assertSucceeds(bobDb.collection('families').doc('fam-sole').delete());
+    });
+
+    it('denies non-parents from escalating their role or removing other members, while allowing metadata updates and self-removal', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      const bobDb = testEnv.authenticatedContext('bob').firestore();
+      const charlieDb = testEnv.authenticatedContext('charlie').firestore();
+
+      // Bob (non-parent) cannot escalate own role to parent
+      await assertFails(
+        bobDb.collection('families').doc('fam-1').update({
+          'members.bob.role': 'parent'
+        })
+      );
+
+      // Bob (non-parent) cannot modify another member's entry
+      await assertFails(
+        bobDb.collection('families').doc('fam-1').update({
+          'members.alice.role': 'non-parent'
+        })
+      );
+
+      // Charlie (joining user) cannot overwrite existing members map to remove Alice/Bob
+      await assertFails(
+        charlieDb.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'charlie': { role: 'parent', displayName: 'Charlie' }
+          }
+        })
+      );
+
+      // Bob (non-parent) can update own metadata while keeping role unchanged
+      await assertSucceeds(
+        bobDb.collection('families').doc('fam-1').update({
+          'members.bob': { role: 'non-parent', displayName: 'Bob Updated', timeZone: 'UTC' }
+        })
+      );
+    });
   });
 
   describe('Invites collection', () => {
