@@ -11,6 +11,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
   final FamilyCompletionMode familyCompletionMode;
   final ValueChanged<FamilyCompletionMode>? onFamilyCompletionModeChanged;
   final bool readOnly;
+  final bool isParent;
   final List<FamilyMember> members;
   final String? assignedUserId;
   final ValueChanged<String?>? onAssignedUserChanged;
@@ -23,6 +24,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
     this.familyCompletionMode = FamilyCompletionMode.anyone,
     this.onFamilyCompletionModeChanged,
     this.readOnly = false,
+    this.isParent = true,
     this.members = const [],
     this.assignedUserId,
     this.onAssignedUserChanged,
@@ -32,6 +34,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canEdit = !readOnly && isParent;
     return SizedBox(
       width: double.infinity,
       child: Card(
@@ -61,7 +64,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                     key: const Key('personal_task_chip'),
                     label: context.l10n.personalTaskToggleLabel,
                     selected: !isFamily,
-                    onSelected: readOnly
+                    onSelected: !canEdit
                         ? null
                         : (selected) {
                             if (selected) {
@@ -73,7 +76,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                     key: const Key('is_family_toggle'),
                     label: context.l10n.familyTaskToggleLabel,
                     selected: isFamily,
-                    onSelected: readOnly
+                    onSelected: !canEdit
                         ? null
                         : (selected) {
                             if (selected) {
@@ -110,7 +113,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                       label: context.l10n.completionModeAnyoneLabel,
                       selected:
                           familyCompletionMode == FamilyCompletionMode.anyone,
-                      onSelected: readOnly
+                      onSelected: !canEdit
                           ? null
                           : (selected) {
                               if (selected) {
@@ -126,7 +129,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                       selected:
                           familyCompletionMode ==
                           FamilyCompletionMode.individual,
-                      onSelected: readOnly
+                      onSelected: !canEdit
                           ? null
                           : (selected) {
                               if (selected) {
@@ -165,7 +168,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                       key: const Key('unassigned_member_chip'),
                       label: context.l10n.unassignedMemberLabel,
                       selected: assignedUserId == null,
-                      onSelected: readOnly
+                      onSelected: !canEdit
                           ? null
                           : (selected) {
                               if (selected) {
@@ -195,7 +198,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                                         ? member.email
                                         : 'Member')),
                         selected: assignedUserId == member.userId,
-                        onSelected: readOnly
+                        onSelected: !canEdit
                             ? null
                             : (selected) {
                                 if (selected) {
