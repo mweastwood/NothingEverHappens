@@ -201,5 +201,90 @@ void main() {
         expect(rescheduledTaskIds, contains('S-fam'));
       },
     );
+
+    test(
+      'does not count family tasks assigned to another member against current user daily capacity',
+      () async {
+        final now = DateTime(2026, 9, 16, 10, 0);
+        AppClock.setMockTime(now);
+        const today = CivilDay(year: 2026, month: 9, day: 16);
+
+        final otherMemberFamilyTask = TaskSchedule(
+          id: 'S-fam-other',
+          title: 'Other Member Family Task',
+          description: '',
+          isFamily: true,
+          assignedUserId: 'user-2',
+          estimatedDuration: const Duration(hours: 7),
+          schedules: [
+            DailySchedule(
+              id: 'R-fam-other',
+              scheduleId: 'S-fam-other',
+              startDate: today,
+              interval: 1,
+            ),
+          ],
+        );
+        final otherMemberFamilyInst = TaskInstance(
+          id: 'I-fam-other-1',
+          scheduleId: 'S-fam-other',
+          ruleId: 'R-fam-other',
+          title: 'Other Member Family Task',
+          description: '',
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          assignedUserId: 'user-2',
+          status: TaskStatus.pending,
+        );
+
+        final myCapacityTask = TaskSchedule(
+          id: 'S-my-cap',
+          title: 'My 2h Capacity Task',
+          description: '',
+          isFamily: false,
+          skipIfNoCapacity: true,
+          estimatedDuration: const Duration(hours: 2),
+          schedules: [
+            DailySchedule(
+              id: 'R-my-cap',
+              scheduleId: 'S-my-cap',
+              startDate: today,
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        await localDataSource.saveTask(otherMemberFamilyTask);
+        await localDataSource.saveInstance(otherMemberFamilyInst);
+        await localDataSource.saveTask(myCapacityTask);
+
+        await runner.triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
+
+        final myTodayInst = localDataSource.getInstances().singleWhere(
+          (i) => i.scheduleId == 'S-my-cap' && i.scheduledDate == today,
+        );
+        expect(myTodayInst.status, equals(TaskStatus.pending));
+      },
+    );
   });
 }

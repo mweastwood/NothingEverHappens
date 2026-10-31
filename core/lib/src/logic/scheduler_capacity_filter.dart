@@ -81,7 +81,12 @@ class SchedulerCapacityFilter {
           inst.startRelativeTime,
           inst.scheduledDate,
         );
-        final isFuture = now.isBefore(start);
+        final due = context.referenceToLatest(
+          inst.dueRelativeTime,
+          inst.scheduledDate,
+        );
+        final isEligibleWindow = now.isBefore(start) ||
+            (!inst.scheduledDate.isBefore(latestToday) && now.isBefore(due));
 
         final isMarkedForDelete = toDeleteSet.contains(inst.id);
         final updateIdx = updateIndexById[inst.id];
@@ -94,7 +99,7 @@ class SchedulerCapacityFilter {
 
         if ((effectiveStatus == TaskStatus.pending ||
                 effectiveInst.isRevivableByCapacity) &&
-            isFuture) {
+            isEligibleWindow) {
           final capacity = _capacityForDate(userSettings, inst.scheduledDate);
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
@@ -177,8 +182,13 @@ class SchedulerCapacityFilter {
             inst.startRelativeTime,
             inst.scheduledDate,
           );
-          final isFuture = now.isBefore(start);
-          if (inst.isRevivableByCapacity && isFuture) {
+          final due = context.referenceToLatest(
+            inst.dueRelativeTime,
+            inst.scheduledDate,
+          );
+          final isEligibleWindow = now.isBefore(start) ||
+              (!inst.scheduledDate.isBefore(latestToday) && now.isBefore(due));
+          if (inst.isRevivableByCapacity && isEligibleWindow) {
             final isMarkedForDelete = toDeleteSet.contains(inst.id);
             if (isMarkedForDelete) continue;
             final updateIdx = updateIndexById[inst.id];

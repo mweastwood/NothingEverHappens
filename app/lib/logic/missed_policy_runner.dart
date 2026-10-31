@@ -170,13 +170,37 @@ class MissedPolicyRunner {
           inst.status != TaskStatus.failed) {
         final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
         if (t != null && t.estimatedDuration != null) {
-          // Pre-count family instances (which are skipped in the local evaluation loop)
-          // and already-resolved (completed / in-progress) personal instances.
-          // Pending personal instances are added after each task is evaluated below.
-          if (t.isFamily || inst.status != TaskStatus.pending) {
-            final hours = t.estimatedDuration!.inMinutes / 60.0;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          final hours = t.estimatedDuration!.inMinutes / 60.0;
+          if (t.isFamily) {
+            final assignedUser = inst.assignedUserId ?? t.assignedUserId;
+            if (assignedUser != null && assignedUser.isNotEmpty) {
+              if (assignedUser == _userId) {
+                dayPlannedHours[inst.scheduledDate] =
+                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+              }
+            } else if (inst.familyCompletionMode ==
+                    FamilyCompletionMode.anyone &&
+                inst.status == TaskStatus.completed) {
+              final completedByCurrentUser =
+                  _userId.isEmpty ||
+                  inst.completedByUserId == _userId ||
+                  inst.completedByUserIds.contains(_userId);
+              if (completedByCurrentUser) {
+                dayPlannedHours[inst.scheduledDate] =
+                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+              }
+            } else {
+              dayPlannedHours[inst.scheduledDate] =
+                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+            }
+          } else if (inst.status != TaskStatus.pending) {
+            final assignedUser = inst.assignedUserId ?? t.assignedUserId;
+            if (assignedUser == null ||
+                assignedUser.isEmpty ||
+                assignedUser == _userId) {
+              dayPlannedHours[inst.scheduledDate] =
+                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+            }
           }
         }
       }
@@ -325,9 +349,14 @@ class MissedPolicyRunner {
       );
       for (final inst in activeInstances) {
         if (task.estimatedDuration != null) {
-          final hours = task.estimatedDuration!.inMinutes / 60.0;
-          dayPlannedHours[inst.scheduledDate] =
-              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          final assignedUser = inst.assignedUserId ?? task.assignedUserId;
+          if (assignedUser == null ||
+              assignedUser.isEmpty ||
+              assignedUser == _userId) {
+            final hours = task.estimatedDuration!.inMinutes / 60.0;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          }
         }
       }
 

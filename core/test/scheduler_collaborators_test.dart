@@ -59,6 +59,8 @@ void main() {
         taskInstances: [inst8, inst9, inst10],
         now: now,
         today: today,
+        earliestUtcOffset: Duration.zero,
+        latestUtcOffset: Duration.zero,
       );
 
       final hasNewSkipped = evaluator.applyMissedPolicy(
@@ -104,6 +106,8 @@ void main() {
         taskInstances: [inst8, inst9, inst10],
         now: now,
         today: today,
+        earliestUtcOffset: Duration.zero,
+        latestUtcOffset: Duration.zero,
       );
 
       final hasNewSkipped = evaluator.applyMissedPolicy(
@@ -196,6 +200,62 @@ void main() {
       );
       expect(revivedResult.finalToUpdate.single.status, TaskStatus.pending);
       expect(revivedResult.finalToUpdate.single.statusReason, isNull);
+    });
+
+    test(
+        'revives capacity-skipped instance on today after startRelativeTime has passed when before dueRelativeTime',
+        () {
+      final middayNow = DateTime.utc(2026, 3, 10, 12, 0);
+      final task = TaskSchedule(
+        id: 'S-cap-today',
+        title: 'Same Day Capacity Task',
+        description: '',
+        skipIfNoCapacity: true,
+        estimatedDuration: const Duration(hours: 2),
+        schedules: [
+          DailySchedule(
+            id: 'R-cap-today',
+            scheduleId: 'S-cap-today',
+            startDate: today,
+            interval: 1,
+            startRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+          ),
+        ],
+      );
+      final skippedToday = TaskInstance(
+        id: 'I-cap-today',
+        scheduleId: 'S-cap-today',
+        ruleId: 'R-cap-today',
+        title: 'Same Day Capacity Task',
+        description: '',
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.skipped,
+        statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+      );
+
+      final context = SchedulerEvaluationContext(
+        task: task,
+        taskInstances: [skippedToday],
+        now: middayNow,
+        today: today,
+        userSettings: const UserSettings(hoursAvailable: 4.0),
+        dayPlannedHours: {today: 1.0},
+        earliestUtcOffset: Duration.zero,
+        latestUtcOffset: Duration.zero,
+      );
+
+      final result = filter.applyCapacityLimits(
+        context,
+        toSpawn: const [],
+      );
+      expect(result.finalToUpdate, hasLength(1));
+      expect(result.finalToUpdate.single.status, TaskStatus.pending);
+      expect(result.finalToUpdate.single.statusReason, isNull);
     });
   });
 
