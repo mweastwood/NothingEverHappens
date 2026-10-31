@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
@@ -428,13 +429,10 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     if (_ignoreControllerEvents) return;
     final s = widget.schedule;
     if (s is OneOffSchedule) {
-      var startAbs = _oneOffStartController.value;
       final dueAbs = _oneOffDueController.value;
 
       final newDate = CivilDay.fromDateTime(dueAbs);
-      if (newDate != s.date) {
-        startAbs = _relativeToAbsolute(newDate, s.startRelativeTime);
-      }
+      var startAbs = _relativeToAbsolute(newDate, s.startRelativeTime);
       if (startAbs.isAfter(dueAbs)) {
         startAbs = dueAbs;
       }

@@ -15,6 +15,7 @@ import 'package:nothing_ever_happens/widgets/one_off_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/hierarchical_recurrence_selector.dart';
 import 'package:nothing_ever_happens/widgets/notification_list_widget.dart';
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
+
 import '../test_helper.dart';
 import 'one_off_scheduling_widget_robot.dart';
 import 'absolute_time_widget_robot.dart';
@@ -772,6 +773,22 @@ void main() {
         );
         expect(
           updatedOneOff.dueRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        );
+
+        // Pick the original date (Oct 26, 2026) without rebuilding widget.schedule
+        // and verify startRelativeTime is still preserved with dayOffset: 0
+        await absoluteRobot.openDatePicker();
+        await absoluteRobot.pickDate('26');
+
+        final restoredOneOff = changedRule as OneOffSchedule;
+        expect(restoredOneOff.date, CivilDay(year: 2026, month: 10, day: 26));
+        expect(
+          restoredOneOff.startRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        );
+        expect(
+          restoredOneOff.dueRelativeTime,
           const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         );
 
