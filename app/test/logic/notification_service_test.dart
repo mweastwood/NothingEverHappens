@@ -13,6 +13,9 @@ import 'package:timezone/timezone.dart' as tz;
 class FakeFlutterLocalNotificationsPlugin extends Fake
     implements FlutterLocalNotificationsPlugin {
   bool initialized = false;
+  bool wasInitializedWhenScheduled = false;
+  bool wasInitializedWhenCancelled = false;
+  Future<void>? initDelay;
   InitializationSettings? initSettings;
   final List<Map<String, dynamic>> scheduled = [];
   final List<int> cancelled = [];
@@ -25,6 +28,9 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
     DidReceiveBackgroundNotificationResponseCallback?
     onDidReceiveBackgroundNotificationResponse,
   }) async {
+    if (initDelay != null) {
+      await initDelay;
+    }
     initialized = true;
     initSettings = settings;
     return true;
@@ -41,6 +47,7 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
     String? payload,
     DateTimeComponents? matchDateTimeComponents,
   }) async {
+    wasInitializedWhenScheduled = initialized;
     scheduled.add({
       'id': id,
       'title': title,
@@ -53,6 +60,7 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
 
   @override
   Future<void> cancel({required int id, String? tag}) async {
+    wasInitializedWhenCancelled = initialized;
     cancelled.add(id);
   }
 
@@ -465,6 +473,41 @@ void main() {
           mockPlugin.androidImplementation!.requestExactAlarmsPermissionCalled,
           true,
         );
+      },
+    );
+
+    test(
+      'scheduleNotifications and cancelNotifications await async initialization before invoking plugin',
+      () async {
+        final delayedPlugin = FakeFlutterLocalNotificationsPlugin()
+          ..initDelay = Future<void>.delayed(const Duration(milliseconds: 30));
+        final immediateService = PlatformNotificationService(
+          plugin: delayedPlugin,
+        );
+        addTearDown(immediateService.dispose);
+
+        // Immediately call scheduleNotifications before _initialize completes
+        expect(delayedPlugin.initialized, isFalse);
+        await immediateService.scheduleNotifications(testTask);
+
+        expect(delayedPlugin.initialized, isTrue);
+        expect(delayedPlugin.wasInitializedWhenScheduled, isTrue);
+        expect(delayedPlugin.scheduled, hasLength(1));
+
+        // Also verify immediate cancelNotifications on a freshly constructed service
+        final delayedCancelPlugin = FakeFlutterLocalNotificationsPlugin()
+          ..initDelay = Future<void>.delayed(const Duration(milliseconds: 30));
+        final immediateCancelService = PlatformNotificationService(
+          plugin: delayedCancelPlugin,
+        );
+        addTearDown(immediateCancelService.dispose);
+
+        expect(delayedCancelPlugin.initialized, isFalse);
+        await immediateCancelService.cancelNotifications(testTask.id);
+
+        expect(delayedCancelPlugin.initialized, isTrue);
+        expect(delayedCancelPlugin.wasInitializedWhenCancelled, isTrue);
+        expect(delayedCancelPlugin.cancelled, isNotEmpty);
       },
     );
   });

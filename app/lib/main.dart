@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'firebase_options_dev.dart' as dev;
+import 'firebase_options_prod.dart' as prod;
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/crashlytics_service.dart';
@@ -29,30 +30,52 @@ import 'logic/utils/app_version.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     WidgetsFlutterBinding.ensureInitialized();
+    final hiveDataSource = HiveLocalDataSource();
+    await hiveDataSource.init();
+
+    final envName = hiveDataSource.getAppEnvironment();
+    final isProd = envName == AppEnvironment.prod.name;
+    AppConfig.environment = isProd ? AppEnvironment.prod : AppEnvironment.dev;
+
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
-        options: dev.DefaultFirebaseOptions.currentPlatform,
+        options: isProd
+            ? prod.DefaultFirebaseOptions.currentPlatform
+            : dev.DefaultFirebaseOptions.currentPlatform,
       );
     }
 
     final currentUser = fb_auth.FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      final hiveDataSource = HiveLocalDataSource();
-      await hiveDataSource.init();
+      final isActivePremium = hiveDataSource.getIsActivePremium() ?? false;
       final syncService = TaskSyncService(
         firestore: FirebaseFirestore.instance,
         localDataSource: hiveDataSource,
         userId: currentUser.uid,
-        isActivePremium: false,
+        isActivePremium: isActivePremium,
       );
+      final notificationService = PlatformNotificationService();
       final repo = UnifiedTaskRepository(
         localDataSource: hiveDataSource,
         syncService: syncService,
         userId: currentUser.uid,
         firestore: FirebaseFirestore.instance,
-        notificationService: PlatformNotificationService(),
+        notificationService: notificationService,
       );
-      await repo.triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
+      try {
+        await repo.triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
+        await syncService.sync();
+        if (syncService.isSyncing) {
+          await syncService.isSyncingStream.firstWhere((syncing) => !syncing);
+        }
+      } finally {
+        repo.dispose();
+        syncService.dispose();
+        await notificationService.dispose();
+        await hiveDataSource.dispose();
+      }
+    } else {
+      await hiveDataSource.dispose();
     }
 
     return true;
@@ -87,6 +110,14 @@ Future<void> bootstrapApp({
 
   AppConfig.environment = environment;
 
+  final hiveDataSource = HiveLocalDataSource();
+  try {
+    await hiveDataSource.init();
+    await hiveDataSource.setAppEnvironment(environment.name);
+  } catch (e) {
+    debugPrint("Hive initialization error: $e");
+  }
+
   if (!kIsWeb) {
     Workmanager()
         .initialize(callbackDispatcher)
@@ -101,13 +132,6 @@ Future<void> bootstrapApp({
         .catchError((e) {
           debugPrint("Workmanager initialization error: $e");
         });
-  }
-
-  final hiveDataSource = HiveLocalDataSource();
-  try {
-    await hiveDataSource.init();
-  } catch (e) {
-    debugPrint("Hive initialization error: $e");
   }
 
   final settings = hiveDataSource.getSettings();

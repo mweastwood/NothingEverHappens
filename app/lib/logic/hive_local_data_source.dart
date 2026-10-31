@@ -659,6 +659,7 @@ class HiveLocalDataSource {
     await clearAllDirty();
     await setMigrationCompleted(false);
     await setActiveUserId(null);
+    await _deleteMetaEntry('is_active_premium');
     if (_settingsBox != null && _settingsBox!.isOpen) {
       await _settingsBox!.clear();
     }
@@ -668,6 +669,26 @@ class HiveLocalDataSource {
     _memSettings = const UserSettings(hoursAvailable: 8.0);
     _memRawSettings = {};
     _emitSettings();
+  }
+
+  String? getAppEnvironment() {
+    final data = _getMetaEntry('app_environment');
+    if (data == null) return null;
+    return data['env'] as String?;
+  }
+
+  Future<void> setAppEnvironment(String env) async {
+    await _putMetaEntry('app_environment', {'env': env});
+  }
+
+  bool? getIsActivePremium() {
+    final data = _getMetaEntry('is_active_premium');
+    if (data == null) return null;
+    return data['value'] as bool?;
+  }
+
+  Future<void> setIsActivePremium(bool value) async {
+    await _putMetaEntry('is_active_premium', {'value': value});
   }
 
   String? getActiveUserId() {
