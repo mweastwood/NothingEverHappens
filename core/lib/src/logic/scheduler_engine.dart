@@ -832,11 +832,15 @@ class SchedulerEngine {
   ) {
     final originalStartRef = rule.startRelativeTime.referenceTo(
       rule.scheduledDate,
+      utcOffset: Duration.zero,
     );
-    final originalTargetRef = targetRel.referenceTo(rule.scheduledDate);
+    final originalTargetRef = targetRel.referenceTo(
+      rule.scheduledDate,
+      utcOffset: Duration.zero,
+    );
     final duration = originalTargetRef.difference(originalStartRef);
 
-    final newStartRef = DateTime(
+    final newStartRef = DateTime.utc(
       newScheduledDate.year,
       newScheduledDate.month,
       newScheduledDate.day,
@@ -847,8 +851,8 @@ class SchedulerEngine {
     final targetDay = CivilDay.fromDateTime(newTargetRef);
     return RelativeTime(
       dayOffset: targetDay
-          .toDateTime()
-          .difference(newScheduledDate.toDateTime())
+          .toUtcDateTime()
+          .difference(newScheduledDate.toUtcDateTime())
           .inDays,
       hour: newTargetRef.hour,
       minute: newTargetRef.minute,

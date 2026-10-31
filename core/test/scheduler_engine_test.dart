@@ -1538,6 +1538,43 @@ void main() {
           expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
         },
       );
+
+      test(
+        'shiftRelativeToStart preserves 1-day offset across spring-forward DST date (2026-03-08)',
+        () {
+          const dstStartDay = CivilDay(year: 2026, month: 3, day: 8);
+          final rule = DailySchedule(
+            id: 'R-dst',
+            scheduleId: 'S-dst',
+            startDate: const CivilDay(year: 2026, month: 3, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 1,
+              hour: 8,
+              minute: 0,
+            ),
+          );
+          const policy = CompletionRelativePolicy(
+            interval: Duration(days: 1),
+            targetHour: 9,
+            targetMinute: 0,
+          );
+          final shifted = SchedulerEngine.shiftRelativeToStart(
+            rule.dueRelativeTime,
+            rule,
+            policy,
+            dstStartDay,
+          );
+          expect(shifted.dayOffset, equals(1));
+          expect(shifted.hour, equals(8));
+          expect(shifted.minute, equals(0));
+        },
+      );
     });
   });
 }
