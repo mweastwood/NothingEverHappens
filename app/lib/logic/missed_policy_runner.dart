@@ -181,9 +181,11 @@ class MissedPolicyRunner {
             } else if (inst.familyCompletionMode ==
                     FamilyCompletionMode.anyone &&
                 inst.status == TaskStatus.completed) {
-              if (_userId == null ||
+              final completedByCurrentUser =
+                  _userId.isEmpty ||
                   inst.completedByUserId == _userId ||
-                  inst.completedByUserIds.contains(_userId)) {
+                  inst.completedByUserIds.contains(_userId);
+              if (completedByCurrentUser) {
                 dayPlannedHours[inst.scheduledDate] =
                     (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
               }
@@ -347,9 +349,14 @@ class MissedPolicyRunner {
       );
       for (final inst in activeInstances) {
         if (task.estimatedDuration != null) {
-          final hours = task.estimatedDuration!.inMinutes / 60.0;
-          dayPlannedHours[inst.scheduledDate] =
-              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          final assignedUser = inst.assignedUserId ?? task.assignedUserId;
+          if (assignedUser == null ||
+              assignedUser.isEmpty ||
+              assignedUser == _userId) {
+            final hours = task.estimatedDuration!.inMinutes / 60.0;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          }
         }
       }
 
