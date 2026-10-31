@@ -205,7 +205,9 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
             Text(widget.recipe.title, style: const TextStyle(fontSize: 18)),
             Text(
               'Cooking Mode (${widget.servings} Servings)',
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -215,10 +217,10 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
               widget.onCompleteCooking?.call();
               Navigator.pop(context, true);
             },
-            icon: const Icon(Icons.done_all, color: Colors.greenAccent),
-            label: const Text(
+            icon: Icon(Icons.done_all, color: theme.colorScheme.primary),
+            label: Text(
               'Finish',
-              style: TextStyle(color: Colors.greenAccent),
+              style: TextStyle(color: theme.colorScheme.primary),
             ),
           ),
         ],
