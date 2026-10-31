@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app_clock.dart';
 import 'auth_repository.dart';
 import 'civil_day.dart';
@@ -552,10 +553,9 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       final int targetMembers = isAssignedToSingleMember
           ? 1
           : totalFamilyMembers;
-      final remainingCount = (targetMembers - completedUserIds.length).clamp(
-        0,
-        targetMembers,
-      );
+      final remainingCount = isAssignedToSingleMember
+          ? (completedUserIds.contains(inst.assignedUserId) ? 0 : 1)
+          : (targetMembers - completedUserIds.length).clamp(0, targetMembers);
 
       for (final m in family.members.values) {
         if (isAssignedToSingleMember &&
