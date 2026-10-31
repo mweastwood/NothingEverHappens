@@ -3396,9 +3396,7 @@ void main() {
         final orderCheckingScheduler = _FakeCloudFamilySchedulerClient(
           onTrigger: (triggeredFamilyId) async {
             events.add('trigger_cloud_scheduler:$triggeredFamilyId');
-            if (onCloudSchedulerTriggered != null) {
-              await onCloudSchedulerTriggered!();
-            }
+            await onCloudSchedulerTriggered?.call();
           },
         );
 
