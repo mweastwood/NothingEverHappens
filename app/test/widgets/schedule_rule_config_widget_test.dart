@@ -1060,6 +1060,62 @@ void main() {
     );
 
     testWidgets(
+      'changing YearlySchedule month from January 31 to February or April clamps day',
+      (tester) async {
+        TaskScheduleRule? changedRule;
+        final schedule = createDefaultYearlySchedule(month: 1, day: 31);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleRuleConfigWidget(
+                  schedule: schedule,
+                  onChanged: (r) => changedRule = r,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Change month via dropdown from January (31) to February (2)
+        await tester.tap(find.byKey(const Key('yearly_month_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('February').last);
+        await tester.pumpAndSettle();
+
+        expect(changedRule, isA<YearlySchedule>());
+        expect((changedRule as YearlySchedule).month, 2);
+        expect((changedRule as YearlySchedule).day, 29);
+
+        // Also verify changing from January 31 to April (4) clamps day to 30
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleRuleConfigWidget(
+                  schedule: schedule,
+                  onChanged: (r) => changedRule = r,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final yearlyWidget = tester.widget<YearlySchedulingWidget>(
+          find.byType(YearlySchedulingWidget),
+        );
+        yearlyWidget.onMonthChanged(4);
+
+        expect(changedRule, isA<YearlySchedule>());
+        expect((changedRule as YearlySchedule).month, 4);
+        expect((changedRule as YearlySchedule).day, 30);
+      },
+    );
+
+    testWidgets(
       'NotificationListWidget and MissedOccurrencePolicySelector callbacks dispatch onChanged',
       (tester) async {
         TaskScheduleRule? changedRule;
