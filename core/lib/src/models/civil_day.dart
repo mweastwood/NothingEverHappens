@@ -62,7 +62,9 @@ class CivilDay implements Comparable<CivilDay> {
     if (y == null || m == null || d == null) return false;
     if (y < 1 || m < 1 || m > 12 || d < 1 || d > 31) return false;
     const daysInMonths = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (d > daysInMonths[m]) return false;
+    final isLeapYear = (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+    final maxDay = (m == 2 && !isLeapYear) ? 28 : daysInMonths[m];
+    if (d > maxDay) return false;
     return true;
   }
 
