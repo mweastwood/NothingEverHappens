@@ -1538,6 +1538,109 @@ void main() {
           expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
         },
       );
+
+      test(
+        'CompletionRelativePolicy applies autoDismiss to expired pending instance and does not treat capacity-skipped instances as resolved',
+        () {
+          const engine = SchedulerEngine();
+          final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
+
+          final crRule = DailySchedule(
+            id: 'R-cr-autodismiss',
+            scheduleId: 'S-cr-autodismiss',
+            startDate: const CivilDay(year: 2026, month: 6, day: 1),
+            interval: 2,
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy(
+              policy: MissedPolicy.autoDismiss,
+              gracePeriod: Duration(hours: 2),
+            ),
+          );
+          final crTask = TaskSchedule(
+            id: 'S-cr-autodismiss',
+            title: 'CR AutoDismiss Task',
+            description: '',
+            schedules: [crRule],
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(hours: 2),
+          );
+
+          // 1. Expired pending instance on June 5 is auto-dismissed at June 10 12:00 UTC
+          final expiredPending = TaskInstance(
+            id: 'I-cr-june5',
+            scheduleId: crTask.id,
+            ruleId: crRule.id,
+            title: crTask.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
+            startRelativeTime: crRule.startRelativeTime,
+            dueRelativeTime: crRule.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+
+          final action = engine.evaluate(
+            crTask,
+            [expiredPending],
+            evalNow,
+            applyCapacityLimits: false,
+          );
+          expect(action.instancesToUpdate, hasLength(1));
+          expect(
+            action.instancesToUpdate.first.status,
+            equals(TaskStatus.skipped),
+          );
+          expect(
+            action.instancesToUpdate.first.statusReason,
+            equals(InstanceStatusReason.schedulerAutoDismiss.value),
+          );
+
+          // 2. Capacity-skipped instance on today (June 10) is not treated as a completed/resolved occurrence
+          // and is revived when capacity is available instead of spawning June 12
+          final capacitySkippedToday = TaskInstance(
+            id: 'I-cr-cap-june10',
+            scheduleId: crTask.id,
+            ruleId: crRule.id,
+            title: crTask.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 15,
+              minute: 0,
+            ),
+            dueRelativeTime: crRule.dueRelativeTime,
+            status: TaskStatus.skipped,
+            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+            updatedAt: DateTime.utc(2026, 6, 10, 8, 0),
+          );
+
+          final capAction = engine.evaluate(
+            crTask,
+            [capacitySkippedToday],
+            evalNow,
+            dayPlannedHours: const {},
+          );
+          expect(capAction.instancesToSpawn, isEmpty);
+          expect(capAction.instancesToUpdate, hasLength(1));
+          expect(
+            capAction.instancesToUpdate.first.id,
+            equals('I-cr-cap-june10'),
+          );
+          expect(
+            capAction.instancesToUpdate.first.status,
+            equals(TaskStatus.pending),
+          );
+        },
+      );
     });
   });
 }
