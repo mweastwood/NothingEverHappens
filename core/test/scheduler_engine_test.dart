@@ -1538,6 +1538,73 @@ void main() {
           expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
         },
       );
+
+      test(
+        'fixed-calendar rule with >30 existing stacked past instances spawns new occurrences up to today and future lookahead',
+        () {
+          const engine = SchedulerEngine();
+          final evalNow = DateTime.utc(2026, 3, 15, 10, 0);
+          final startDate = const CivilDay(year: 2026, month: 2, day: 1);
+          final today = const CivilDay(year: 2026, month: 3, day: 15);
+
+          final rule = DailySchedule(
+            id: 'R-daily-stack',
+            scheduleId: 'S-daily-stack',
+            startDate: startDate,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy(
+              policy: MissedPolicy.stack,
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'S-daily-stack',
+            title: 'Stacked Daily Task',
+            description: '',
+            schedules: [rule],
+          );
+
+          // Pre-populate 35 already-spawned pending instances from Feb 1 through Mar 7
+          final existingInstances = <TaskInstance>[];
+          var d = startDate;
+          for (var i = 0; i < 35; i++) {
+            existingInstances.add(
+              TaskInstance(
+                id: 'I-stack-$i',
+                scheduleId: task.id,
+                ruleId: rule.id,
+                title: task.title,
+                description: '',
+                scheduledDate: d,
+                startRelativeTime: rule.startRelativeTime,
+                dueRelativeTime: rule.dueRelativeTime,
+                status: TaskStatus.pending,
+              ),
+            );
+            d = d.addDays(1);
+          }
+
+          final action = engine.evaluate(
+            task,
+            existingInstances,
+            evalNow,
+            futureInstancesCount: 2,
+            utcOffset: Duration.zero,
+          );
+          final spawnedDates =
+              action.instancesToSpawn.map((i) => i.scheduledDate).toSet();
+
+          // Should spawn remaining past dates up to today (Mar 15) plus 2 future occurrences (Mar 16, Mar 17)
+          expect(spawnedDates, contains(today));
+          expect(
+            spawnedDates,
+            contains(const CivilDay(year: 2026, month: 3, day: 16)),
+          );
+          expect(
+            spawnedDates,
+            contains(const CivilDay(year: 2026, month: 3, day: 17)),
+          );
+        },
+      );
     });
   });
 }
