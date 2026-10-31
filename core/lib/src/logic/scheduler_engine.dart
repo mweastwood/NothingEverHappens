@@ -518,12 +518,15 @@ class SchedulerEngine {
       int pastOccurrencesCount = 0;
       bool hitPastCap = false;
       while (current.compareTo(today) <= 0) {
-        if (pastOccurrencesCount > maxEvaluationDays) {
+        final isNewOccurrence = !workingInstances.containsKey(current);
+        if (isNewOccurrence && pastOccurrencesCount > maxEvaluationDays) {
           hitPastCap = true;
           break;
         }
         targetDates.add(current);
-        pastOccurrencesCount++;
+        if (isNewOccurrence) {
+          pastOccurrencesCount++;
+        }
         final next = s.nextOccurrenceAfter(current);
         if (next != null) {
           current = next;
@@ -583,7 +586,7 @@ class SchedulerEngine {
         context,
       );
 
-      if (hasNewSkipped && !hitPastCap) {
+      if (hasNewSkipped) {
         final pendingAfterMissed = workingInstances.values
             .where((inst) => inst.status == TaskStatus.pending)
             .toList()
