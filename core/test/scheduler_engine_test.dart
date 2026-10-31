@@ -1630,16 +1630,56 @@ void main() {
               targetMinute: 0,
             ),
           );
-          final crTask = TaskSchedule(
+          final crTaskBeforePurge = TaskSchedule(
             id: 'S-cr',
             title: 'CR Long Interval Task',
             description: '',
             schedules: [crRule],
-            lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 1),
+            lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 1),
           );
-          // At June 15 (106 days after March 1), 180 days have not elapsed yet, so it should NOT resurrect Jan 1
-          final crAction = engine.evaluate(crTask, const [], evalNow);
+          final completedCrInst = TaskInstance(
+            id: 'I-cr-mar1',
+            scheduleId: 'S-cr',
+            ruleId: 'R-cr',
+            title: 'CR Long Interval Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 1, day: 1),
+            startRelativeTime: crRule.startRelativeTime,
+            dueRelativeTime: crRule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: DateTime.utc(2026, 3, 1, 14, 0),
+          );
+          // Evaluating while the resolved instance still exists records the completion date (March 1) in lastSpawnedDate even though dateToSpawn is still in the future
+          final crActionWithResolved = engine.evaluate(
+            crTaskBeforePurge,
+            [completedCrInst],
+            DateTime.utc(2026, 3, 2, 10, 0),
+          );
+          expect(crActionWithResolved.instancesToSpawn, isEmpty);
+          expect(
+            crActionWithResolved.updatedSchedule?.lastSpawnedDate,
+            equals(const CivilDay(year: 2026, month: 3, day: 1)),
+          );
+
+          // At June 15 (106 days after March 1), after the resolved instance is purged, 180 days have not elapsed yet, so it waits the full interval from March 1
+          final crAction = engine.evaluate(
+            crActionWithResolved.updatedSchedule!,
+            const [],
+            evalNow,
+          );
           expect(crAction.instancesToSpawn, isEmpty);
+
+          // Once 180 days from March 1 have elapsed (Aug 28, 2026), it spawns the next occurrence
+          final afterIntervalAction = engine.evaluate(
+            crActionWithResolved.updatedSchedule!,
+            const [],
+            DateTime.utc(2026, 8, 29, 10, 0),
+          );
+          expect(afterIntervalAction.instancesToSpawn, hasLength(1));
+          expect(
+            afterIntervalAction.instancesToSpawn.single.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 8, day: 28)),
+          );
         },
       );
     });

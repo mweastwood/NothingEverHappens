@@ -426,6 +426,12 @@ class SchedulerEngine {
           final latest = resolved.first;
           final completedAtTime = latest.completedAt ?? latest.updatedAt;
           final referenceTime = context.toEarliestWallClock(completedAtTime);
+          final resolvedDay = CivilDay.fromDateTime(referenceTime);
+          if (resolvedDay.compareTo(today) <= 0) {
+            if (maxSpawned == null || resolvedDay.compareTo(maxSpawned) > 0) {
+              maxSpawned = resolvedDay;
+            }
+          }
           final currentWallClock = context.toEarliestWallClock(now);
           final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
           if (!currentWallClock.isBefore(nextSpawnTime)) {
@@ -752,10 +758,16 @@ class SchedulerEngine {
     for (int i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
       if (s is OneOffSchedule) {
-        final exists = taskInstances.any(
-          (inst) =>
-              _isInstanceForRule(inst, s, task) &&
-              inst.scheduledDate == s.scheduledDate,
+        final existingForRule = taskInstances
+            .where(
+              (inst) =>
+                  _isInstanceForRule(inst, s, task) &&
+                  inst.scheduledDate == s.scheduledDate,
+            )
+            .toList();
+        final exists = existingForRule.isNotEmpty;
+        final hasResolved = existingForRule.any(
+          (inst) => inst.status != TaskStatus.pending,
         );
         final alreadySpawned = task.lastSpawnedDate != null &&
             s.scheduledDate.compareTo(task.lastSpawnedDate!) <= 0;
@@ -769,10 +781,14 @@ class SchedulerEngine {
               userId: context.userId,
             ),
           );
-          if (maxSpawned == null || s.scheduledDate.compareTo(maxSpawned) > 0) {
-            maxSpawned = s.scheduledDate;
+          if (s.scheduledDate.compareTo(context.today) <= 0) {
+            if (maxSpawned == null ||
+                s.scheduledDate.compareTo(maxSpawned) > 0) {
+              maxSpawned = s.scheduledDate;
+            }
           }
-        } else if (exists && s.scheduledDate.compareTo(context.today) <= 0) {
+        } else if (hasResolved &&
+            s.scheduledDate.compareTo(context.today) <= 0) {
           if (maxSpawned == null || s.scheduledDate.compareTo(maxSpawned) > 0) {
             maxSpawned = s.scheduledDate;
           }
