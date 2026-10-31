@@ -347,6 +347,46 @@ void main() {
     },
   );
 
+  testWidgets(
+    'SettingsScreen preserves existing hoursAvailable when toggling telemetry or crash reporting with invalid hours input',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final textFieldFinder = find.byKey(const Key('hours_available_field'));
+      await tester.enterText(textFieldFinder, '30');
+      await tester.pumpAndSettle();
+
+      final telemetrySwitchFinder = find.byKey(
+        const Key('telemetry_opt_out_switch'),
+      );
+      await tester.tap(telemetrySwitchFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, telemetryEnabled: false),
+        ),
+      ).called(1);
+
+      final crashSwitchFinder = find.byKey(const Key('crash_reporting_toggle'));
+      await tester.tap(crashSwitchFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(
+            hoursAvailable: 8.0,
+            telemetryEnabled: false,
+            crashReportingEnabled: false,
+          ),
+        ),
+      ).called(1);
+    },
+  );
+
   testWidgets('SettingsScreen renders export debug state button', (
     WidgetTester tester,
   ) async {
