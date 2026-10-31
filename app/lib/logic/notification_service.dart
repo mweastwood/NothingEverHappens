@@ -122,6 +122,33 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
+  Future<Box<dynamic>?> _openNotificationIdsBox() {
+    final completer = Completer<Box<dynamic>?>();
+    runZonedGuarded(
+      () async {
+        try {
+          final box = await Hive.openBox<dynamic>(notificationIdsBoxName);
+          if (!completer.isCompleted) {
+            completer.complete(box);
+          }
+        } catch (e) {
+          debugPrint(
+            'PlatformNotificationService: Hive storage not available for notification IDs, using in-memory tracking: $e',
+          );
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
+        }
+      },
+      (error, stackTrace) {
+        if (!completer.isCompleted) {
+          completer.complete(null);
+        }
+      },
+    );
+    return completer.future;
+  }
+
   Future<void> _initialize() async {
     if (_isWeb) {
       if (_isDisposed || _runId != _currentRunId) return;
@@ -134,8 +161,10 @@ class PlatformNotificationService implements NotificationService {
         try {
           if (Hive.isBoxOpen(notificationIdsBoxName)) {
             _notificationIdsBox = Hive.box(notificationIdsBoxName);
-            _loadTrackedNotificationIds();
+          } else {
+            _notificationIdsBox = await _openNotificationIdsBox();
           }
+          _loadTrackedNotificationIds();
         } catch (e) {
           debugPrint(
             'PlatformNotificationService: Hive storage not available for notification IDs, using in-memory tracking: $e',
@@ -157,8 +186,19 @@ class PlatformNotificationService implements NotificationService {
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
 
+      const DarwinInitializationSettings initializationSettingsDarwin =
+          DarwinInitializationSettings();
+
+      const LinuxInitializationSettings initializationSettingsLinux =
+          LinuxInitializationSettings(defaultActionName: 'Open notification');
+
       const InitializationSettings initializationSettings =
-          InitializationSettings(android: initializationSettingsAndroid);
+          InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsDarwin,
+            macOS: initializationSettingsDarwin,
+            linux: initializationSettingsLinux,
+          );
 
       await _plugin.initialize(settings: initializationSettings);
 
@@ -247,6 +287,18 @@ class PlatformNotificationService implements NotificationService {
           debugPrint(
             '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
           );
+          const notificationDetails = NotificationDetails(
+            android: AndroidNotificationDetails(
+              'task_reminders_channel',
+              'TaskSchedule Reminders',
+              channelDescription:
+                  'Notifications for task occurrences and schedules',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+            iOS: DarwinNotificationDetails(),
+            macOS: DarwinNotificationDetails(),
+          );
           try {
             await _plugin.zonedSchedule(
               id: notifId,
@@ -255,16 +307,7 @@ class PlatformNotificationService implements NotificationService {
                   ? task.description
                   : 'Reminder for your task',
               scheduledDate: tzDate,
-              notificationDetails: const NotificationDetails(
-                android: AndroidNotificationDetails(
-                  'task_reminders_channel',
-                  'TaskSchedule Reminders',
-                  channelDescription:
-                      'Notifications for task occurrences and schedules',
-                  importance: Importance.max,
-                  priority: Priority.high,
-                ),
-              ),
+              notificationDetails: notificationDetails,
               androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             );
           } catch (e) {
@@ -276,16 +319,7 @@ class PlatformNotificationService implements NotificationService {
                     ? task.description
                     : 'Reminder for your task',
                 scheduledDate: tzDate,
-                notificationDetails: const NotificationDetails(
-                  android: AndroidNotificationDetails(
-                    'task_reminders_channel',
-                    'TaskSchedule Reminders',
-                    channelDescription:
-                        'Notifications for task occurrences and schedules',
-                    importance: Importance.max,
-                    priority: Priority.high,
-                  ),
-                ),
+                notificationDetails: notificationDetails,
                 androidScheduleMode: AndroidScheduleMode.inexact,
               );
             } catch (ex) {
