@@ -115,7 +115,13 @@ class MissedPolicyRunner {
         try {
           await _syncService.waitForInitialSync;
           if (_isDisposed) return;
+          await _doProcessMissedPolicies(
+            shouldEvaluateFamily: shouldEvaluateFamily,
+          );
+          if (_isDisposed) return;
           if (shouldEvaluateFamily) {
+            await _syncService.sync();
+            if (_isDisposed) return;
             final familyId = await _getFamilyId();
             if (_isDisposed) return;
             if (familyId != null && familyId.isNotEmpty) {
@@ -126,7 +132,6 @@ class MissedPolicyRunner {
               );
             }
           }
-          await _doProcessMissedPolicies();
         } catch (e, st) {
           _errorHandler?.report(e, stackTrace: st);
           _logger?.error(
@@ -158,7 +163,9 @@ class MissedPolicyRunner {
     }
   }
 
-  Future<void> _doProcessMissedPolicies() async {
+  Future<void> _doProcessMissedPolicies({
+    bool shouldEvaluateFamily = false,
+  }) async {
     final now = AppClock.now;
     final tasks = _localDataSource.getTasks();
     final allInstances = _localDataSource.getInstances();
@@ -394,7 +401,7 @@ class MissedPolicyRunner {
       data: {'taskCount': tasksToEvaluate.length, 'hasChanges': hasChanges},
     );
 
-    if (hasChanges) {
+    if (hasChanges && !shouldEvaluateFamily) {
       _syncService.sync();
     }
 

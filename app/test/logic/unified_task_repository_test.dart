@@ -3363,6 +3363,279 @@ void main() {
         expect(oct22Instances.first.id, equals('I-remote-oct22'));
       },
     );
+
+    test(
+      'TaskSyncService.sync() completes before CloudFamilySchedulerClient.triggerFamilyScheduleProcessing is called when mutating a family task or instance',
+      () async {
+        const familyId = 'family-sync-order';
+        await firestore.collection('users').doc('user1').set({
+          'familyId': familyId,
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc(familyId).set({
+          'name': 'Sync Order Family',
+          'creatorId': 'user1',
+          'members': {
+            'user1': {'role': 'parent', 'displayName': 'User 1'},
+          },
+        });
+
+        final events = <String>[];
+        Future<void> Function()? onCloudSchedulerTriggered;
+
+        final trackingSyncService = _DelayedTrackingTaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+          events: events,
+        );
+        addTearDown(trackingSyncService.dispose);
+        await pumpEventQueue();
+
+        final orderCheckingScheduler = _FakeCloudFamilySchedulerClient(
+          onTrigger: (triggeredFamilyId) async {
+            events.add('trigger_cloud_scheduler:$triggeredFamilyId');
+            await onCloudSchedulerTriggered?.call();
+          },
+        );
+
+        final orderedRepo = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: trackingSyncService,
+          firestore: firestore,
+          userId: 'user1',
+          cloudFamilySchedulerClient: orderCheckingScheduler,
+        );
+        addTearDown(orderedRepo.dispose);
+
+        final rule = DailySchedule(
+          id: 'R-order-1',
+          scheduleId: 'S-order-1',
+          startDate: const CivilDay(year: 2026, month: 10, day: 22),
+          interval: 1,
+        );
+        final familyTask = TaskSchedule(
+          id: 'S-order-1',
+          title: 'Initial Family Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [rule],
+          updatedAt: DateTime.utc(2026, 10, 22, 8, 0),
+        );
+
+        // 1. addTaskSchedule
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(familyTask.id)
+              .get();
+          expect(doc.exists, isTrue);
+          expect(doc.data()?['title'], equals('Initial Family Task'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.addTaskSchedule(familyTask);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 2. updateTaskSchedule
+        events.clear();
+        final mod = familyTask.edit(
+          newTitle: 'Updated Family Task',
+          newDescription: familyTask.description,
+          newSchedules: familyTask.schedules,
+          newEstimatedDuration: familyTask.estimatedDuration,
+          newMissedPolicy: familyTask.missedPolicy,
+          newIsMaster: familyTask.isMaster,
+          newLastSpawnedDate: familyTask.lastSpawnedDate,
+          newIsFamily: familyTask.isFamily,
+          newPriority: familyTask.priority,
+        );
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(familyTask.id)
+              .get();
+          expect(doc.data()?['title'], equals('Updated Family Task'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.updateTaskSchedule(mod);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // Seed a pending family instance for instance mutation checks
+        final familyInstance = TaskInstance(
+          id: 'I-order-1',
+          scheduleId: familyTask.id,
+          ruleId: rule.id,
+          title: 'Updated Family Task',
+          description: 'Desc',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 22),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 10, 22, 8, 5),
+        );
+        await localDataSource.saveInstance(familyInstance);
+
+        // 3. completeTaskInstance
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(familyInstance.id)
+              .get();
+          expect(doc.exists, isTrue);
+          expect(doc.data()?['status'], equals('completed'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.completeTaskInstance(familyInstance.id);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 4. uncompleteTaskInstance
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(familyInstance.id)
+              .get();
+          expect(doc.data()?['status'], equals('pending'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.uncompleteTaskInstance(familyInstance.id);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 5. dismissTaskInstance
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(familyInstance.id)
+              .get();
+          expect(doc.data()?['status'], equals('skipped'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        final dismissed = await orderedRepo.dismissTaskInstance(
+          familyInstance.id,
+        );
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 6. undoResolveTaskInstance
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final doc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(familyInstance.id)
+              .get();
+          expect(doc.data()?['status'], equals('pending'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.undoResolveTaskInstance(dismissed!);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 7. deleteTaskSchedule
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final taskDoc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(familyTask.id)
+              .get();
+          expect(taskDoc.exists, isFalse);
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        final deleted = await orderedRepo.deleteTaskSchedule(familyTask.id);
+        expect(deleted, isNotNull);
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+
+        // 8. restoreTaskSchedule
+        events.clear();
+        onCloudSchedulerTriggered = () async {
+          final taskDoc = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(familyTask.id)
+              .get();
+          expect(taskDoc.exists, isTrue);
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        };
+        await orderedRepo.restoreTaskSchedule(
+          deleted!.task,
+          deleted.pendingInstances,
+        );
+        expect(
+          events,
+          equals([
+            'sync_start',
+            'sync_complete',
+            'trigger_cloud_scheduler:$familyId',
+          ]),
+        );
+      },
+    );
   });
 }
 
@@ -3454,11 +3727,34 @@ class _TestTelemetryService extends NoOpTelemetryService {
   }
 }
 
+class _DelayedTrackingTaskSyncService extends TaskSyncService {
+  final List<String> events;
+
+  _DelayedTrackingTaskSyncService({
+    required super.firestore,
+    required super.localDataSource,
+    required super.userId,
+    required super.isActivePremium,
+    required this.events,
+  });
+
+  @override
+  Future<void> sync() async {
+    events.add('sync_start');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    await super.sync();
+    events.add('sync_complete');
+  }
+}
+
 class _FakeCloudFamilySchedulerClient extends Fake
     implements CloudFamilySchedulerClient {
   final List<String> triggeredFamilyIds = [];
   final List<DateTime?> triggeredNows = [];
   final List<int?> triggeredTimeZoneOffsetMinutes = [];
+  final Future<void> Function(String familyId)? onTrigger;
+
+  _FakeCloudFamilySchedulerClient({this.onTrigger});
 
   @override
   Future<bool> triggerFamilyScheduleProcessing({
@@ -3469,6 +3765,9 @@ class _FakeCloudFamilySchedulerClient extends Fake
     triggeredFamilyIds.add(familyId);
     triggeredNows.add(now);
     triggeredTimeZoneOffsetMinutes.add(timeZoneOffsetMinutes);
+    if (onTrigger != null) {
+      await onTrigger!(familyId);
+    }
     return true;
   }
 }
