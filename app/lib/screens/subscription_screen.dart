@@ -1,15 +1,28 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../logic/auth_repository.dart';
 import '../logic/firestore_paths.dart';
 import '../logic/subscription_service.dart';
+import '../logic/task_repository.dart';
 import '../widgets/app_snackbar.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
-  const SubscriptionScreen({super.key});
+  final Future<Offerings> Function()? getOfferings;
+  final Future<PurchaseResult> Function(PurchaseParams)? purchase;
+  final Future<CustomerInfo> Function()? restorePurchases;
+  final bool? isWebOverride;
+
+  const SubscriptionScreen({
+    super.key,
+    this.getOfferings,
+    this.purchase,
+    this.restorePurchases,
+    this.isWebOverride,
+  });
 
   @override
   ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
@@ -17,6 +30,42 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isProcessing = false;
+
+  bool get _isWeb => widget.isWebOverride ?? kIsWeb;
+
+  Future<Offerings> _getOfferings() {
+    final fn = widget.getOfferings;
+    if (fn != null) return fn();
+    return Purchases.getOfferings();
+  }
+
+  Future<PurchaseResult> _purchase(PurchaseParams params) {
+    final fn = widget.purchase;
+    if (fn != null) return fn(params);
+    return Purchases.purchase(params);
+  }
+
+  Future<CustomerInfo> _restore() {
+    final fn = widget.restorePurchases;
+    if (fn != null) return fn();
+    return Purchases.restorePurchases();
+  }
+
+  FirebaseFirestore _getFirestore() {
+    return ref.read(firestoreProvider) ?? FirebaseFirestore.instance;
+  }
+
+  bool _isPurchaseCancelled(Object error) {
+    if (error is PlatformException) {
+      try {
+        return PurchasesErrorHelper.getErrorCode(error) ==
+            PurchasesErrorCode.purchaseCancelledError;
+      } catch (_) {
+        return false;
+      }
+    }
+    return false;
+  }
 
   Future<void> _upgradeToIndividual(BuildContext context) async {
     setState(() {
@@ -26,23 +75,37 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final authRepo = ref.read(authRepositoryProvider);
       final user = authRepo.currentUser;
       if (user != null) {
-        if (!kIsWeb) {
-          try {
-            final offerings = await Purchases.getOfferings();
-            final current = offerings.current;
-            if (current != null && current.availablePackages.isNotEmpty) {
-              final package = current.availablePackages.firstWhere(
-                (p) => p.identifier.contains('standard'),
-                orElse: () => current.availablePackages.first,
-              );
-              await Purchases.purchase(PurchaseParams.package(package));
-            }
-          } catch (e) {
-            debugPrint('RevenueCat purchase error / fallback: $e');
+        if (_isWeb) {
+          if (context.mounted) {
+            AppSnackBar.show(
+              context,
+              content: const Text('In-app purchases are not supported on web.'),
+            );
           }
+          return;
         }
 
-        await FirebaseFirestore.instance
+        final offerings = await _getOfferings();
+        final current = offerings.current;
+        if (current == null || current.availablePackages.isEmpty) {
+          if (context.mounted) {
+            AppSnackBar.show(
+              context,
+              content: const Text(
+                'Subscription packages are currently unavailable.',
+              ),
+            );
+          }
+          return;
+        }
+
+        final package = current.availablePackages.firstWhere(
+          (p) => p.identifier.contains('standard'),
+          orElse: () => current.availablePackages.first,
+        );
+        await _purchase(PurchaseParams.package(package));
+
+        await _getFirestore()
             .collection(FirestorePaths.users)
             .doc(user.uid)
             .set({'subscriptionTier': 'standard'}, SetOptions(merge: true));
@@ -55,7 +118,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         }
       }
     } catch (e) {
+      if (_isPurchaseCancelled(e)) {
+        return;
+      }
       debugPrint('Error purchasing: $e');
+      if (context.mounted) {
+        AppSnackBar.show(
+          context,
+          content: const Text('Failed to complete subscription purchase.'),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -73,23 +145,37 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final authRepo = ref.read(authRepositoryProvider);
       final user = authRepo.currentUser;
       if (user != null) {
-        if (!kIsWeb) {
-          try {
-            final offerings = await Purchases.getOfferings();
-            final current = offerings.current;
-            if (current != null && current.availablePackages.isNotEmpty) {
-              final package = current.availablePackages.firstWhere(
-                (p) => p.identifier.contains('family'),
-                orElse: () => current.availablePackages.first,
-              );
-              await Purchases.purchase(PurchaseParams.package(package));
-            }
-          } catch (e) {
-            debugPrint('RevenueCat purchase error / fallback: $e');
+        if (_isWeb) {
+          if (context.mounted) {
+            AppSnackBar.show(
+              context,
+              content: const Text('In-app purchases are not supported on web.'),
+            );
           }
+          return;
         }
 
-        await FirebaseFirestore.instance
+        final offerings = await _getOfferings();
+        final current = offerings.current;
+        if (current == null || current.availablePackages.isEmpty) {
+          if (context.mounted) {
+            AppSnackBar.show(
+              context,
+              content: const Text(
+                'Subscription packages are currently unavailable.',
+              ),
+            );
+          }
+          return;
+        }
+
+        final package = current.availablePackages.firstWhere(
+          (p) => p.identifier.contains('family'),
+          orElse: () => current.availablePackages.first,
+        );
+        await _purchase(PurchaseParams.package(package));
+
+        await _getFirestore()
             .collection(FirestorePaths.users)
             .doc(user.uid)
             .set({'subscriptionTier': 'family'}, SetOptions(merge: true));
@@ -102,7 +188,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         }
       }
     } catch (e) {
+      if (_isPurchaseCancelled(e)) {
+        return;
+      }
       debugPrint('Error purchasing: $e');
+      if (context.mounted) {
+        AppSnackBar.show(
+          context,
+          content: const Text('Failed to complete subscription purchase.'),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -114,9 +209,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _restorePurchases(BuildContext context) async {
     try {
-      if (!kIsWeb) {
-        await Purchases.restorePurchases();
+      if (_isWeb) {
+        if (context.mounted) {
+          AppSnackBar.show(
+            context,
+            content: const Text('In-app purchases are not supported on web.'),
+          );
+        }
+        return;
       }
+      await _restore();
       if (context.mounted) {
         AppSnackBar.show(
           context,
@@ -125,6 +227,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     } catch (e) {
       debugPrint('Error restoring purchases: $e');
+      if (context.mounted) {
+        AppSnackBar.show(
+          context,
+          content: const Text('Failed to restore purchases.'),
+        );
+      }
     }
   }
 
