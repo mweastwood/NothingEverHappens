@@ -318,6 +318,7 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localRecipes = _localDataSource.getRecipes();
     final localMap = {for (final r in localRecipes) r.id: r};
+    final dirtyIds = _localDataSource.getDirtyTaskIds().toSet();
 
     final toSave = <Recipe>[];
     final toDelete = <String>[];
@@ -326,6 +327,11 @@ class RemoteSnapshotReconciler {
       final docId = change.doc.id;
       if (change.type == DocumentChangeType.removed) {
         final localRecipe = localMap[docId];
+        if (localRecipe != null &&
+            (localRecipe.hasPendingWrites ||
+                dirtyIds.contains(localRecipe.id))) {
+          continue;
+        }
         if (localRecipe == null ||
             (isFamily ? localRecipe.isFamily : !localRecipe.isFamily)) {
           toDelete.add(docId);
@@ -336,6 +342,15 @@ class RemoteSnapshotReconciler {
         if (change.doc.data() != null) {
           final remoteRecipe = Recipe.fromFirestore(change.doc);
           final localRecipe = localMap[remoteRecipe.id];
+          if (localRecipe == null && dirtyIds.contains(remoteRecipe.id)) {
+            continue;
+          }
+          if (localRecipe != null &&
+              (localRecipe.hasPendingWrites ||
+                  dirtyIds.contains(localRecipe.id)) &&
+              !remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
+            continue;
+          }
           if (localRecipe == null ||
               remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
             final cleanRecipe = remoteRecipe.copyWith(
