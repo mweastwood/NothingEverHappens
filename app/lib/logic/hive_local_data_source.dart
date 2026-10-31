@@ -646,6 +646,30 @@ class HiveLocalDataSource {
     _emitRecipes();
   }
 
+  Future<void> purgeFamilyData() async {
+    final familyTaskIds = _memTasks.values
+        .where((t) => t.isFamily)
+        .map((t) => t.id)
+        .toList();
+    final familyInstanceIds = _memInstances.values
+        .where((i) => i.isFamily)
+        .map((i) => i.id)
+        .toList();
+    final familyRecipeIds = _memRecipes.values
+        .where((r) => r.isFamily)
+        .map((r) => r.id)
+        .toList();
+
+    await clearDirtyBatch([
+      ...familyTaskIds,
+      ...familyInstanceIds,
+      ...familyRecipeIds,
+    ]);
+    await deleteTasks(familyTaskIds);
+    await deleteInstances(familyInstanceIds);
+    await deleteRecipes(familyRecipeIds);
+  }
+
   Future<void> clearAllDirty() async {
     _memMeta['dirty_tasks'] = {'list': <String>[]};
     if (_syncMetaBox != null && _syncMetaBox!.isOpen) {

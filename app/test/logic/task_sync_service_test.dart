@@ -3842,6 +3842,148 @@ void main() {
         },
       );
     });
+
+    test(
+      'purges local family tasks, instances, recipes, and dirty IDs when familyId changes from fam-1 to null while preserving personal items',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'fam-1',
+          'familyRole': 'child',
+        });
+
+        final service = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+
+        await pumpEventQueue(times: 20);
+
+        final now = DateTime.utc(2026, 10, 31, 8, 0);
+        final familyTask = TaskSchedule(
+          id: 'S-fam-1',
+          title: 'Family Task',
+          description: 'Family Desc',
+          isFamily: true,
+          schedules: const [],
+          updatedAt: now,
+        );
+        final personalTask = TaskSchedule(
+          id: 'S-pers-1',
+          title: 'Personal Task',
+          description: 'Personal Desc',
+          isFamily: false,
+          schedules: const [],
+          updatedAt: now,
+        );
+        final familyInst = TaskInstance(
+          id: 'I-fam-1',
+          scheduleId: 'S-fam-1',
+          ruleId: 'R-1',
+          title: 'Family Instance',
+          description: 'Family Inst Desc',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 31),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          updatedAt: now,
+        );
+        final personalInst = TaskInstance(
+          id: 'I-pers-1',
+          scheduleId: 'S-pers-1',
+          ruleId: 'R-2',
+          title: 'Personal Instance',
+          description: 'Personal Inst Desc',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 31),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: false,
+          updatedAt: now,
+        );
+        final familyRecipe = Recipe(
+          id: 'R-fam-1',
+          title: 'Family Recipe',
+          isFamily: true,
+          createdAt: now,
+          updatedAt: now,
+        );
+        final personalRecipe = Recipe(
+          id: 'R-pers-1',
+          title: 'Personal Recipe',
+          isFamily: false,
+          createdAt: now,
+          updatedAt: now,
+        );
+
+        await localDataSource.saveTasks([familyTask, personalTask]);
+        await localDataSource.saveInstances([familyInst, personalInst]);
+        await localDataSource.saveRecipes([familyRecipe, personalRecipe]);
+        await localDataSource.markDirtyBatch([
+          'S-fam-1',
+          'S-pers-1',
+          'I-fam-1',
+          'I-pers-1',
+          'R-fam-1',
+          'R-pers-1',
+        ]);
+
+        // User leaves family or is removed by a parent (familyId becomes null)
+        await firestore.collection('users').doc('user1').set({
+          'familyId': null,
+          'familyRole': null,
+        });
+
+        await pumpUntil(
+          () =>
+              localDataSource.getTasks().every((t) => !t.isFamily) &&
+              localDataSource.getInstances().every((i) => !i.isFamily) &&
+              localDataSource.getRecipes().every((r) => !r.isFamily) &&
+              !localDataSource.getDirtyTaskIds().contains('S-fam-1'),
+        );
+
+        final remainingTaskIds = localDataSource
+            .getTasks()
+            .map((t) => t.id)
+            .toList();
+        expect(remainingTaskIds, equals(['S-pers-1']));
+
+        final remainingInstanceIds = localDataSource
+            .getInstances()
+            .map((i) => i.id)
+            .toList();
+        expect(remainingInstanceIds, equals(['I-pers-1']));
+
+        final remainingRecipeIds = localDataSource
+            .getRecipes()
+            .map((r) => r.id)
+            .toList();
+        expect(remainingRecipeIds, equals(['R-pers-1']));
+
+        final remainingDirtyIds = localDataSource.getDirtyTaskIds();
+        expect(
+          remainingDirtyIds,
+          unorderedEquals(['S-pers-1', 'I-pers-1', 'R-pers-1']),
+        );
+      },
+    );
   });
 }
 
