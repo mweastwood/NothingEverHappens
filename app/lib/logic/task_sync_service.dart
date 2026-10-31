@@ -649,6 +649,27 @@ class TaskSyncService {
             );
             if (e is FirebaseException && e.code == 'permission-denied') {
               await _localDataSource.clearDirty(taskId);
+              if (taskId.startsWith('S-')) {
+                final localTask = _localDataSource
+                    .getTasks()
+                    .where((t) => t.id == taskId)
+                    .firstOrNull;
+                if (localTask != null && localTask.hasPendingWrites) {
+                  await _localDataSource.saveTask(
+                    localTask.copyWith(hasPendingWrites: false),
+                  );
+                }
+              } else if (taskId.startsWith('I-')) {
+                final localInst = _localDataSource
+                    .getInstances()
+                    .where((i) => i.id == taskId)
+                    .firstOrNull;
+                if (localInst != null && localInst.hasPendingWrites) {
+                  await _localDataSource.saveInstance(
+                    localInst.copyWith(hasPendingWrites: false),
+                  );
+                }
+              }
             } else {
               rethrow;
             }
