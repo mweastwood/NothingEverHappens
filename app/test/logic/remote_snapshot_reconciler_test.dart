@@ -176,6 +176,114 @@ void main() {
       },
     );
 
+    test(
+      'handleRemoteInstancesSnapshot preserves different workflow stages on the same date without slot collision',
+      () async {
+        const date = CivilDay(year: 2026, month: 9, day: 16);
+        final selectInst = TaskInstance(
+          id: 'i-select',
+          scheduleId: 's-meal',
+          ruleId: 'r-meal',
+          title: 'Plan Dinner',
+          description: 'Select meal',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 9, 16, 10, 5),
+          updatedAt: DateTime.utc(2026, 9, 16, 10, 5),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.selectMeal,
+            workflowGroupId: 's-meal-2026-9-16',
+          ),
+        );
+        await localDataSource.saveInstance(selectInst);
+
+        final shopInst = TaskInstance(
+          id: 'i-shop',
+          scheduleId: 's-meal',
+          ruleId: 'r-meal',
+          title: 'Shop: Pasta',
+          description: 'Buy ingredients',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 9, 16, 10, 5),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.shoppingList,
+            workflowGroupId: 's-meal-2026-9-16',
+          ),
+        );
+        final prepInst = TaskInstance(
+          id: 'i-prep',
+          scheduleId: 's-meal',
+          ruleId: 'r-meal',
+          title: 'Prep & Cook: Pasta',
+          description: 'Cook dinner',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 30,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 30,
+          ),
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 9, 16, 10, 5),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.prepDinner,
+            workflowGroupId: 's-meal-2026-9-16',
+          ),
+        );
+
+        final col = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.instances);
+        await col.doc(selectInst.id).set(selectInst.toFirestore());
+        await col.doc(shopInst.id).set(shopInst.toFirestore());
+        await col.doc(prepInst.id).set(prepInst.toFirestore());
+
+        final snapshot = await col.get();
+        await reconciler.handleRemoteInstancesSnapshot(
+          snapshot,
+          isFamily: false,
+        );
+
+        final localIds = localDataSource
+            .getInstances()
+            .map((i) => i.id)
+            .toSet();
+        expect(localIds, equals({'i-select', 'i-shop', 'i-prep'}));
+        expect((await col.doc('i-select').get()).exists, isTrue);
+        expect((await col.doc('i-shop').get()).exists, isTrue);
+        expect((await col.doc('i-prep').get()).exists, isTrue);
+      },
+    );
+
     test('handleRemoteRecipesSnapshot saves newer remote recipes', () async {
       final recipe = Recipe(
         id: 'r-1',

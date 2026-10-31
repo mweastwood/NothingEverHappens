@@ -132,7 +132,8 @@ class RemoteSnapshotReconciler {
     final localMap = {for (final inst in localInsts) inst.id: inst};
     final localSlotMap = {
       for (final inst in localInsts)
-        '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}': inst,
+        '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}_${inst.workflowPayload?.stage.name ?? ""}':
+            inst,
     };
 
     final toSave = <TaskInstance>[];
@@ -155,7 +156,7 @@ class RemoteSnapshotReconciler {
           toPush.removeWhere((i) => i.id == docId);
           if (localInst != null) {
             final slotKey =
-                '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}';
+                '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}_${localInst.workflowPayload?.stage.name ?? ""}';
             if (localSlotMap[slotKey]?.id == docId) {
               localSlotMap.remove(slotKey);
             }
@@ -205,12 +206,12 @@ class RemoteSnapshotReconciler {
             } else {
               toSave.add(remoteInst);
               localMap[remoteInst.id] = remoteInst;
-              localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
+              localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}_${remoteInst.workflowPayload?.stage.name ?? ""}'] =
                   remoteInst;
             }
           } else {
             final slotKey =
-                '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}';
+                '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}_${remoteInst.workflowPayload?.stage.name ?? ""}';
             final localSlotInst = localSlotMap[slotKey];
             if (localSlotInst != null) {
               if (TaskSyncConflictResolver.doesSlotCandidateWin(
