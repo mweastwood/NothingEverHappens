@@ -58,6 +58,7 @@ class MealWorkflowEngine {
             priority: schedule.priority,
             cycleId: schedule.cycleId,
             assignedUserId: schedule.assignedUserId,
+            labelIds: schedule.labelIds,
             workflowPayload: WorkflowInstancePayload(
               workflowType: 'mealWorkflow',
               stage: WorkflowStage.shoppingList,
@@ -87,6 +88,7 @@ class MealWorkflowEngine {
             priority: schedule.priority,
             cycleId: schedule.cycleId,
             assignedUserId: schedule.assignedUserId,
+            labelIds: schedule.labelIds,
             workflowPayload: WorkflowInstancePayload(
               workflowType: 'mealWorkflow',
               stage: WorkflowStage.prepDinner,
@@ -119,6 +121,7 @@ class MealWorkflowEngine {
           priority: schedule.priority,
           cycleId: schedule.cycleId,
           assignedUserId: schedule.assignedUserId,
+          labelIds: schedule.labelIds,
           workflowPayload: WorkflowInstancePayload(
             workflowType: 'mealWorkflow',
             stage: WorkflowStage.prepDinner,
@@ -148,6 +151,7 @@ class MealWorkflowEngine {
           priority: schedule.priority,
           cycleId: schedule.cycleId,
           assignedUserId: schedule.assignedUserId,
+          labelIds: schedule.labelIds,
           workflowPayload: WorkflowInstancePayload(
             workflowType: 'mealWorkflow',
             stage: WorkflowStage.prepDinner,

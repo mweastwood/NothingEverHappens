@@ -301,13 +301,28 @@ class SchedulerEngine {
     for (final entry in instancesByDate.entries) {
       final insts = entry.value;
       if (insts.length > 1) {
-        final canonical = _selectCanonicalInstance(insts);
-        canonicalByDate[entry.key] = canonical;
+        final Map<WorkflowStage?, List<TaskInstance>> instancesByStage = {};
         for (final inst in insts) {
-          if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
-            toDelete.add(inst.id);
+          instancesByStage
+              .putIfAbsent(inst.workflowPayload?.stage, () => [])
+              .add(inst);
+        }
+
+        final List<TaskInstance> stageCanonicals = [];
+        for (final stageInsts in instancesByStage.values) {
+          if (stageInsts.length > 1) {
+            final stageCanonical = _selectCanonicalInstance(stageInsts);
+            stageCanonicals.add(stageCanonical);
+            for (final inst in stageInsts) {
+              if (inst.id != stageCanonical.id && !toDelete.contains(inst.id)) {
+                toDelete.add(inst.id);
+              }
+            }
+          } else {
+            stageCanonicals.add(stageInsts.first);
           }
         }
+        canonicalByDate[entry.key] = _selectCanonicalInstance(stageCanonicals);
       } else {
         canonicalByDate[entry.key] = insts.first;
       }
@@ -374,16 +389,24 @@ class SchedulerEngine {
         _deduplicateRuleInstancesByDate(ruleInstances, toDelete)
             .values
             .toList();
+    final deduplicatedRuleInstances =
+        ruleInstances.where((inst) => !toDelete.contains(inst.id)).toList();
 
-    final pendingForSchedule = canonicalInstances
+    final pendingForSchedule = deduplicatedRuleInstances
         .where((inst) => inst.status == TaskStatus.pending)
         .toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     if (pendingForSchedule.length > 1) {
+      final primaryPending = pendingForSchedule.first;
       for (int p = 1; p < pendingForSchedule.length; p++) {
-        if (!toDelete.contains(pendingForSchedule[p].id)) {
-          toDelete.add(pendingForSchedule[p].id);
+        final candidate = pendingForSchedule[p];
+        final isSiblingWorkflowStage =
+            candidate.scheduledDate == primaryPending.scheduledDate &&
+                candidate.workflowPayload?.stage !=
+                    primaryPending.workflowPayload?.stage;
+        if (!isSiblingWorkflowStage && !toDelete.contains(candidate.id)) {
+          toDelete.add(candidate.id);
         }
       }
     }
@@ -393,7 +416,7 @@ class SchedulerEngine {
       if (canonicalInstances.isEmpty) {
         dateToSpawn = s.scheduledDate;
       } else {
-        final resolved = canonicalInstances
+        final resolved = deduplicatedRuleInstances
             .where((inst) => inst.status != TaskStatus.pending)
             .toList()
           ..sort(
