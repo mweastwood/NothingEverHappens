@@ -195,5 +195,39 @@ void main() {
       expect(savedRecipes, hasLength(1));
       expect(savedRecipes.first.title, equals('Lemon Pasta'));
     });
+
+    test(
+      'handleRemoteRecipesSnapshot clears dirty marker when newer remote recipe wins',
+      () async {
+        final localDirty = Recipe(
+          id: 'r-dirty',
+          title: 'Local Offline Draft',
+          updatedAt: DateTime.utc(2026, 9, 16, 10, 0),
+          hasPendingWrites: true,
+        );
+        await localDataSource.saveRecipe(localDirty);
+        await localDataSource.markDirty('r-dirty');
+
+        final remoteNewer = Recipe(
+          id: 'r-dirty',
+          title: 'Remote Newer Version',
+          updatedAt: DateTime.utc(2026, 9, 16, 12, 0),
+        );
+        final col = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.recipes);
+        await col.doc(remoteNewer.id).set(remoteNewer.toFirestore());
+
+        final snapshot = await col.get();
+        await reconciler.handleRemoteRecipesSnapshot(snapshot, isFamily: false);
+
+        final savedRecipes = localDataSource.getRecipes();
+        expect(savedRecipes, hasLength(1));
+        expect(savedRecipes.first.title, equals('Remote Newer Version'));
+        expect(savedRecipes.first.hasPendingWrites, isFalse);
+        expect(localDataSource.getDirtyTaskIds(), isNot(contains('r-dirty')));
+      },
+    );
   });
 }
