@@ -23,6 +23,10 @@ void main() {
     test('parses and validates YYYY-MM-DD', () {
       expect(CivilDay.isValid('2026-08-30'), isTrue);
       expect(CivilDay.isValid('2026-02-28'), isTrue);
+      expect(CivilDay.isValid('2026-02-29'), isFalse);
+      expect(CivilDay.isValid('2024-02-29'), isTrue);
+      expect(CivilDay.isValid('2100-02-29'), isFalse);
+      expect(CivilDay.isValid('2000-02-29'), isTrue);
       expect(CivilDay.isValid('2026-13-01'), isFalse);
       expect(CivilDay.isValid('2026-00-01'), isFalse);
       expect(CivilDay.isValid('2026-08-32'), isFalse);
