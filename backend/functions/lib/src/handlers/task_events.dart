@@ -139,17 +139,21 @@ Future<TaskEventResult> processExternalTaskEvent(
   final nowIso = nowUtc.toIso8601String();
 
   var targetStatus = 'pending';
+  String? statusReason;
   String? completedAt;
   String? completedByUserId;
 
   if (event.action == 'completed') {
     targetStatus = 'completed';
+    statusReason = 'user_completed';
     completedAt = event.timestamp ?? nowIso;
     completedByUserId = event.userId;
   } else if (event.action == 'dismissed') {
-    targetStatus = 'dismissed';
+    targetStatus = 'skipped';
+    statusReason = 'user_dismissed';
   } else if (event.action == 'uncompleted') {
     targetStatus = 'pending';
+    statusReason = null;
     completedAt = null;
     completedByUserId = null;
   }
@@ -172,6 +176,7 @@ Future<TaskEventResult> processExternalTaskEvent(
 
     await doc.ref.update({
       'status': targetStatus,
+      'statusReason': statusReason,
       'completedAt': completedAt,
       'completedByUserId': completedByUserId,
       'completedByUserIds': updatedCompletedByUserIds,
@@ -209,8 +214,12 @@ Future<TaskEventResult> processExternalTaskEvent(
       description = sData['description'] as String;
   }
 
-  // Create a Just-in-Time TaskInstance document
-  final newInstanceRef = instancesRef.doc();
+  // Create a Just-in-Time TaskInstance document with an I- prefixed ID
+  final rawInstanceRef = instancesRef.doc();
+  final instanceId = rawInstanceRef.id.startsWith('I-')
+      ? rawInstanceRef.id
+      : 'I-${rawInstanceRef.id}';
+  final newInstanceRef = instancesRef.doc(instanceId);
   final newInstance = <String, dynamic>{
     'id': newInstanceRef.id,
     'scheduleId': scheduleId,
@@ -218,10 +227,11 @@ Future<TaskEventResult> processExternalTaskEvent(
     'title': title,
     'description': description,
     'scheduledDate': civilDay.toJson(),
-    'startRelativeTime': {'minutes': 0},
-    'dueRelativeTime': {'minutes': 1439},
+    'startRelativeTime': {'dayOffset': 0, 'hour': 0, 'minute': 0},
+    'dueRelativeTime': {'dayOffset': 0, 'hour': 23, 'minute': 59},
     'isFamily': false,
     'status': targetStatus,
+    if (statusReason != null) 'statusReason': statusReason,
     'completedAt': completedAt,
     'completedByUserId': completedByUserId,
     'completedByUserIds':
