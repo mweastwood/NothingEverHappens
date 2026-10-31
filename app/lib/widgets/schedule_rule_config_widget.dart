@@ -428,10 +428,22 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     if (_ignoreControllerEvents) return;
     final s = widget.schedule;
     if (s is OneOffSchedule) {
-      final startAbs = _oneOffStartController.value;
+      var startAbs = _oneOffStartController.value;
       final dueAbs = _oneOffDueController.value;
 
       final newDate = CivilDay.fromDateTime(dueAbs);
+      if (newDate != s.date) {
+        startAbs = _relativeToAbsolute(newDate, s.startRelativeTime);
+      }
+      if (startAbs.isAfter(dueAbs)) {
+        startAbs = dueAbs;
+      }
+      if (_oneOffStartController.value != startAbs) {
+        _ignoreControllerEvents = true;
+        _oneOffStartController.value = startAbs;
+        _ignoreControllerEvents = false;
+      }
+
       final newStartRel = _absoluteToRelative(newDate, startAbs);
       final newDueRel = _absoluteToRelative(newDate, dueAbs);
 

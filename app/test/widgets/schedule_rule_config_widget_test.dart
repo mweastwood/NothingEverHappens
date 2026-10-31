@@ -723,6 +723,72 @@ void main() {
 
       expect(find.text('2026-10-28'), findsWidgets);
     });
+
+    testWidgets(
+      'changing one-off due date to an earlier date preserves startRelativeTime without positive dayOffset',
+      (tester) async {
+        TaskScheduleRule? changedRule;
+        final schedule = createDefaultOneOffSchedule(
+          date: CivilDay(year: 2026, month: 10, day: 26),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        );
+
+        final absoluteRobot = AbsoluteTimeWidgetRobot(tester);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleRuleConfigWidget(
+                  schedule: schedule,
+                  onChanged: (r) => changedRule = r,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Pick an earlier date in the same month (Oct 20, 2026)
+        await absoluteRobot.openDatePicker();
+        await absoluteRobot.pickDate('20');
+
+        expect(changedRule, isA<OneOffSchedule>());
+        final updatedOneOff = changedRule as OneOffSchedule;
+        expect(updatedOneOff.date, CivilDay(year: 2026, month: 10, day: 20));
+        expect(updatedOneOff.startRelativeTime.dayOffset, lessThanOrEqualTo(0));
+        expect(
+          updatedOneOff.startRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        );
+        expect(
+          updatedOneOff.dueRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        );
+
+        // Also verify picking an earlier due time than start time clamps startRelativeTime
+        final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
+        await oneOffRobot.openDueTimePicker();
+        await absoluteRobot.pickTime(8, 0, isAM: true);
+
+        final clampedOneOff = changedRule as OneOffSchedule;
+        expect(clampedOneOff.dueRelativeTime.hour, 8);
+        expect(clampedOneOff.startRelativeTime.dayOffset, 0);
+        expect(
+          clampedOneOff.startRelativeTime.minutes,
+          lessThanOrEqualTo(clampedOneOff.dueRelativeTime.minutes),
+        );
+      },
+    );
   });
 
   group('ScheduleRuleConfigWidget - Notification & Missed Policy Toggles', () {
