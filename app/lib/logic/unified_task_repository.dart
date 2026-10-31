@@ -179,7 +179,9 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: t.isFamily);
     await _rescheduleOrCancelNotificationsForTask(t);
-    _syncService.sync();
+    if (!t.isFamily || !_localDataSource.isMigrationCompleted()) {
+      _syncService.sync();
+    }
   }
 
   @override
@@ -213,11 +215,12 @@ class UnifiedTaskRepository implements TaskRepository {
       changes: changes,
     );
 
-    await triggerMissedPolicyProcessing(
-      evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
-    );
+    final evaluateFamily = t.isFamily || changes.containsKey('isFamily');
+    await triggerMissedPolicyProcessing(evaluateFamilyTasks: evaluateFamily);
     await _rescheduleOrCancelNotificationsForTask(t);
-    _syncService.sync();
+    if (!evaluateFamily || !_localDataSource.isMigrationCompleted()) {
+      _syncService.sync();
+    }
   }
 
   @override
@@ -248,7 +251,9 @@ class UnifiedTaskRepository implements TaskRepository {
 
     await notificationService?.cancelNotifications(id);
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
-    _syncService.sync();
+    if (!task.isFamily || !_localDataSource.isMigrationCompleted()) {
+      _syncService.sync();
+    }
     return (task: task, pendingInstances: pendingInstances);
   }
 
@@ -273,7 +278,9 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
     await _rescheduleOrCancelNotificationsForTask(t);
-    _syncService.sync();
+    if (!task.isFamily || !_localDataSource.isMigrationCompleted()) {
+      _syncService.sync();
+    }
   }
 
   @override
@@ -356,17 +363,7 @@ class UnifiedTaskRepository implements TaskRepository {
           data: {'instanceId': id, 'scheduleId': instance.scheduleId},
         );
 
-        _syncService.sync();
-        if (isFamily) {
-          final familyId = await getFamilyId();
-          if (familyId != null && familyId.isNotEmpty) {
-            unawaited(
-              cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-                familyId: familyId,
-              ),
-            );
-          }
-        }
+        await _triggerCloudFamilyScheduleIfApplicable(isFamily);
         return completedInstance;
       } else {
         final partialInstance = instance.copyWith(
@@ -420,16 +417,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    if (isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    } else if (task != null) {
+    if (!isFamily && task != null) {
       await _spawnNextOccurrence(
         task,
         completedInstance,
@@ -438,7 +426,7 @@ class UnifiedTaskRepository implements TaskRepository {
       await _reEvaluateCapacityIfNeeded(task);
       await _rescheduleOrCancelNotificationsForTask(task);
     }
-    _syncService.sync();
+    await _triggerCloudFamilyScheduleIfApplicable(isFamily);
     return completedInstance;
   }
 
@@ -501,16 +489,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    if (isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    } else if (task != null) {
+    if (!isFamily && task != null) {
       await _spawnNextOccurrence(
         task,
         dismissedInstance,
@@ -519,8 +498,24 @@ class UnifiedTaskRepository implements TaskRepository {
       await _reEvaluateCapacityIfNeeded(task);
       await _rescheduleOrCancelNotificationsForTask(task);
     }
-    _syncService.sync();
+    await _triggerCloudFamilyScheduleIfApplicable(isFamily);
     return dismissedInstance;
+  }
+
+  Future<void> _triggerCloudFamilyScheduleIfApplicable(bool isFamily) async {
+    if (!isFamily) {
+      _syncService.sync();
+      return;
+    }
+    await _syncService.sync();
+    final familyId = await getFamilyId();
+    if (familyId != null && familyId.isNotEmpty) {
+      unawaited(
+        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+          familyId: familyId,
+        ),
+      );
+    }
   }
 
   Future<void> _rescheduleOrCancelNotificationsForTask(
@@ -629,15 +624,7 @@ class UnifiedTaskRepository implements TaskRepository {
           'scheduleId': resolvedInstance.scheduleId,
         },
       );
-      _syncService.sync();
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
+      await _triggerCloudFamilyScheduleIfApplicable(isFamilyTask);
       return;
     }
 
@@ -665,18 +652,9 @@ class UnifiedTaskRepository implements TaskRepository {
       },
     );
 
-    if (isFamilyTask) {
+    if (!isFamilyTask && task != null) {
       // Family task instance lifecycle is managed by the cloud scheduler;
       // do not delete locally spawned next occurrences on-device.
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    } else if (task != null) {
       if (task.schedules.any((s) => s is! OneOffSchedule)) {
         final instances = _localDataSource
             .getInstances()
@@ -698,7 +676,7 @@ class UnifiedTaskRepository implements TaskRepository {
       await _reEvaluateCapacityIfNeeded(task);
       await notificationService?.scheduleNotifications(task);
     }
-    _syncService.sync();
+    await _triggerCloudFamilyScheduleIfApplicable(isFamilyTask);
   }
 
   @override
