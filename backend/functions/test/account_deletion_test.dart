@@ -2,6 +2,7 @@ import 'package:functions/src/handlers/account_deletion.dart';
 import 'package:functions/src/interop/firebase_admin.dart';
 import 'package:functions/src/interop/firebase_functions.dart';
 import 'package:test/test.dart';
+
 import 'test_helpers.dart';
 
 void main() {
@@ -9,9 +10,9 @@ void main() {
     test('authenticates a valid Bearer ID token', () async {
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_abc_123',
-            email: 'tester@example.com',
-          );
+        uid: 'user_abc_123',
+        email: 'tester@example.com',
+      );
 
       final headers = {'authorization': 'Bearer valid_id_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -24,9 +25,9 @@ void main() {
     test('handles case-insensitive Authorization header', () async {
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_abc_123',
-            email: 'tester@example.com',
-          );
+        uid: 'user_abc_123',
+        email: 'tester@example.com',
+      );
 
       final headers = {'Authorization': 'Bearer valid_id_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -54,8 +55,8 @@ void main() {
 
     test('rejects invalid or expired token with 401', () async {
       final mockAuth = MockAuthService();
-      mockAuth.onVerifyIdToken =
-          (token) async => throw Exception('Token expired');
+      mockAuth.onVerifyIdToken = (token) async =>
+          throw Exception('Token expired');
 
       final headers = {'authorization': 'Bearer expired_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -67,9 +68,7 @@ void main() {
   });
 
   group('deleteUserAccountData', () {
-    test(
-        'deletes sole family member, purging family, invites, user data, and auth profile',
-        () async {
+    test('deletes sole family member, purging family, invites, user data, and auth profile', () async {
       final mockDb = MockFirestoreDatabase();
       final userRef = mockDb.collection('users').doc('user_sole');
       userRef.docData = {
@@ -114,21 +113,71 @@ void main() {
       expect(mockAuth.deletedUserIds, contains('user_sole'));
     });
 
-    test('removes user from multi-member family without deleting entire family',
-        () async {
+    test(
+      'removes user from multi-member family without deleting entire family',
+      () async {
+        final mockDb = MockFirestoreDatabase();
+        final userRef = mockDb.collection('users').doc('user_multi_1');
+        userRef.docData = {
+          'familyId': 'fam_multi',
+          'email': 'member1@example.com',
+        };
+
+        final familyRef = mockDb.collection('families').doc('fam_multi');
+        familyRef.docData = {
+          'name': 'Multi Member Family',
+          'members': {
+            'user_multi_1': {'role': 'parent'},
+            'user_multi_2': {'role': 'parent'},
+          },
+        };
+
+        final mockAuth = MockAuthService();
+
+        final result = await deleteUserAccountData(
+          mockDb,
+          mockAuth,
+          'user_multi_1',
+          userEmail: 'member1@example.com',
+        );
+
+        expect(result.success, isTrue);
+        // Family should NOT be deleted recursively
+        expect(mockDb.recursiveDeletedRefs, isNot(contains(familyRef)));
+        // Member should be removed via update
+        expect(familyRef.updateCalls.length, equals(1));
+        expect(
+          familyRef.updateCalls.first.containsKey('members.user_multi_1'),
+          isTrue,
+        );
+        // User doc recursively deleted
+        expect(mockDb.recursiveDeletedRefs, contains(userRef));
+        // Auth deleted
+        expect(mockAuth.deletedUserIds, contains('user_multi_1'));
+      },
+    );
+
+    test('promotes remaining member to parent when sole parent in multi-member family deletes account', () async {
       final mockDb = MockFirestoreDatabase();
-      final userRef = mockDb.collection('users').doc('user_multi_1');
+      final userRef = mockDb.collection('users').doc('user_sole_parent');
       userRef.docData = {
-        'familyId': 'fam_multi',
-        'email': 'member1@example.com',
+        'familyId': 'fam_multi_promote',
+        'email': 'parent@example.com',
       };
 
-      final familyRef = mockDb.collection('families').doc('fam_multi');
+      final childUserRef = mockDb.collection('users').doc('user_child_1');
+      childUserRef.docData = {
+        'familyId': 'fam_multi_promote',
+        'familyRole': 'non-parent',
+        'email': 'child@example.com',
+      };
+
+      final familyRef = mockDb.collection('families').doc('fam_multi_promote');
       familyRef.docData = {
         'name': 'Multi Member Family',
         'members': {
-          'user_multi_1': {'role': 'parent'},
-          'user_multi_2': {'role': 'parent'},
+          'user_sole_parent': {'role': 'parent'},
+          'user_child_1': {'role': 'non-parent'},
         },
       };
 
@@ -137,29 +186,28 @@ void main() {
       final result = await deleteUserAccountData(
         mockDb,
         mockAuth,
-        'user_multi_1',
-        userEmail: 'member1@example.com',
+        'user_sole_parent',
+        userEmail: 'parent@example.com',
       );
 
       expect(result.success, isTrue);
-      // Family should NOT be deleted recursively
-      expect(mockDb.recursiveDeletedRefs, isNot(contains(familyRef)));
-      // Member should be removed via update
       expect(familyRef.updateCalls.length, equals(1));
-      expect(familyRef.updateCalls.first.containsKey('members.user_multi_1'),
-          isTrue);
-      // User doc recursively deleted
-      expect(mockDb.recursiveDeletedRefs, contains(userRef));
-      // Auth deleted
-      expect(mockAuth.deletedUserIds, contains('user_multi_1'));
+      expect(
+        familyRef.updateCalls.first.containsKey('members.user_sole_parent'),
+        isTrue,
+      );
+      expect(
+        familyRef.updateCalls.first['members.user_child_1.role'],
+        equals('parent'),
+      );
+      expect(childUserRef.updateCalls.length, equals(1));
+      expect(childUserRef.updateCalls.first['familyRole'], equals('parent'));
     });
 
     test('handles user without family association gracefully', () async {
       final mockDb = MockFirestoreDatabase();
       final userRef = mockDb.collection('users').doc('user_loner');
-      userRef.docData = {
-        'email': 'loner@example.com',
-      };
+      userRef.docData = {'email': 'loner@example.com'};
 
       final mockAuth = MockAuthService();
 
@@ -174,41 +222,45 @@ void main() {
       expect(mockAuth.deletedUserIds, contains('user_loner'));
     });
 
-    test('ignores auth/user-not-found error if Auth user is already deleted',
-        () async {
-      final mockDb = MockFirestoreDatabase();
-      final userRef = mockDb.collection('users').doc('user_missing');
-      userRef.isExisting = false;
+    test(
+      'ignores auth/user-not-found error if Auth user is already deleted',
+      () async {
+        final mockDb = MockFirestoreDatabase();
+        final userRef = mockDb.collection('users').doc('user_missing');
+        userRef.isExisting = false;
 
-      final mockAuth = MockAuthService();
-      mockAuth.onDeleteUser = (uid) async {
-        throw const FirebaseAuthException(
-          code: 'auth/user-not-found',
-          message: 'User not found',
+        final mockAuth = MockAuthService();
+        mockAuth.onDeleteUser = (uid) async {
+          throw const FirebaseAuthException(
+            code: 'auth/user-not-found',
+            message: 'User not found',
+          );
+        };
+
+        final result = await deleteUserAccountData(
+          mockDb,
+          mockAuth,
+          'user_missing',
         );
-      };
 
-      final result = await deleteUserAccountData(
-        mockDb,
-        mockAuth,
-        'user_missing',
-      );
-
-      expect(result.success, isTrue);
-    });
+        expect(result.success, isTrue);
+      },
+    );
   });
 
   group('handleDeleteUserAccount', () {
-    test('rejects non-POST/DELETE requests with 405 Method Not Allowed',
-        () async {
-      final req = TestHttpRequest(method: 'GET');
-      final res = TestHttpResponse();
+    test(
+      'rejects non-POST/DELETE requests with 405 Method Not Allowed',
+      () async {
+        final req = TestHttpRequest(method: 'GET');
+        final res = TestHttpResponse();
 
-      await handleDeleteUserAccount(req, res);
+        await handleDeleteUserAccount(req, res);
 
-      expect(res.statusCode, equals(405));
-      expect(res.responseData['error'], contains('Method Not Allowed'));
-    });
+        expect(res.statusCode, equals(405));
+        expect(res.responseData['error'], contains('Method Not Allowed'));
+      },
+    );
 
     test('rejects unauthenticated requests with 401 Unauthorized', () async {
       final req = TestHttpRequest(method: 'POST');
@@ -223,9 +275,9 @@ void main() {
       final mockDb = MockFirestoreDatabase();
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_delete_me',
-            email: 'delete_me@example.com',
-          );
+        uid: 'user_delete_me',
+        email: 'delete_me@example.com',
+      );
 
       final req = TestHttpRequest(
         method: 'POST',
@@ -244,9 +296,9 @@ void main() {
       final mockDb = MockFirestoreDatabase();
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_delete_me',
-            email: 'delete_me@example.com',
-          );
+        uid: 'user_delete_me',
+        email: 'delete_me@example.com',
+      );
 
       final req = TestHttpRequest(
         method: 'DELETE',
@@ -264,10 +316,8 @@ void main() {
     test('returns 500 when backend deletion fails', () async {
       final mockDb = MockFirestoreDatabase();
       final mockAuth = MockAuthService();
-      mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_fail',
-            email: 'fail@example.com',
-          );
+      mockAuth.onVerifyIdToken = (token) async =>
+          const DecodedIdToken(uid: 'user_fail', email: 'fail@example.com');
       mockAuth.onDeleteUser = (uid) async {
         throw Exception('Database write lock error');
       };
