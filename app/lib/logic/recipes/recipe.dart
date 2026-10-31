@@ -184,6 +184,7 @@ class Recipe {
       'isFamily': isFamily,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'hasPendingWrites': hasPendingWrites,
     };
   }
 
@@ -228,6 +229,7 @@ class Recipe {
       isFamily: json['isFamily'] as bool? ?? false,
       createdAt: parseDate(json['createdAt']),
       updatedAt: parseDate(json['updatedAt']),
+      hasPendingWrites: json['hasPendingWrites'] as bool? ?? false,
     );
   }
 
