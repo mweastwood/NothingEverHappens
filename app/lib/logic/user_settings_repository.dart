@@ -127,7 +127,7 @@ class UserSettingsRepository {
       final ref = _settingsRefForUser(_userId);
       if (ref != null) {
         try {
-          await ref.set(settings, SetOptions(merge: true));
+          await ref.set(settings);
         } catch (e) {
           // Local Hive save succeeded; background firestore sync can fail silently if offline/free
         }
