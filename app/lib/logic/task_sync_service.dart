@@ -269,7 +269,7 @@ class TaskSyncService {
         .doc(_userId)
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             _receivedUserDoc = true;
             final newFamilyId = snapshot.data()?['familyId'] as String?;
             final newFamilyRole = snapshot.data()?['familyRole'] as String?;
@@ -279,14 +279,26 @@ class TaskSyncService {
                 (newFamilyId != null &&
                     newFamilyId.isNotEmpty &&
                     _familyTasksSub == null)) {
+              final previousFamilyId = _familyId;
               _familyId = newFamilyId;
               _familyIdFetcher.clearCache();
               _familyTasksSub?.cancel();
+              _familyTasksSub = null;
               _familyInstancesSub?.cancel();
+              _familyInstancesSub = null;
               _familyRecipesSub?.cancel();
+              _familyRecipesSub = null;
               _receivedFamilyTasks = false;
               _receivedFamilyInstances = false;
-              if (_familyId != null && _familyId!.isNotEmpty) {
+              if (previousFamilyId != null &&
+                  previousFamilyId.isNotEmpty &&
+                  previousFamilyId != newFamilyId) {
+                await _localDataSource.purgeFamilyData();
+              }
+              if (!_isDisposed &&
+                  _familyId == newFamilyId &&
+                  _familyId != null &&
+                  _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
               }
               _updatedInitialClientMetadata = true;
@@ -489,7 +501,7 @@ class TaskSyncService {
   Future<String?> _getFamilyId() async {
     if (_familyId != null) return _familyId;
     final fetched = await _familyIdFetcher.getFamilyId();
-    if (_familyId == null && fetched != null) {
+    if (!_receivedUserDoc && _familyId == null && fetched != null) {
       _familyId = fetched;
     }
     return _familyId ?? fetched;
