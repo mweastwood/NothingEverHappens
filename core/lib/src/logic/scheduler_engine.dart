@@ -334,6 +334,7 @@ class SchedulerEngine {
         _evaluateCompletionRelativeRule(
           context,
           s,
+          toUpdate: toUpdate,
           toSpawn: toSpawn,
           toDelete: toDelete,
         );
@@ -360,6 +361,7 @@ class SchedulerEngine {
   void _evaluateCompletionRelativeRule(
     SchedulerEvaluationContext context,
     TaskScheduleRule s, {
+    required List<TaskInstance> toUpdate,
     required List<TaskInstance> toSpawn,
     required List<String> toDelete,
   }) {
@@ -370,10 +372,9 @@ class SchedulerEngine {
         .where((inst) => _isInstanceForRule(inst, s, task))
         .toList();
 
-    final canonicalInstances =
-        _deduplicateRuleInstancesByDate(ruleInstances, toDelete)
-            .values
-            .toList();
+    final canonicalByDate =
+        _deduplicateRuleInstancesByDate(ruleInstances, toDelete);
+    final canonicalInstances = canonicalByDate.values.toList();
 
     final pendingForSchedule = canonicalInstances
         .where((inst) => inst.status == TaskStatus.pending)
@@ -386,31 +387,78 @@ class SchedulerEngine {
           toDelete.add(pendingForSchedule[p].id);
         }
       }
+      pendingForSchedule.removeRange(1, pendingForSchedule.length);
     }
 
-    if (pendingForSchedule.isEmpty) {
+    if (pendingForSchedule.isNotEmpty &&
+        s.missedOccurrencePolicy.policy == MissedPolicy.autoDismiss) {
+      final activePending = pendingForSchedule.first;
+      final isExpired = s.missedOccurrencePolicy.isInstanceExpired(
+        activePending,
+        now,
+        utcOffset: context.latestUtcOffset,
+      );
+      if (isExpired) {
+        final skippedInst = activePending.copyWith(
+          status: TaskStatus.skipped,
+          statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
+          lastModifiedByAppVersion: appVersion,
+          lastModifiedByPlatform: platform,
+          lastModifiedByUserId: context.userId,
+          updatedAt: now.toUtc(),
+        );
+        toUpdate.add(skippedInst);
+        canonicalByDate[skippedInst.scheduledDate] = skippedInst;
+        final idx =
+            canonicalInstances.indexWhere((x) => x.id == skippedInst.id);
+        if (idx >= 0) {
+          canonicalInstances[idx] = skippedInst;
+        }
+        pendingForSchedule.clear();
+      }
+    }
+
+    final hasCurrentOrFutureCapacitySkipped = canonicalInstances.any(
+      (inst) =>
+          inst.status == TaskStatus.skipped &&
+          inst.statusReason ==
+              InstanceStatusReason.schedulerCapacityLimit.value &&
+          !inst.scheduledDate.isBefore(context.latestToday),
+    );
+
+    if (pendingForSchedule.isEmpty && !hasCurrentOrFutureCapacitySkipped) {
       CivilDay? dateToSpawn;
-      if (canonicalInstances.isEmpty) {
+      final resolved = canonicalInstances
+          .where(
+            (inst) =>
+                inst.status != TaskStatus.pending &&
+                inst.statusReason !=
+                    InstanceStatusReason.schedulerCapacityLimit.value,
+          )
+          .toList()
+        ..sort(
+          (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
+            a.completedAt ?? a.updatedAt,
+          ),
+        );
+
+      if (resolved.isEmpty) {
         dateToSpawn = s.scheduledDate;
       } else {
-        final resolved = canonicalInstances
-            .where((inst) => inst.status != TaskStatus.pending)
-            .toList()
-          ..sort(
-            (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
-              a.completedAt ?? a.updatedAt,
-            ),
-          );
-        if (resolved.isNotEmpty) {
-          final latest = resolved.first;
-          final completedAtTime = latest.completedAt ?? latest.updatedAt;
-          final referenceTime = context.toEarliestWallClock(completedAtTime);
-          final currentWallClock = context.toEarliestWallClock(now);
-          final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
-          if (!currentWallClock.isBefore(nextSpawnTime)) {
-            dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
-          }
+        final latest = resolved.first;
+        final completedAtTime = latest.completedAt ?? latest.updatedAt;
+        final referenceTime = context.toEarliestWallClock(completedAtTime);
+        final currentWallClock = context.toEarliestWallClock(now);
+        final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
+        if (!currentWallClock.isBefore(nextSpawnTime)) {
+          dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
         }
+      }
+
+      if (dateToSpawn != null &&
+          dateToSpawn.isBefore(context.today) &&
+          canonicalByDate.containsKey(dateToSpawn)) {
+        dateToSpawn = context.today;
       }
 
       if (dateToSpawn != null) {
