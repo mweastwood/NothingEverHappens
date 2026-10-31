@@ -13,6 +13,8 @@ class RecipeEditorScreen extends ConsumerStatefulWidget {
   ConsumerState<RecipeEditorScreen> createState() => _RecipeEditorScreenState();
 }
 
+typedef _StepEntry = ({String id, RecipeStep step});
+
 class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -21,8 +23,8 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   bool _isFamily = false;
 
   final List<RecipeIngredient> _ingredients = [];
-  final List<RecipeStep> _prepSteps = [];
-  final List<RecipeStep> _cookSteps = [];
+  final List<_StepEntry> _prepSteps = [];
+  final List<_StepEntry> _cookSteps = [];
 
   bool _isSaving = false;
 
@@ -54,19 +56,33 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       _servings = r.servings > 0 ? r.servings : 4;
       _isFamily = r.isFamily;
       _ingredients.addAll(r.ingredients);
-      _prepSteps.addAll(r.prepSteps);
-      _cookSteps.addAll(r.cookSteps);
+      _prepSteps.addAll(
+        r.prepSteps.map((s) => (id: const Uuid().v4(), step: s)),
+      );
+      _cookSteps.addAll(
+        r.cookSteps.map((s) => (id: const Uuid().v4(), step: s)),
+      );
     } else {
       // Add default empty ingredient & step
       _ingredients.add(
         const RecipeIngredient(id: '1', name: '', quantity: 1.0, unit: 'cup'),
       );
-      _prepSteps.add(
-        const RecipeStep(stepNumber: 1, instruction: '', estimatedMinutes: 5),
-      );
-      _cookSteps.add(
-        const RecipeStep(stepNumber: 1, instruction: '', estimatedMinutes: 15),
-      );
+      _prepSteps.add((
+        id: const Uuid().v4(),
+        step: const RecipeStep(
+          stepNumber: 1,
+          instruction: '',
+          estimatedMinutes: 5,
+        ),
+      ));
+      _cookSteps.add((
+        id: const Uuid().v4(),
+        step: const RecipeStep(
+          stepNumber: 1,
+          instruction: '',
+          estimatedMinutes: 15,
+        ),
+      ));
     }
   }
 
@@ -89,6 +105,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           .toList();
 
       final filteredPrepSteps = _prepSteps
+          .map((e) => e.step)
           .where((s) => s.instruction.trim().isNotEmpty)
           .toList()
           .asMap()
@@ -102,6 +119,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           .toList();
 
       final filteredCookSteps = _cookSteps
+          .map((e) => e.step)
           .where((s) => s.instruction.trim().isNotEmpty)
           .toList()
           .asMap()
@@ -240,13 +258,14 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               steps: _prepSteps,
               onAdd: () {
                 setState(() {
-                  _prepSteps.add(
-                    RecipeStep(
+                  _prepSteps.add((
+                    id: const Uuid().v4(),
+                    step: RecipeStep(
                       stepNumber: _prepSteps.length + 1,
                       instruction: '',
                       estimatedMinutes: 5,
                     ),
-                  );
+                  ));
                 });
               },
               theme: theme,
@@ -258,13 +277,14 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               steps: _cookSteps,
               onAdd: () {
                 setState(() {
-                  _cookSteps.add(
-                    RecipeStep(
+                  _cookSteps.add((
+                    id: const Uuid().v4(),
+                    step: RecipeStep(
                       stepNumber: _cookSteps.length + 1,
                       instruction: '',
                       estimatedMinutes: 15,
                     ),
-                  );
+                  ));
                 });
               },
               theme: theme,
@@ -321,6 +341,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           final ing = entry.value;
 
           return Card(
+            key: ValueKey(ing.id),
             margin: const EdgeInsets.only(bottom: 8),
             child: Padding(
               padding: const EdgeInsets.all(8),
@@ -342,7 +363,9 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                       ),
                       onChanged: (val) {
                         final qty = double.tryParse(val) ?? 1.0;
-                        _ingredients[index] = ing.copyWith(quantity: qty);
+                        _ingredients[index] = _ingredients[index].copyWith(
+                          quantity: qty,
+                        );
                       },
                     ),
                   ),
@@ -362,12 +385,16 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                         );
                       },
                       onSelected: (selection) {
-                        _ingredients[index] = ing.copyWith(unit: selection);
+                        _ingredients[index] = _ingredients[index].copyWith(
+                          unit: selection,
+                        );
                       },
                       fieldViewBuilder:
                           (context, controller, focusNode, onFieldSubmitted) {
                             return TextFormField(
-                              key: const Key('ingredient_unit_field'),
+                              key: index == 0
+                                  ? const Key('ingredient_unit_field')
+                                  : Key('ingredient_unit_field_$index'),
                               controller: controller,
                               focusNode: focusNode,
                               decoration: const InputDecoration(
@@ -376,7 +403,8 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                                 isDense: true,
                               ),
                               onChanged: (val) {
-                                _ingredients[index] = ing.copyWith(unit: val);
+                                _ingredients[index] = _ingredients[index]
+                                    .copyWith(unit: val);
                               },
                             );
                           },
@@ -393,7 +421,9 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                         isDense: true,
                       ),
                       onChanged: (val) {
-                        _ingredients[index] = ing.copyWith(name: val);
+                        _ingredients[index] = _ingredients[index].copyWith(
+                          name: val,
+                        );
                       },
                     ),
                   ),
@@ -420,7 +450,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   Widget _buildStepsSection({
     required String title,
     required IconData icon,
-    required List<RecipeStep> steps,
+    required List<_StepEntry> steps,
     required VoidCallback onAdd,
     required ThemeData theme,
   }) {
@@ -448,9 +478,11 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ),
         ...steps.asMap().entries.map((entry) {
           final index = entry.key;
-          final step = entry.value;
+          final stepEntry = entry.value;
+          final step = stepEntry.step;
 
           return Card(
+            key: ValueKey(stepEntry.id),
             margin: const EdgeInsets.only(bottom: 8),
             child: Padding(
               padding: const EdgeInsets.all(8),
@@ -476,7 +508,10 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                         isDense: true,
                       ),
                       onChanged: (val) {
-                        steps[index] = step.copyWith(instruction: val);
+                        steps[index] = (
+                          id: stepEntry.id,
+                          step: steps[index].step.copyWith(instruction: val),
+                        );
                       },
                     ),
                   ),
@@ -496,9 +531,12 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                       ),
                       onChanged: (val) {
                         final mins = int.tryParse(val) ?? 0;
-                        steps[index] = step.copyWith(
-                          estimatedMinutes: mins,
-                          timerDurationSeconds: mins * 60,
+                        steps[index] = (
+                          id: stepEntry.id,
+                          step: steps[index].step.copyWith(
+                            estimatedMinutes: mins,
+                            timerDurationSeconds: mins * 60,
+                          ),
                         );
                       },
                     ),
