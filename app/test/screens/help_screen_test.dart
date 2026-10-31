@@ -12,8 +12,12 @@ import 'package:nothing_ever_happens/widgets/monthly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/yearly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
+import 'package:nothing_ever_happens/widgets/schedule_rule_config_widget.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/task_schedule_rule.dart';
+
 import '../test_helper.dart';
 
 void main() {
@@ -446,16 +450,34 @@ void main() {
           reason: 'Today should have an occurrence indicator',
         );
 
-        // Now, change the due date to 3 days from now to create a 4-day range (today, today+1, today+2, today+3).
-        // We will set this directly on the dueDateTime ValueNotifier from OneOffSchedulingWidget.
-        final oneOffWidgetFinder = find.byType(OneOffSchedulingWidget);
-        expect(oneOffWidgetFinder, findsOneWidget);
-        final oneOffWidget = tester.widget<OneOffSchedulingWidget>(
-          oneOffWidgetFinder,
+        // Now, emit a 4-day OneOffSchedule range (today, today+1, today+2, today+3)
+        // via ScheduleRuleConfigWidget.onChanged.
+        final ruleConfigFinder = find.byType(ScheduleRuleConfigWidget);
+        expect(ruleConfigFinder, findsOneWidget);
+        final ruleConfigWidget = tester.widget<ScheduleRuleConfigWidget>(
+          ruleConfigFinder,
         );
+        final currentOneOff = ruleConfigWidget.schedule as OneOffSchedule;
 
         final threeDaysLater = now.add(const Duration(days: 3));
-        oneOffWidget.dueDateTime.value = threeDaysLater;
+        ruleConfigWidget.onChanged(
+          OneOffSchedule(
+            id: currentOneOff.id,
+            scheduleId: currentOneOff.scheduleId,
+            date: CivilDay.fromDateTime(threeDaysLater),
+            startRelativeTime: const RelativeTime(
+              dayOffset: -3,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            notificationRelativeTimes: currentOneOff.notificationRelativeTimes,
+          ),
+        );
         await tester.pumpAndSettle();
 
         final day1 = now;
