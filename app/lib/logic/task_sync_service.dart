@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -553,9 +554,11 @@ class TaskSyncService {
         );
         final localTasks = _localDataSource.getTasks();
         final localInstances = _localDataSource.getInstances();
+        final localRecipes = _localDataSource.getRecipes();
 
         final tasksMap = {for (final t in localTasks) t.id: t};
         final instancesMap = {for (final i in localInstances) i.id: i};
+        final recipesMap = {for (final r in localRecipes) r.id: r};
         final familyId = await _getFamilyId();
 
         for (final taskId in dirtyTaskIds) {
@@ -631,6 +634,41 @@ class TaskSyncService {
                 if (_localDataSource.getInstances().any(
                   (i) => i.id == taskId,
                 )) {
+                  canClearDirty = false;
+                  _hasQueuedSync = true;
+                }
+              }
+            } else if (taskId.startsWith('R-') ||
+                recipesMap.containsKey(taskId)) {
+              final recipe = recipesMap[taskId];
+              if (recipe != null) {
+                canClearDirty = await _pushRecipeToRemote(recipe);
+              } else {
+                // Deleted locally, remove from remote:
+                // 1. Delete from personal user collection first
+                await _firestore
+                    .collection(FirestorePaths.users)
+                    .doc(_userId)
+                    .collection(FirestorePaths.recipes)
+                    .doc(taskId)
+                    .delete();
+                // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
+                if (familyId != null && familyId.isNotEmpty) {
+                  try {
+                    await _firestore
+                        .collection(FirestorePaths.families)
+                        .doc(familyId)
+                        .collection(FirestorePaths.recipes)
+                        .doc(taskId)
+                        .delete();
+                  } catch (e) {
+                    if (e is! FirebaseException ||
+                        e.code != 'permission-denied') {
+                      rethrow;
+                    }
+                  }
+                }
+                if (_localDataSource.getRecipes().any((r) => r.id == taskId)) {
                   canClearDirty = false;
                   _hasQueuedSync = true;
                 }
@@ -802,6 +840,59 @@ class TaskSyncService {
     }
     if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
       await _localDataSource.saveInstance(
+        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
+      );
+    }
+    return true;
+  }
+
+  Future<bool> _pushRecipeToRemote(Recipe recipe) async {
+    final familyId = await _getFamilyId();
+    final recipeData = recipe.toFirestore();
+    if (recipe.isFamily && familyId != null && familyId.isNotEmpty) {
+      await _firestore
+          .collection(FirestorePaths.families)
+          .doc(familyId)
+          .collection(FirestorePaths.recipes)
+          .doc(recipe.id)
+          .set(recipeData, SetOptions(merge: true));
+      await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .collection(FirestorePaths.recipes)
+          .doc(recipe.id)
+          .delete();
+    } else {
+      await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .collection(FirestorePaths.recipes)
+          .doc(recipe.id)
+          .set(recipeData, SetOptions(merge: true));
+      if (familyId != null && familyId.isNotEmpty) {
+        try {
+          await _firestore
+              .collection(FirestorePaths.families)
+              .doc(familyId)
+              .collection(FirestorePaths.recipes)
+              .doc(recipe.id)
+              .delete();
+        } catch (e) {
+          logger?.debug('sync', 'Silent error deleting recipe from family: $e');
+        }
+      }
+    }
+
+    final localCurrent = _localDataSource
+        .getRecipes()
+        .where((r) => r.id == recipe.id)
+        .firstOrNull;
+    if (localCurrent == null || localCurrent.updatedAt != recipe.updatedAt) {
+      _hasQueuedSync = true;
+      return false;
+    }
+    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
+      await _localDataSource.saveRecipe(
         localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
       );
     }

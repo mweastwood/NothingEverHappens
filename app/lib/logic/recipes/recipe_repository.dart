@@ -91,6 +91,7 @@ class RecipeRepository {
       hasPendingWrites: _isActivePremium && _userId.isNotEmpty,
     );
     await _localDataSource.saveRecipe(updatedRecipe);
+    await _localDataSource.markDirty(updatedRecipe.id);
 
     if (_isActivePremium && _userId.isNotEmpty && _firestore != null) {
       try {
@@ -134,6 +135,7 @@ class RecipeRepository {
                 .delete();
           }
         }
+        await _localDataSource.clearDirty(updatedRecipe.id);
         await _localDataSource.saveRecipe(
           updatedRecipe.copyWith(hasPendingWrites: false),
         );
@@ -145,6 +147,7 @@ class RecipeRepository {
 
   Future<void> deleteRecipe(String id) async {
     final existingRecipe = getRecipeById(id);
+    await _localDataSource.markDirty(id);
     await _localDataSource.deleteRecipe(id);
 
     if (_isActivePremium && _userId.isNotEmpty && _firestore != null) {
@@ -183,6 +186,7 @@ class RecipeRepository {
                 .delete();
           }
         }
+        await _localDataSource.clearDirty(id);
       } catch (e) {
         // Offline or firestore error
       }
