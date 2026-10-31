@@ -596,7 +596,8 @@ class TaskSyncService {
                   _hasQueuedSync = true;
                 }
               }
-            } else if (taskId.startsWith('I-')) {
+            } else if (taskId.startsWith('I-') ||
+                !taskId.startsWith('S-') && !taskId.startsWith('R-')) {
               final inst = instancesMap[taskId];
               if (inst != null) {
                 canClearDirty = await _pushInstanceToRemote(inst);
