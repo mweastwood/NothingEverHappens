@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
+import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -130,6 +133,8 @@ class FakeBox<T> extends Fake implements Box<T> {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     tz.initializeTimeZones();
   });
@@ -464,6 +469,101 @@ void main() {
         expect(
           mockPlugin.androidImplementation!.requestExactAlarmsPermissionCalled,
           true,
+        );
+      },
+    );
+
+    test(
+      'initialize passes InitializationSettings with Android, iOS, macOS, and Linux settings',
+      () async {
+        // Wait for async _initialize() to complete
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(mockPlugin.initialized, isTrue);
+        expect(mockPlugin.initSettings, isNotNull);
+        expect(
+          mockPlugin.initSettings!.android,
+          isA<AndroidInitializationSettings>(),
+        );
+        expect(
+          mockPlugin.initSettings!.iOS,
+          isA<DarwinInitializationSettings>(),
+        );
+        expect(
+          mockPlugin.initSettings!.macOS,
+          isA<DarwinInitializationSettings>(),
+        );
+        expect(
+          mockPlugin.initSettings!.linux,
+          isA<LinuxInitializationSettings>(),
+        );
+      },
+    );
+
+    test(
+      'scheduleNotifications passes NotificationDetails with Android, iOS, and macOS details',
+      () async {
+        await notificationService.scheduleNotifications(testTask);
+
+        expect(mockPlugin.scheduled.length, 1);
+        final details =
+            mockPlugin.scheduled.first['notificationDetails']
+                as NotificationDetails;
+        expect(details.android, isA<AndroidNotificationDetails>());
+        expect(details.iOS, isA<DarwinNotificationDetails>());
+        expect(details.macOS, isA<DarwinNotificationDetails>());
+      },
+    );
+
+    test(
+      'HiveLocalDataSource.init and PlatformNotificationService open notificationIdsBoxName',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'notif_hive_test',
+        );
+        addTearDown(() async {
+          await Hive.close();
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('plugins.flutter.io/path_provider'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'getApplicationDocumentsDirectory') {
+                  return tempDir.path;
+                }
+                return null;
+              },
+            );
+
+        final dataSource = HiveLocalDataSource();
+        addTearDown(dataSource.dispose);
+        await dataSource.init();
+
+        expect(
+          Hive.isBoxOpen(PlatformNotificationService.notificationIdsBoxName),
+          isTrue,
+        );
+
+        // Also verify PlatformNotificationService opens notificationIdsBoxName when closed
+        await Hive.box(
+          PlatformNotificationService.notificationIdsBoxName,
+        ).close();
+        expect(
+          Hive.isBoxOpen(PlatformNotificationService.notificationIdsBoxName),
+          isFalse,
+        );
+
+        final service = PlatformNotificationService(plugin: mockPlugin);
+        addTearDown(service.dispose);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          Hive.isBoxOpen(PlatformNotificationService.notificationIdsBoxName),
+          isTrue,
         );
       },
     );
