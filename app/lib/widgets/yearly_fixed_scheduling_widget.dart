@@ -301,11 +301,12 @@ class _YearlyFixedSchedulingWidgetState
                       ? null
                       : (value) {
                           if (value != null) {
-                            widget.onMonthChanged(value);
                             final maxDays = _maxDaysInMonth(value);
                             if (widget.day > maxDays) {
+                              _dayController.text = maxDays.toString();
                               widget.onDayChanged(maxDays);
                             }
+                            widget.onMonthChanged(value);
                           }
                         },
                 ),
