@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
@@ -13,19 +14,36 @@ class InitialFirebaseMigrationService {
   final FirebaseFirestore _firestore;
   final HiveLocalDataSource _localDataSource;
   final String _userId;
+  final bool isActivePremium;
   final AppLogger? _logger;
 
   InitialFirebaseMigrationService({
     FirebaseFirestore? firestore,
     required HiveLocalDataSource localDataSource,
     required String userId,
+    this.isActivePremium = true,
     AppLogger? logger,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _localDataSource = localDataSource,
        _userId = userId,
        _logger = logger;
 
-  Future<void> migrateIfNeeded({bool force = false}) async {
+  Future<void> checkAndMigrate({bool force = false, bool? isActivePremium}) =>
+      migrateIfNeeded(force: force, isActivePremium: isActivePremium);
+
+  Future<void> migrateIfNeeded({
+    bool force = false,
+    bool? isActivePremium,
+  }) async {
+    if (!(isActivePremium ?? this.isActivePremium)) {
+      _logger?.info(
+        'sync',
+        'Skipping initial Firebase migration for non-premium user',
+        data: {'userId': _userId},
+      );
+      return;
+    }
+
     final activeUser = _localDataSource.getActiveUserId();
     final isDifferentUser =
         activeUser != null && activeUser.isNotEmpty && activeUser != _userId;
@@ -40,7 +58,10 @@ class InitialFirebaseMigrationService {
       return inFlight;
     }
 
-    final future = _doMigrate(force: shouldForce);
+    final future = _doMigrate(
+      force: shouldForce,
+      isDifferentUser: isDifferentUser,
+    );
     _inFlightMigrations[_userId] = future;
     try {
       await future;
@@ -49,7 +70,10 @@ class InitialFirebaseMigrationService {
     }
   }
 
-  Future<void> _doMigrate({bool force = false}) async {
+  Future<void> _doMigrate({
+    bool force = false,
+    bool isDifferentUser = false,
+  }) async {
     final totalWatch = Stopwatch()..start();
     try {
       _logger?.info(
@@ -77,8 +101,9 @@ class InitialFirebaseMigrationService {
 
       final List<TaskSchedule> tasksToMigrate = [];
       final List<TaskInstance> instancesToMigrate = [];
+      final Map<String, Recipe> recipesToMigrate = {};
 
-      // Get personal tasks
+      // Get personal tasks and recipes
       _logger?.debug('sync', '[Migration 2/5] Fetching personal tasks...');
       final taskStepWatch = Stopwatch()..start();
       final personalTasksSnap = await _firestore
@@ -89,12 +114,24 @@ class InitialFirebaseMigrationService {
       tasksToMigrate.addAll(
         personalTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
       );
+      final personalRecipesSnap = await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .collection(FirestorePaths.recipes)
+          .safeGet();
+      for (final doc in personalRecipesSnap.docs) {
+        if (doc.data().isNotEmpty) {
+          final recipe = Recipe.fromFirestore(doc);
+          recipesToMigrate[recipe.id] = recipe;
+        }
+      }
       _logger?.info(
         'sync',
         '[Migration 2/5] Personal tasks fetched',
         data: {
           'durationMs': taskStepWatch.elapsedMilliseconds,
           'count': personalTasksSnap.docs.length,
+          'recipesCount': personalRecipesSnap.docs.length,
         },
       );
 
@@ -201,6 +238,21 @@ class InitialFirebaseMigrationService {
             (doc) => TaskInstance.fromFirestore(doc),
           ),
         );
+
+        final familyRecipesSnap = await _firestore
+            .collection(FirestorePaths.families)
+            .doc(familyId)
+            .collection(FirestorePaths.recipes)
+            .safeGet(timeout: const Duration(seconds: 15));
+        for (final doc in familyRecipesSnap.docs) {
+          if (doc.data().isNotEmpty) {
+            final recipe = Recipe.fromFirestore(
+              doc,
+            ).copyWith(isFamily: doc.data()['isFamily'] as bool? ?? true);
+            recipesToMigrate[recipe.id] = recipe;
+          }
+        }
+
         _logger?.info(
           'sync',
           '[Migration 3b] Family data fetched',
@@ -208,8 +260,21 @@ class InitialFirebaseMigrationService {
             'durationMs': familyStepWatch.elapsedMilliseconds,
             'familyTasksCount': familyTasksSnap.docs.length,
             'familyInstancesCount': familyInstancesSnap.docs.length,
+            'familyRecipesCount': familyRecipesSnap.docs.length,
           },
         );
+      }
+
+      if (!isDifferentUser) {
+        final localRecipes = _localDataSource.getRecipes();
+        for (final localRecipe in localRecipes) {
+          final remoteRecipe = recipesToMigrate[localRecipe.id];
+          if (remoteRecipe == null ||
+              localRecipe.hasPendingWrites ||
+              localRecipe.updatedAt.isAfter(remoteRecipe.updatedAt)) {
+            recipesToMigrate[localRecipe.id] = localRecipe;
+          }
+        }
       }
 
       // Clean slate: clear any existing local tasks/instances and dirty queues
@@ -229,6 +294,9 @@ class InitialFirebaseMigrationService {
       final saveWatch = Stopwatch()..start();
       await _localDataSource.saveTasks(tasksToMigrate);
       await _localDataSource.saveInstances(instancesToMigrate);
+      for (final recipe in recipesToMigrate.values) {
+        await _localDataSource.saveRecipe(recipe);
+      }
 
       await _localDataSource.setActiveUserId(_userId);
       await _localDataSource.setMigrationCompleted(true);
@@ -238,6 +306,7 @@ class InitialFirebaseMigrationService {
         data: {
           'tasksCount': tasksToMigrate.length,
           'instancesCount': instancesToMigrate.length,
+          'recipesCount': recipesToMigrate.length,
           'force': force,
           'saveDurationMs': saveWatch.elapsedMilliseconds,
           'totalDurationMs': totalWatch.elapsedMilliseconds,

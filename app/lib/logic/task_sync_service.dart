@@ -51,6 +51,7 @@ class TaskSyncService {
   final HiveLocalDataSource _localDataSource;
   final String _userId;
   final bool _isActivePremium;
+  bool get isActivePremium => _isActivePremium;
   final bool _isSubscriptionResolved;
   final Duration _initialSyncTimeout;
   final ErrorHandler? errorHandler;
@@ -216,7 +217,9 @@ class TaskSyncService {
       }
       return;
     }
-    if (_tasksSub != null && _instancesSub != null) return;
+    if (_tasksSub != null && _instancesSub != null && _recipesSub != null) {
+      return;
+    }
     _tasksSub?.cancel();
     _instancesSub?.cancel();
     _recipesSub?.cancel();
