@@ -110,14 +110,17 @@ YearlySchedule _updateYearly(
   int? month,
   int? day,
 }) {
+  const daysInMonths = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   final nextInterval = interval ?? rule.interval;
+  final targetMonth = month ?? rule.month;
+  final clampedDay = (day ?? rule.day).clamp(1, daysInMonths[targetMonth]);
   return YearlySchedule(
     id: rule.id,
     scheduleId: rule.scheduleId,
     startDate: rule.startDate,
     interval: nextInterval,
-    month: month ?? rule.month,
-    day: day ?? rule.day,
+    month: targetMonth,
+    day: clampedDay,
     startRelativeTime: rule.startRelativeTime,
     dueRelativeTime: rule.dueRelativeTime,
     notificationRelativeTimes: rule.notificationRelativeTimes,
@@ -262,7 +265,13 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onSchedulingPolicyChanged: (policy) =>
           state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       month: rule.month,
-      onMonthChanged: (val) => state._emit(_updateYearly(rule, month: val)),
+      onMonthChanged: (val) {
+        final updated = _updateYearly(rule, month: val);
+        if (state._yearlyDayController.text != updated.day.toString()) {
+          state._yearlyDayController.text = updated.day.toString();
+        }
+        state._emit(updated);
+      },
       day: rule.day,
       onDayChanged: (val) => state._emit(_updateYearly(rule, day: val)),
       startRelativeTime: rule.startRelativeTime,

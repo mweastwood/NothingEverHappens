@@ -187,6 +187,60 @@ void main() {
       expect(newDay, 15);
     });
 
+    testWidgets(
+      'clamps day and updates day controller text when month changes to shorter month',
+      (tester) async {
+        final startDate = CivilDay(year: 2026, month: 1, day: 31);
+        int? newMonth;
+        int? newDay;
+        final dayController = TextEditingController(text: '31');
+        addTearDown(dayController.dispose);
+
+        final robot = YearlySchedulingWidgetRobot(tester);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: YearlySchedulingWidget(
+                  startDate: startDate,
+                  onStartDateChanged: (_) {},
+                  interval: 1,
+                  onIntervalChanged: (_) {},
+                  schedulingPolicy: const FixedCalendarPolicy(),
+                  onSchedulingPolicyChanged: (_) {},
+                  month: 1,
+                  onMonthChanged: (m) => newMonth = m,
+                  day: 31,
+                  onDayChanged: (d) => newDay = d,
+                  startRelativeTime: const RelativeTime(
+                    dayOffset: 0,
+                    hour: 9,
+                    minute: 0,
+                  ),
+                  onStartRelativeTimeChanged: (_) {},
+                  dueRelativeTime: const RelativeTime(
+                    dayOffset: 0,
+                    hour: 17,
+                    minute: 0,
+                  ),
+                  onDueRelativeTimeChanged: (_) {},
+                  notificationRelativeTime: null,
+                  onNotificationRelativeTimeChanged: (_) {},
+                  dayController: dayController,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await robot.selectMonth('February');
+        expect(newMonth, 2);
+        expect(newDay, 29);
+        expect(dayController.text, '29');
+      },
+    );
+
     testGoldens('YearlySchedulingWidget renders correctly', (tester) async {
       final startDate = CivilDay(year: 2026, month: 10, day: 26);
       const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
