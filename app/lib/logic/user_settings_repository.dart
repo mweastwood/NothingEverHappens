@@ -87,6 +87,16 @@ class UserSettingsRepository {
           await _crashlyticsService?.setCrashlyticsCollectionEnabled(
             remoteData.crashReportingEnabled,
           );
+        } else if (!snapshot.metadata.isFromCache) {
+          const defaultSettings = UserSettings(hoursAvailable: 8.0);
+          await _localDataSource.saveRawSettings(const {});
+          await _localDataSource.saveSettings(defaultSettings);
+          await _telemetryService?.setTelemetryEnabled(
+            defaultSettings.telemetryEnabled,
+          );
+          await _crashlyticsService?.setCrashlyticsCollectionEnabled(
+            defaultSettings.crashReportingEnabled,
+          );
         }
       },
       onError: (_) {

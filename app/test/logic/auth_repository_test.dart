@@ -20,9 +20,11 @@ import 'auth_repository_test.mocks.dart';
 
 class _FakeHiveLocalDataSource extends Fake implements HiveLocalDataSource {
   bool resetCalled = false;
+  int resetCallCount = 0;
   @override
   Future<void> resetAllData() async {
     resetCalled = true;
+    resetCallCount++;
   }
 }
 
@@ -74,17 +76,23 @@ void main() {
     });
 
     test(
-      'signOut signs out of firebaseAuth, googleSignIn, and clears local data & notifications',
+      'signOut resets local data and cancels notifications before firebaseAuth.signOut and resets again after',
       () async {
-        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
+        var resetBeforeFirebaseSignOut = false;
+        var cancelBeforeFirebaseSignOut = false;
+        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {
+          resetBeforeFirebaseSignOut = fakeLocalDataSource.resetCalled;
+          cancelBeforeFirebaseSignOut = fakeNotificationService.cancelAllCalled;
+        });
         when(mockGoogleSignIn.signOut()).thenAnswer((_) async {});
 
         await authRepository.signOut();
 
         verify(mockFirebaseAuth.signOut()).called(1);
         verify(mockGoogleSignIn.signOut()).called(1);
-        expect(fakeLocalDataSource.resetCalled, true);
-        expect(fakeNotificationService.cancelAllCalled, true);
+        expect(resetBeforeFirebaseSignOut, isTrue);
+        expect(cancelBeforeFirebaseSignOut, isTrue);
+        expect(fakeLocalDataSource.resetCallCount, 2);
       },
     );
 
