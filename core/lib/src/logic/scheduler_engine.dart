@@ -331,11 +331,12 @@ class SchedulerEngine {
       final s = task.schedules[i];
 
       if (s.schedulingPolicy is CompletionRelativePolicy) {
-        _evaluateCompletionRelativeRule(
+        maxSpawned = _evaluateCompletionRelativeRule(
           context,
           s,
           toSpawn: toSpawn,
           toDelete: toDelete,
+          maxSpawned: maxSpawned,
         );
       } else {
         maxSpawned = _evaluateFixedCalendarRule(
@@ -357,15 +358,17 @@ class SchedulerEngine {
     );
   }
 
-  void _evaluateCompletionRelativeRule(
+  CivilDay? _evaluateCompletionRelativeRule(
     SchedulerEvaluationContext context,
     TaskScheduleRule s, {
     required List<TaskInstance> toSpawn,
     required List<String> toDelete,
+    CivilDay? maxSpawned,
   }) {
     final task = context.task;
     final taskInstances = context.taskInstances;
     final now = context.now;
+    final today = context.today;
     final ruleInstances = taskInstances
         .where((inst) => _isInstanceForRule(inst, s, task))
         .toList();
@@ -391,7 +394,25 @@ class SchedulerEngine {
     if (pendingForSchedule.isEmpty) {
       CivilDay? dateToSpawn;
       if (canonicalInstances.isEmpty) {
-        dateToSpawn = s.scheduledDate;
+        if (task.lastSpawnedDate != null &&
+            task.lastSpawnedDate!.compareTo(s.scheduledDate) >= 0) {
+          final lastSpawned = task.lastSpawnedDate!;
+          final approxCompletedWallClock = DateTime.utc(
+            lastSpawned.year,
+            lastSpawned.month,
+            lastSpawned.day,
+            12,
+          );
+          final currentWallClock = context.toEarliestWallClock(now);
+          final nextSpawnTime = s.nextCompletionRelativeDateTime(
+            approxCompletedWallClock,
+          );
+          if (!currentWallClock.isBefore(nextSpawnTime)) {
+            dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
+          }
+        } else {
+          dateToSpawn = s.scheduledDate;
+        }
       } else {
         final resolved = canonicalInstances
             .where((inst) => inst.status != TaskStatus.pending)
@@ -405,6 +426,12 @@ class SchedulerEngine {
           final latest = resolved.first;
           final completedAtTime = latest.completedAt ?? latest.updatedAt;
           final referenceTime = context.toEarliestWallClock(completedAtTime);
+          final resolvedDay = CivilDay.fromDateTime(referenceTime);
+          if (resolvedDay.compareTo(today) <= 0) {
+            if (maxSpawned == null || resolvedDay.compareTo(maxSpawned) > 0) {
+              maxSpawned = resolvedDay;
+            }
+          }
           final currentWallClock = context.toEarliestWallClock(now);
           final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
           if (!currentWallClock.isBefore(nextSpawnTime)) {
@@ -414,6 +441,11 @@ class SchedulerEngine {
       }
 
       if (dateToSpawn != null) {
+        if (dateToSpawn.compareTo(today) <= 0) {
+          if (maxSpawned == null || dateToSpawn.compareTo(maxSpawned) > 0) {
+            maxSpawned = dateToSpawn;
+          }
+        }
         toSpawn.add(
           _createInstanceForRule(
             task: task,
@@ -425,6 +457,7 @@ class SchedulerEngine {
         );
       }
     }
+    return maxSpawned;
   }
 
   CivilDay? _evaluateFixedCalendarRule(
@@ -463,8 +496,14 @@ class SchedulerEngine {
           .where((inst) => inst.status != TaskStatus.pending)
           .toList()
         ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-      if (resolved.isNotEmpty) {
-        final nextOcc = s.nextOccurrenceAfter(resolved.first.scheduledDate);
+      final CivilDay? lastResolvedOrSpawnedDate = resolved.isNotEmpty
+          ? resolved.first.scheduledDate
+          : (task.lastSpawnedDate != null &&
+                  task.lastSpawnedDate!.compareTo(s.scheduledDate) >= 0
+              ? task.lastSpawnedDate
+              : null);
+      if (lastResolvedOrSpawnedDate != null) {
+        final nextOcc = s.nextOccurrenceAfter(lastResolvedOrSpawnedDate);
         if (nextOcc == null) {
           return maxSpawned;
         }
@@ -715,15 +754,24 @@ class SchedulerEngine {
     final taskInstances = context.taskInstances;
 
     final List<TaskInstance> toSpawn = [];
+    CivilDay? maxSpawned;
     for (int i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
       if (s is OneOffSchedule) {
-        final exists = taskInstances.any(
-          (inst) =>
-              _isInstanceForRule(inst, s, task) &&
-              inst.scheduledDate == s.scheduledDate,
+        final existingForRule = taskInstances
+            .where(
+              (inst) =>
+                  _isInstanceForRule(inst, s, task) &&
+                  inst.scheduledDate == s.scheduledDate,
+            )
+            .toList();
+        final exists = existingForRule.isNotEmpty;
+        final hasResolved = existingForRule.any(
+          (inst) => inst.status != TaskStatus.pending,
         );
-        if (!exists) {
+        final alreadySpawned = task.lastSpawnedDate != null &&
+            s.scheduledDate.compareTo(task.lastSpawnedDate!) <= 0;
+        if (!exists && !alreadySpawned) {
           toSpawn.add(
             _createInstanceForRule(
               task: task,
@@ -733,8 +781,29 @@ class SchedulerEngine {
               userId: context.userId,
             ),
           );
+          if (s.scheduledDate.compareTo(context.today) <= 0) {
+            if (maxSpawned == null ||
+                s.scheduledDate.compareTo(maxSpawned) > 0) {
+              maxSpawned = s.scheduledDate;
+            }
+          }
+        } else if (hasResolved &&
+            s.scheduledDate.compareTo(context.today) <= 0) {
+          if (maxSpawned == null || s.scheduledDate.compareTo(maxSpawned) > 0) {
+            maxSpawned = s.scheduledDate;
+          }
         }
       }
+    }
+
+    TaskSchedule? updatedSchedule;
+    if (maxSpawned != null &&
+        (task.lastSpawnedDate == null ||
+            maxSpawned.compareTo(task.lastSpawnedDate!) > 0)) {
+      updatedSchedule = task.copyWith(
+        lastSpawnedDate: maxSpawned,
+        updatedAt: context.now.toUtc(),
+      );
     }
 
     final capacityResult = _capacityFilter.applyCapacityLimits(
@@ -755,6 +824,7 @@ class SchedulerEngine {
     return SchedulerAction(
       instancesToSpawn: capacityResult.finalToSpawn,
       instancesToUpdate: finalToUpdate,
+      updatedSchedule: updatedSchedule,
       triggerTimes: triggerTimes,
     );
   }

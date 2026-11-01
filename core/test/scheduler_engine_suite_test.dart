@@ -34,7 +34,7 @@ void main() {
         expect(spawned.scheduledDate, today);
         expect(spawned.status, TaskStatus.pending);
         expect(action.instancesToUpdate, isEmpty);
-        expect(action.updatedSchedule, null);
+        expect(action.updatedSchedule?.lastSpawnedDate, today);
       });
 
       test('does not spawn instance if it already exists', () {
