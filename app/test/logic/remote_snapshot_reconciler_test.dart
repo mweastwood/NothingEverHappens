@@ -628,5 +628,114 @@ void main() {
         expect(localDataSource.getDirtyTaskIds(), isNot(contains('r-dirty')));
       },
     );
+
+    test(
+      'handleRemoteTasksSnapshot does not resurrect locally deleted tasks that are still dirty',
+      () async {
+        // Task was deleted locally (not in Hive tasks box) and marked dirty for pending remote deletion.
+        await localDataSource.markDirty('S-deleted-locally');
+
+        final remoteTask = TaskSchedule(
+          id: 'S-deleted-locally',
+          title: 'Deleted Task Still On Remote',
+          description: 'Should not reappear',
+          updatedAt: DateTime.utc(2026, 9, 16, 12, 0),
+        );
+        final col = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.tasks);
+        await col.doc(remoteTask.id).set(remoteTask.toFirestore());
+
+        final snapshot = await col.get();
+        await reconciler.handleRemoteTasksSnapshot(snapshot, isFamily: false);
+
+        expect(localDataSource.getTasks(), isEmpty);
+        expect(
+          localDataSource.getDirtyTaskIds(),
+          contains('S-deleted-locally'),
+        );
+      },
+    );
+
+    test(
+      'handleRemoteInstancesSnapshot does not resurrect locally deleted instances that are still dirty',
+      () async {
+        await localDataSource.markDirty('I-deleted-locally');
+
+        const date = CivilDay(year: 2026, month: 9, day: 16);
+        final remoteInst = TaskInstance(
+          id: 'I-deleted-locally',
+          scheduleId: 's-1',
+          ruleId: 'r-1',
+          title: 'Deleted Instance Still On Remote',
+          description: 'Should not reappear',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 9, 16, 12, 0),
+        );
+        final col = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.instances);
+        await col.doc(remoteInst.id).set(remoteInst.toFirestore());
+
+        final snapshot = await col.get();
+        await reconciler.handleRemoteInstancesSnapshot(
+          snapshot,
+          isFamily: false,
+        );
+
+        expect(localDataSource.getInstances(), isEmpty);
+        expect(
+          localDataSource.getDirtyTaskIds(),
+          contains('I-deleted-locally'),
+        );
+      },
+    );
+
+    test(
+      'handleRemoteRecipesSnapshot preserves isFromCache for dirty recipes and marks newer local recipes dirty',
+      () async {
+        final localNewer = Recipe(
+          id: 'R-local-newer',
+          title: 'Newer Local Recipe',
+          updatedAt: DateTime.utc(2026, 9, 16, 15, 0),
+          isFromCache: true,
+          hasPendingWrites: true,
+        );
+        await localDataSource.saveRecipe(localNewer);
+
+        final remoteOlder = Recipe(
+          id: 'R-local-newer',
+          title: 'Older Remote Recipe',
+          updatedAt: DateTime.utc(2026, 9, 16, 10, 0),
+        );
+        final col = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.recipes);
+        await col.doc(remoteOlder.id).set(remoteOlder.toFirestore());
+
+        final snapshot = await col.get();
+        await reconciler.handleRemoteRecipesSnapshot(snapshot, isFamily: false);
+
+        final saved = localDataSource.getRecipes().single;
+        expect(saved.title, equals('Newer Local Recipe'));
+        expect(saved.isFromCache, isTrue);
+        expect(saved.hasPendingWrites, isTrue);
+        expect(localDataSource.getDirtyTaskIds(), contains('R-local-newer'));
+      },
+    );
   });
 }

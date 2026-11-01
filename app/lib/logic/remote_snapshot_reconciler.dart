@@ -44,6 +44,9 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localTasks = _localDataSource.getTasks();
     final localMap = {for (final t in localTasks) t.id: t};
+    Set<String>? dirtyIds;
+    bool isDirty(String id) =>
+        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
 
     final toSave = <TaskSchedule>[];
     final remoteSavedIds = <String>{};
@@ -67,6 +70,9 @@ class RemoteSnapshotReconciler {
         if (change.doc.data() != null) {
           final remoteTask = TaskSchedule.fromFirestore(change.doc);
           final localTask = localMap[remoteTask.id];
+          if (localTask == null && isDirty(remoteTask.id)) {
+            continue;
+          }
 
           if (localTask != null) {
             if (TaskSyncConflictResolver.isStrictlyNewer(
@@ -90,12 +96,11 @@ class RemoteSnapshotReconciler {
 
     final toPushIds = {for (final t in toPush) t.id};
     if (!isCache && localMap.isNotEmpty) {
-      late final dirtySet = _localDataSource.getDirtyTaskIds().toSet();
       for (final localTask in localMap.values) {
         if ((isFamily ? localTask.isFamily : !localTask.isFamily) &&
             localTask.isFromCache &&
             !localTask.hasPendingWrites &&
-            !dirtySet.contains(localTask.id) &&
+            !isDirty(localTask.id) &&
             !toPushIds.contains(localTask.id)) {
           final updated = localTask.copyWith(isFromCache: false);
           toSave.add(updated);
@@ -143,6 +148,9 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localInsts = _localDataSource.getInstances();
     final localMap = {for (final inst in localInsts) inst.id: inst};
+    Set<String>? dirtyIds;
+    bool isDirty(String id) =>
+        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
     final localSlotMap = {
       for (final inst in localInsts)
         '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}_${inst.workflowPayload?.stage.name ?? ""}':
@@ -189,6 +197,9 @@ class RemoteSnapshotReconciler {
         if (change.doc.data() != null) {
           final remoteInst = TaskInstance.fromFirestore(change.doc);
           final localInst = localMap[remoteInst.id];
+          if (localInst == null && isDirty(remoteInst.id)) {
+            continue;
+          }
 
           final oldStatus = localInst?.status.name;
           final newStatus = remoteInst.status.name;
@@ -263,12 +274,11 @@ class RemoteSnapshotReconciler {
 
     final toPushIds = {for (final i in toPush) i.id};
     if (!isCache && localMap.isNotEmpty) {
-      late final dirtySet = _localDataSource.getDirtyTaskIds().toSet();
       for (final localInst in localMap.values) {
         if ((isFamily ? localInst.isFamily : !localInst.isFamily) &&
             localInst.isFromCache &&
             !localInst.hasPendingWrites &&
-            !dirtySet.contains(localInst.id) &&
+            !isDirty(localInst.id) &&
             !toPushIds.contains(localInst.id)) {
           final updated = localInst.copyWith(isFromCache: false);
           toSave.add(updated);
@@ -352,6 +362,7 @@ class RemoteSnapshotReconciler {
     final toSave = <Recipe>[];
     final toDelete = <String>[];
     final toClearDirty = <String>[];
+    final toMarkDirty = <String>{};
 
     for (final change in snapshot.docChanges) {
       final docId = change.doc.id;
@@ -379,6 +390,9 @@ class RemoteSnapshotReconciler {
               (localRecipe.hasPendingWrites || isDirty(localRecipe.id)) &&
               (isCache ||
                   !remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt))) {
+            if (!isCache && !isDirty(localRecipe.id)) {
+              toMarkDirty.add(localRecipe.id);
+            }
             continue;
           }
           if (localRecipe == null ||
@@ -392,6 +406,10 @@ class RemoteSnapshotReconciler {
               toClearDirty.add(cleanRecipe.id);
             }
             localMap[cleanRecipe.id] = cleanRecipe;
+          } else if (localRecipe.updatedAt.isAfter(remoteRecipe.updatedAt) &&
+              !isCache &&
+              !isDirty(localRecipe.id)) {
+            toMarkDirty.add(localRecipe.id);
           }
         }
       }
@@ -400,7 +418,10 @@ class RemoteSnapshotReconciler {
     if (!isCache) {
       for (final localRecipe in localMap.values) {
         if ((isFamily ? localRecipe.isFamily : !localRecipe.isFamily) &&
-            localRecipe.isFromCache) {
+            localRecipe.isFromCache &&
+            !localRecipe.hasPendingWrites &&
+            !isDirty(localRecipe.id) &&
+            !toMarkDirty.contains(localRecipe.id)) {
           final updated = localRecipe.copyWith(isFromCache: false);
           toSave.add(updated);
           localMap[localRecipe.id] = updated;
@@ -416,6 +437,9 @@ class RemoteSnapshotReconciler {
     }
     if (toClearDirty.isNotEmpty) {
       await _localDataSource.clearDirtyBatch(toClearDirty);
+    }
+    for (final id in toMarkDirty) {
+      await _localDataSource.markDirty(id);
     }
   }
 }
