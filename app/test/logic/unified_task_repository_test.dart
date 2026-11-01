@@ -3717,6 +3717,208 @@ void main() {
         );
       },
     );
+
+    test(
+      'undoResolveTaskInstance on a completed WorkflowStage.selectMeal instance deletes spawned shoppingList and prepDinner sibling instances',
+      () async {
+        const scheduledDate = CivilDay(year: 2026, month: 9, day: 16);
+        final mealTask = TaskSchedule(
+          id: 'S-meal-undo',
+          title: 'Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          schedules: [
+            OneOffSchedule(
+              id: 'R-meal-1',
+              scheduleId: 'S-meal-undo',
+              date: scheduledDate,
+            ),
+          ],
+          updatedAt: DateTime.now(),
+        );
+        await localDataSource.saveTask(mealTask);
+
+        final selectMealInst = TaskInstance(
+          id: 'I-select',
+          scheduleId: 'S-meal-undo',
+          ruleId: 'R-meal-1',
+          title: 'Dinner',
+          description: 'Plan dinner',
+          scheduledDate: scheduledDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          status: TaskStatus.completed,
+          completedByUserId: 'user1',
+          completedAt: DateTime.now(),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.selectMeal,
+            workflowGroupId: 'S-meal-undo_2026-9-16',
+          ),
+        );
+        final shopInst = TaskInstance(
+          id: 'I-shop',
+          scheduleId: 'S-meal-undo',
+          ruleId: 'R-meal-1',
+          title: 'Shop: Tacos',
+          description: 'Buy ingredients',
+          scheduledDate: scheduledDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.shoppingList,
+            workflowGroupId: 'S-meal-undo_2026-9-16',
+          ),
+        );
+        final prepInst = TaskInstance(
+          id: 'I-prep',
+          scheduleId: 'S-meal-undo',
+          ruleId: 'R-meal-1',
+          title: 'Cook: Tacos',
+          description: 'Cook dinner',
+          scheduledDate: scheduledDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.prepDinner,
+            workflowGroupId: 'S-meal-undo_2026-9-16',
+          ),
+        );
+
+        await localDataSource.saveInstances([
+          selectMealInst,
+          shopInst,
+          prepInst,
+        ]);
+
+        await repository.undoResolveTaskInstance(selectMealInst);
+
+        final remaining = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == 'S-meal-undo')
+            .toList();
+        expect(remaining, hasLength(1));
+        expect(remaining.first.id, equals('I-select'));
+        expect(remaining.first.status, equals(TaskStatus.pending));
+        expect(
+          localDataSource.getDirtyTaskIds(),
+          containsAll(['I-select', 'I-shop', 'I-prep']),
+        );
+
+        // Also verify family individual completion mode deletes spawned siblings on undo
+        final familyMealTask = TaskSchedule(
+          id: 'S-meal-family-ind',
+          title: 'Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [
+            OneOffSchedule(
+              id: 'R-meal-1',
+              scheduleId: 'S-meal-family-ind',
+              date: scheduledDate,
+            ),
+          ],
+          updatedAt: DateTime.now(),
+        );
+        await localDataSource.saveTask(familyMealTask);
+        final familySelectInst = TaskInstance(
+          id: 'I-fam-select',
+          scheduleId: 'S-meal-family-ind',
+          ruleId: 'R-meal-1',
+          title: 'Dinner',
+          description: 'Plan dinner',
+          scheduledDate: scheduledDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.completed,
+          completedByUserId: 'user1',
+          completedByUserIds: const ['user1'],
+          completedAt: DateTime.now(),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.selectMeal,
+            workflowGroupId: 'S-meal-family-ind_2026-9-16',
+          ),
+        );
+        final familyShopInst = TaskInstance(
+          id: 'I-fam-shop',
+          scheduleId: 'S-meal-family-ind',
+          ruleId: 'R-meal-1',
+          title: 'Shop: Tacos',
+          description: 'Buy ingredients',
+          scheduledDate: scheduledDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.shoppingList,
+            workflowGroupId: 'S-meal-family-ind_2026-9-16',
+          ),
+        );
+        await localDataSource.saveInstances([familySelectInst, familyShopInst]);
+
+        await repository.undoResolveTaskInstance(familySelectInst);
+
+        final famRemaining = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == 'S-meal-family-ind')
+            .toList();
+        expect(famRemaining, hasLength(1));
+        expect(famRemaining.first.id, equals('I-fam-select'));
+        expect(famRemaining.first.status, equals(TaskStatus.pending));
+      },
+    );
   });
 }
 

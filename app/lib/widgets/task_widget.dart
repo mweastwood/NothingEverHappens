@@ -152,6 +152,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   }
 
   void _handleCompletion() {
+    if (widget.instance.workflowPayload?.stage == WorkflowStage.selectMeal) {
+      _handleWorkflowTap();
+      return;
+    }
     if (_isChecking) return;
 
     setState(() {
@@ -464,6 +468,15 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 direction: (_isMouse || isWideScreen(context))
                     ? DismissDirection.none
                     : DismissDirection.horizontal,
+                confirmDismiss: (direction) async {
+                  if (direction == DismissDirection.startToEnd &&
+                      widget.instance.workflowPayload?.stage ==
+                          WorkflowStage.selectMeal) {
+                    _handleWorkflowTap();
+                    return false;
+                  }
+                  return true;
+                },
                 onUpdate: (details) {
                   if (_swipeDirection != details.direction ||
                       _swipeProgress != details.progress) {

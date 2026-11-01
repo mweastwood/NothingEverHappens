@@ -629,6 +629,9 @@ class UnifiedTaskRepository implements TaskRepository {
       );
       await _localDataSource.saveInstance(pendingInstance);
       await _localDataSource.markDirty(pendingInstance.id);
+      if (updatedUserIds.isEmpty) {
+        await _deleteSpawnedMealWorkflowSiblings(resolvedInstance);
+      }
       logger?.info(
         'task',
         'Task instance individual completion undone: ${resolvedInstance.id}',
@@ -656,6 +659,7 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await _localDataSource.saveInstance(pendingInstance);
     await _localDataSource.markDirty(pendingInstance.id);
+    await _deleteSpawnedMealWorkflowSiblings(resolvedInstance);
     logger?.info(
       'task',
       'Task instance status undone: ${resolvedInstance.id}',
@@ -690,6 +694,32 @@ class UnifiedTaskRepository implements TaskRepository {
       await notificationService?.scheduleNotifications(task);
     }
     await _triggerCloudFamilyScheduleIfApplicable(isFamilyTask);
+  }
+
+  Future<void> _deleteSpawnedMealWorkflowSiblings(
+    TaskInstance resolvedInstance,
+  ) async {
+    if (resolvedInstance.workflowPayload?.stage != WorkflowStage.selectMeal) {
+      return;
+    }
+    final groupId = resolvedInstance.workflowPayload?.workflowGroupId;
+    final siblingStages = _localDataSource
+        .getInstances()
+        .where(
+          (i) =>
+              i.scheduleId == resolvedInstance.scheduleId &&
+              i.id != resolvedInstance.id &&
+              i.scheduledDate == resolvedInstance.scheduledDate &&
+              i.workflowPayload != null &&
+              i.workflowPayload!.stage != WorkflowStage.selectMeal &&
+              (groupId == null ||
+                  i.workflowPayload!.workflowGroupId == groupId),
+        )
+        .toList();
+    for (final sibling in siblingStages) {
+      await _localDataSource.deleteInstance(sibling.id);
+      await _localDataSource.markDirty(sibling.id);
+    }
   }
 
   @override

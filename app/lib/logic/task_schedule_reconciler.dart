@@ -33,6 +33,7 @@ class TaskScheduleReconciler {
 
     if (schedulesChanged) {
       final preservedCompletionRelativeRules = <String>{};
+      final seenDatesByRule = <String, Set<CivilDay>>{};
       for (final inst in instances) {
         final newRule = updatedTask.schedules
             .where((s) => s.id == inst.ruleId)
@@ -81,6 +82,19 @@ class TaskScheduleReconciler {
               updatedScheduledDate = newRule.scheduledDate;
             }
           }
+          final effectiveDate = updatedScheduledDate ?? inst.scheduledDate;
+          if (updatedTask.workflowType != 'mealWorkflow' &&
+              inst.workflowPayload != null) {
+            final seenDates = seenDatesByRule.putIfAbsent(
+              inst.ruleId,
+              () => <CivilDay>{},
+            );
+            if (!seenDates.add(effectiveDate)) {
+              await _localDataSource.deleteInstance(inst.id);
+              await _localDataSource.markDirty(inst.id);
+              continue;
+            }
+          }
           final updatedInst = buildUpdatedPendingInstance(
             inst: inst,
             task: updatedTask,
@@ -95,7 +109,20 @@ class TaskScheduleReconciler {
         }
       }
     } else {
+      final seenDatesByRule = <String, Set<CivilDay>>{};
       for (final inst in instances) {
+        if (updatedTask.workflowType != 'mealWorkflow' &&
+            inst.workflowPayload != null) {
+          final seenDates = seenDatesByRule.putIfAbsent(
+            inst.ruleId,
+            () => <CivilDay>{},
+          );
+          if (!seenDates.add(inst.scheduledDate)) {
+            await _localDataSource.deleteInstance(inst.id);
+            await _localDataSource.markDirty(inst.id);
+            continue;
+          }
+        }
         final rule = updatedTask.schedules
             .where((s) => s.id == inst.ruleId)
             .firstOrNull;
@@ -157,6 +184,7 @@ class TaskScheduleReconciler {
       return true;
     }
     final hasActiveWorkflowProgress =
+        newTask.workflowType == 'mealWorkflow' &&
         inst.workflowPayload != null &&
         inst.workflowPayload!.stage != WorkflowStage.selectMeal;
     if (hasActiveWorkflowProgress || inst.completedByUserIds.isNotEmpty) {
@@ -188,6 +216,7 @@ class TaskScheduleReconciler {
   }) {
     final effectiveDate = newScheduledDate ?? inst.scheduledDate;
     final hasStageSpecificText =
+        task.workflowType == 'mealWorkflow' &&
         inst.workflowPayload != null &&
         inst.workflowPayload!.stage != WorkflowStage.selectMeal;
 
@@ -226,9 +255,17 @@ class TaskScheduleReconciler {
       }
     }
 
+    WorkflowInstancePayload? updatedWorkflowPayload = inst.workflowPayload;
+    var clearWorkflowPayload = false;
     if (task.workflowType == 'mealWorkflow') {
+      updatedWorkflowPayload ??= WorkflowInstancePayload(
+        workflowType: 'mealWorkflow',
+        stage: WorkflowStage.selectMeal,
+        workflowGroupId:
+            '${task.id}_${effectiveDate.year}-${effectiveDate.month}-${effectiveDate.day}',
+      );
       final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
-      final stage = inst.workflowPayload?.stage ?? WorkflowStage.selectMeal;
+      final stage = updatedWorkflowPayload.stage;
       switch (stage) {
         case WorkflowStage.shoppingList:
           startRel = cfg.shopTime;
@@ -243,6 +280,9 @@ class TaskScheduleReconciler {
           dueRel = cfg.selectTime;
           break;
       }
+    } else if (inst.workflowPayload != null) {
+      updatedWorkflowPayload = null;
+      clearWorkflowPayload = true;
     }
 
     return inst.copyWith(
@@ -260,6 +300,8 @@ class TaskScheduleReconciler {
       clearCycleId: task.cycleId == null,
       assignedUserId: task.assignedUserId,
       clearAssignedUserId: task.assignedUserId == null,
+      workflowPayload: updatedWorkflowPayload,
+      clearWorkflowPayload: clearWorkflowPayload,
       hasPendingWrites: true,
       updatedAt: DateTime.now().toUtc(),
     );

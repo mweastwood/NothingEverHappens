@@ -140,7 +140,7 @@ void main() {
           isFalse,
         );
 
-        // Active workflow progress on a still-valid date preserves instance
+        // Active workflow progress on a still-valid date preserves instance when still mealWorkflow
         final shoppingInst = pendingToday.copyWith(
           workflowPayload: const WorkflowInstancePayload(
             workflowType: 'mealWorkflow',
@@ -151,12 +151,27 @@ void main() {
         expect(
           TaskScheduleReconciler.shouldPreservePendingInstanceOnScheduleEdit(
             inst: shoppingInst,
-            newTask: task.copyWith(schedules: [incompatibleRule]),
+            newTask: task.copyWith(
+              workflowType: 'mealWorkflow',
+              schedules: [incompatibleRule],
+            ),
             oldRule: oldRule,
             newRule: incompatibleRule,
             changes: {'schedules': []},
           ),
           isTrue,
+        );
+
+        // Converting mealWorkflow to standard while editing schedules does not preserve based on old workflow stage
+        expect(
+          TaskScheduleReconciler.shouldPreservePendingInstanceOnScheduleEdit(
+            inst: shoppingInst,
+            newTask: task.copyWith(schedules: [incompatibleRule]),
+            oldRule: oldRule,
+            newRule: incompatibleRule,
+            changes: {'schedules': [], 'workflowType': null},
+          ),
+          isFalse,
         );
       },
     );
@@ -240,11 +255,47 @@ void main() {
         );
         final rebuiltStage = TaskScheduleReconciler.buildUpdatedPendingInstance(
           inst: stageInst,
-          task: updatedTask,
+          task: updatedTask.copyWith(workflowType: 'mealWorkflow'),
           rule: rule,
         );
         expect(rebuiltStage.title, equals('Buy Groceries for Pasta'));
         expect(rebuiltStage.description, equals('Stage-specific description'));
+        expect(
+          rebuiltStage.workflowPayload?.stage,
+          equals(WorkflowStage.shoppingList),
+        );
+
+        // Converting from mealWorkflow to standard clears workflowPayload and resets title/description
+        final convertedToStandard =
+            TaskScheduleReconciler.buildUpdatedPendingInstance(
+              inst: stageInst,
+              task: updatedTask,
+              rule: rule,
+            );
+        expect(convertedToStandard.workflowPayload, isNull);
+        expect(convertedToStandard.title, equals('New Schedule Title'));
+        expect(convertedToStandard.description, equals('New Description'));
+
+        // Converting from standard to mealWorkflow initializes selectMeal workflowPayload
+        final convertedToMealWorkflow =
+            TaskScheduleReconciler.buildUpdatedPendingInstance(
+              inst: regularInst,
+              task: updatedTask.copyWith(workflowType: 'mealWorkflow'),
+              rule: rule,
+            );
+        expect(convertedToMealWorkflow.workflowPayload, isNotNull);
+        expect(
+          convertedToMealWorkflow.workflowPayload!.workflowType,
+          equals('mealWorkflow'),
+        );
+        expect(
+          convertedToMealWorkflow.workflowPayload!.stage,
+          equals(WorkflowStage.selectMeal),
+        );
+        expect(
+          convertedToMealWorkflow.workflowPayload!.workflowGroupId,
+          equals('${updatedTask.id}_2026-9-16'),
+        );
       },
     );
   });
@@ -365,6 +416,119 @@ void main() {
         expect(
           savedCompleted.familyCompletionMode,
           equals(FamilyCompletionMode.individual),
+        );
+      },
+    );
+
+    test(
+      'converts pending instances between standard and mealWorkflow and deduplicates sibling stages',
+      () async {
+        const date = CivilDay(year: 2026, month: 9, day: 16);
+        final rule = DailySchedule(
+          id: 'R-1',
+          scheduleId: 'S-meal',
+          startDate: date,
+          interval: 1,
+        );
+        final standardTask = TaskSchedule(
+          id: 'S-meal',
+          title: 'Dinner',
+          description: 'Plan and cook dinner',
+          schedules: [rule],
+        );
+        final mealTask = standardTask.copyWith(workflowType: 'mealWorkflow');
+
+        final pendingStandard = TaskInstance(
+          id: 'I-1',
+          scheduleId: 'S-meal',
+          ruleId: 'R-1',
+          title: 'Dinner',
+          description: 'Plan and cook dinner',
+          scheduledDate: date,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(pendingStandard);
+
+        // 1. Convert standard -> mealWorkflow: initializes WorkflowInstancePayload
+        await reconciler.reconcileInstancesOnUpdate(
+          oldTask: standardTask,
+          updatedTask: mealTask,
+          changes: {'workflowType': 'mealWorkflow'},
+        );
+
+        final afterToMeal = localDataSource.getInstances();
+        expect(afterToMeal, hasLength(1));
+        expect(afterToMeal.first.workflowPayload, isNotNull);
+        expect(
+          afterToMeal.first.workflowPayload!.stage,
+          equals(WorkflowStage.selectMeal),
+        );
+
+        // 2. Simulate spawned sibling stages on the same date (shoppingList + prepDinner)
+        final shopStage = TaskInstance(
+          id: 'I-shop',
+          scheduleId: 'S-meal',
+          ruleId: 'R-1',
+          title: 'Shop: Pasta',
+          description: 'Buy ingredients',
+          scheduledDate: date,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            workflowGroupId: 'S-meal_2026-9-16',
+            stage: WorkflowStage.shoppingList,
+          ),
+        );
+        final prepStage = TaskInstance(
+          id: 'I-prep',
+          scheduleId: 'S-meal',
+          ruleId: 'R-1',
+          title: 'Cook: Pasta',
+          description: 'Prep dinner',
+          scheduledDate: date,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            workflowGroupId: 'S-meal_2026-9-16',
+            stage: WorkflowStage.prepDinner,
+          ),
+        );
+        await localDataSource.deleteInstance('I-1');
+        await localDataSource.saveInstances([shopStage, prepStage]);
+
+        // Convert mealWorkflow -> standard while also editing schedule timings
+        final updatedRule = rule.copyWithTiming(
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+        );
+        final revertedStandardTask = standardTask.copyWith(
+          schedules: [updatedRule],
+        );
+        await reconciler.reconcileInstancesOnUpdate(
+          oldTask: mealTask,
+          updatedTask: revertedStandardTask,
+          changes: {
+            'workflowType': null,
+            'schedules': revertedStandardTask.schedules,
+          },
+        );
+
+        final afterToStandard = localDataSource.getInstances();
+        expect(afterToStandard, hasLength(1));
+        expect(afterToStandard.first.workflowPayload, isNull);
+        expect(afterToStandard.first.title, equals('Dinner'));
+        expect(
+          afterToStandard.first.description,
+          equals('Plan and cook dinner'),
         );
       },
     );

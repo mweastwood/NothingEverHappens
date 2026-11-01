@@ -13,6 +13,10 @@ import 'package:nothing_ever_happens/screens/recipes/recipe_detail_screen.dart';
 import 'package:nothing_ever_happens/screens/recipes/cooking_mode_screen.dart';
 import 'package:nothing_ever_happens/screens/workflows/meal_selection_dialog.dart';
 import 'package:nothing_ever_happens/screens/workflows/shopping_checklist_screen.dart';
+import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
+import 'package:nothing_ever_happens/widgets/task_widget.dart';
+
+import '../test_helper.dart';
 
 class _FakeRecipeRepository extends Fake implements RecipeRepository {
   final List<Recipe> _recipes = [];
@@ -530,6 +534,71 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(fakeTaskRepo.completedInstanceIds, contains(shopInstance.id));
+      },
+    );
+
+    testWidgets(
+      'tapping FunCheckButton on WorkflowStage.selectMeal TaskWidget opens MealSelectionDialog without completing task',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final fakeRecipeRepo = _FakeRecipeRepository([sampleRecipe]);
+        final fakeTaskRepo = _FakeTaskRepository();
+
+        final selectInstance = TaskInstance(
+          id: 'dinner_2026-08-16_0',
+          scheduleId: 'dinner_schedule',
+          ruleId: 'rule-1',
+          title: 'Dinner - Select Meal',
+          description: 'Select meal',
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.selectMeal,
+            workflowGroupId: 'dinner_2026-08-16',
+          ),
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              recipeRepositoryProvider.overrideWithValue(fakeRecipeRepo),
+              recipesStreamProvider.overrideWith(
+                (ref) => fakeRecipeRepo.watchRecipes(),
+              ),
+              taskRepositoryProvider.overrideWithValue(fakeTaskRepo),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: TaskWidget(
+                  instance: selectInstance,
+                  labels: const [],
+                  referenceTime: DateTime(2026, 8, 16, 12, 0),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(FunCheckButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MealSelectionDialog), findsOneWidget);
+        expect(fakeTaskRepo.completedInstanceIds, isEmpty);
       },
     );
   });
