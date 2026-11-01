@@ -14,6 +14,7 @@ void main() {
     required bool isFamily,
     ValueChanged<bool>? onFamilyToggled,
     bool readOnly = false,
+    bool isParent = true,
   }) {
     return MaterialApp(
       localizationsDelegates: const [
@@ -28,6 +29,7 @@ void main() {
           isFamily: isFamily,
           onFamilyToggled: onFamilyToggled,
           readOnly: readOnly,
+          isParent: isParent,
         ),
       ),
     );
@@ -155,6 +157,36 @@ void main() {
 
       expect(toggled, isFalse);
     });
+
+    testWidgets(
+      'non-parent family member (isParent == false) cannot toggle Assign to Family ON even when readOnly is false',
+      (WidgetTester tester) async {
+        bool toggled = false;
+        await tester.pumpWidget(
+          buildWidget(
+            isFamily: false,
+            readOnly: false,
+            isParent: false,
+            onFamilyToggled: (_) => toggled = true,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final personalChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('personal_task_chip')),
+        );
+        final familyChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('is_family_toggle')),
+        );
+        expect(personalChip.onSelected, isNull);
+        expect(familyChip.onSelected, isNull);
+
+        await tester.tap(find.byKey(const Key('is_family_toggle')));
+        await tester.pumpAndSettle();
+
+        expect(toggled, isFalse);
+      },
+    );
 
     testWidgets(
       'renders completion requirement choice chips and helper when isFamily is true',

@@ -335,6 +335,17 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final hasEditPermission = !isEditingFamilyTask || isParent;
         final readOnly = !hasEditPermission;
 
+        if (snapshot.hasData &&
+            !isParent &&
+            widget.taskToEdit == null &&
+            formState.isFamily) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              formNotifier.setFamilyToggled(false);
+            }
+          });
+        }
+
         return Shortcuts(
           shortcuts: <ShortcutActivator, Intent>{
             const SingleActivator(LogicalKeyboardKey.enter): const SaveIntent(),
@@ -479,7 +490,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   final familyCard = TaskFamilyAssignmentSection(
                     isFamily: formState.isFamily,
                     familyCompletionMode: formState.familyCompletionMode,
-                    readOnly: readOnly,
+                    readOnly: readOnly || !isParent,
+                    isParent: isParent,
                     members: members,
                     assignedUserId: formState.assignedUserId,
                     currentUserId: currentUserId,

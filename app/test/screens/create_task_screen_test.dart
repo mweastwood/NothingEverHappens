@@ -1018,6 +1018,25 @@ void main() {
     );
 
     testWidgets(
+      'non-parent family member cannot toggle family task chip ON when creating a new task or editing a personal task',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'non-parent',
+        });
+
+        await tester.pumpWidget(createWidget());
+        await tester.pumpAndSettle();
+
+        final familyChipFinder = find.byKey(const Key('is_family_toggle'));
+        expect(familyChipFinder, findsOneWidget);
+        final familyChip = tester.widget<StandardChoiceChip>(familyChipFinder);
+        expect(familyChip.onSelected, isNull);
+        expect(familyChip.selected, isFalse);
+      },
+    );
+
+    testWidgets(
       'allows assigning family task to a specific member and saves assignedUserId',
       (WidgetTester tester) async {
         await firestore.collection('users').doc('test-user-id').set({

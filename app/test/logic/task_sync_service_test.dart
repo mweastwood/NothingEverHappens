@@ -3841,6 +3841,72 @@ void main() {
           expect(savedInst.status, equals(TaskStatus.completed));
         },
       );
+
+      test(
+        'sync() clears both dirty_tasks and hasPendingWrites on local task and instance when permission-denied is thrown',
+        () async {
+          final failingFirestore = _PushFailingFirestore()
+            ..failPush = true
+            ..failCode = 'permission-denied';
+
+          final service = TaskSyncService(
+            firestore: failingFirestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final now = DateTime.utc(2026, 10, 25, 10, 0);
+          final localTask = TaskSchedule(
+            id: 'S-perm-denied',
+            title: 'Unauthorized Family Task',
+            description: '',
+            isFamily: true,
+            hasPendingWrites: true,
+            updatedAt: now,
+          );
+          final localInst = TaskInstance(
+            id: 'I-perm-denied',
+            scheduleId: 'S-perm-denied',
+            ruleId: 'R-1',
+            title: 'Unauthorized Family Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            hasPendingWrites: true,
+            updatedAt: now,
+          );
+
+          await localDataSource.saveTask(localTask);
+          await localDataSource.markDirty(localTask.id);
+          await localDataSource.saveInstance(localInst);
+          await localDataSource.markDirty(localInst.id);
+
+          await service.sync();
+
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+
+          final savedTask = localDataSource.getTasks().firstWhere(
+            (t) => t.id == 'S-perm-denied',
+          );
+          final savedInst = localDataSource.getInstances().firstWhere(
+            (i) => i.id == 'I-perm-denied',
+          );
+          expect(savedTask.hasPendingWrites, isFalse);
+          expect(savedInst.hasPendingWrites, isFalse);
+        },
+      );
     });
   });
 }
@@ -3910,6 +3976,7 @@ class _IntermittentHiveLocalDataSource extends HiveLocalDataSource {
 
 class _PushFailingFirestore extends FakeFirebaseFirestore {
   bool failPush = false;
+  String failCode = 'unavailable';
 
   @override
   CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
@@ -3969,7 +4036,7 @@ class _PushFailingDocumentReference extends Fake
     if (_root.failPush) {
       throw FirebaseException(
         plugin: 'cloud_firestore',
-        code: 'unavailable',
+        code: _root.failCode,
         message: 'Simulated remote push failure',
       );
     }
