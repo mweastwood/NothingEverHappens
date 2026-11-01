@@ -71,20 +71,14 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    if (widget.taskToEdit != null) {
-      final task = widget.taskToEdit!;
-      _titleController.text = task.title;
-      _descriptionController.text = task.description;
-      if (task.estimatedDuration != null) {
-        _estimatedDurationController.text = task.estimatedDuration!.inMinutes
-            .toString();
-      }
-    } else if (widget.taskToDuplicate != null) {
-      final task = widget.taskToDuplicate!;
-      _titleController.text = task.title;
-      _descriptionController.text = task.description;
-      if (task.estimatedDuration != null) {
-        _estimatedDurationController.text = task.estimatedDuration!.inMinutes
+    final sourceTask = widget.taskToEdit ?? widget.taskToDuplicate;
+    if (sourceTask != null) {
+      _titleController.text = sourceTask.title;
+      _descriptionController.text = sourceTask.description;
+      if (sourceTask.estimatedDuration != null) {
+        _estimatedDurationController.text = sourceTask
+            .estimatedDuration!
+            .inMinutes
             .toString();
       }
     }
@@ -200,22 +194,22 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               )
             : null;
 
+        final isMaster =
+            hasRepeating &&
+            (firstLegacyPolicy == MissedPolicy.stack ||
+                firstLegacyPolicy == MissedPolicy.autoDismiss);
+        final lastSpawnedDate =
+            widget.taskToEdit?.lastSpawnedDate ??
+            (isMaster ? CivilDay.fromDateTime(AppClock.now).addDays(-1) : null);
+
         final newTask = TaskSchedule(
           id: formState.taskScheduleId,
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           schedules: normalizedSchedules,
           estimatedDuration: estimatedDuration,
-          isMaster:
-              hasRepeating &&
-              (firstLegacyPolicy == MissedPolicy.stack ||
-                  firstLegacyPolicy == MissedPolicy.autoDismiss),
-          lastSpawnedDate:
-              hasRepeating &&
-                  (firstLegacyPolicy == MissedPolicy.stack ||
-                      firstLegacyPolicy == MissedPolicy.autoDismiss)
-              ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
-              : null,
+          isMaster: isMaster,
+          lastSpawnedDate: lastSpawnedDate,
           isFamily: formState.isFamily,
           familyCompletionMode: formState.familyCompletionMode,
           priority: formState.priority,
@@ -232,35 +226,26 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         if (repository != null) {
           if (widget.taskToEdit != null) {
             final previousSchedule = widget.taskToEdit!;
-            final modification = widget.taskToEdit!.edit(
-              newTitle: _titleController.text.trim(),
-              newDescription: _descriptionController.text.trim(),
+            final modification = previousSchedule.edit(
+              newTitle: newTask.title,
+              newDescription: newTask.description,
               newSchedules: normalizedSchedules,
-              newEstimatedDuration: estimatedDuration,
+              newEstimatedDuration: newTask.estimatedDuration,
               newMissedPolicy: hasRepeating
                   ? firstLegacyPolicy
                   : MissedPolicy.stack,
-              newIsMaster:
-                  hasRepeating &&
-                  (firstLegacyPolicy == MissedPolicy.stack ||
-                      firstLegacyPolicy == MissedPolicy.autoDismiss),
-              newLastSpawnedDate:
-                  widget.taskToEdit!.lastSpawnedDate ??
-                  (hasRepeating &&
-                          (firstLegacyPolicy == MissedPolicy.stack ||
-                              firstLegacyPolicy == MissedPolicy.autoDismiss)
-                      ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
-                      : null),
-              newIsFamily: formState.isFamily,
-              newFamilyCompletionMode: formState.familyCompletionMode,
-              newPriority: formState.priority,
-              newCycleId: formState.cycleId,
-              newPreferredBy: formState.preferredBy,
-              newAssignedUserId: formState.assignedUserId,
-              newWorkflowType: formState.isMealWorkflow ? 'mealWorkflow' : null,
-              newMealWorkflowConfig: mealWorkflowConfig,
-              newSkipIfNoCapacity: formState.skipIfNoCapacity,
-              newLabelIds: formState.labelIds,
+              newIsMaster: newTask.isMaster,
+              newLastSpawnedDate: newTask.lastSpawnedDate,
+              newIsFamily: newTask.isFamily,
+              newFamilyCompletionMode: newTask.familyCompletionMode,
+              newPriority: newTask.priority,
+              newCycleId: newTask.cycleId,
+              newPreferredBy: newTask.preferredBy,
+              newAssignedUserId: newTask.assignedUserId,
+              newWorkflowType: newTask.workflowType,
+              newMealWorkflowConfig: newTask.mealWorkflowConfig,
+              newSkipIfNoCapacity: newTask.skipIfNoCapacity,
+              newLabelIds: newTask.labelIds,
             );
             await repository
                 .updateTaskSchedule(modification)
@@ -322,12 +307,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
     final currentUserId = ref.watch(authStateProvider).value?.uid;
     final familyRepo = ref.watch(familyRepositoryProvider);
-    final instancesVal = ref.watch(taskInstancesProvider);
-    final dbInstances =
-        instancesVal.value
-            ?.where((inst) => inst.scheduleId == formState.taskScheduleId)
-            .toList() ??
-        const <TaskInstance>[];
+    ref.watch(taskInstancesProvider);
 
     return StreamBuilder<FamilyProfile>(
       stream: familyRepo?.getProfile() ?? const Stream.empty(),
@@ -589,25 +569,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                       ),
                                       if (formState.schedules.isNotEmpty) ...[
                                         const SizedBox(height: 24),
-                                        SpawnedInstancesList(
-                                          task: TaskSchedule(
-                                            id: formState.taskScheduleId,
-                                            title: _titleController.text.isEmpty
-                                                ? 'Untitled'
-                                                : _titleController.text,
-                                            description:
-                                                _descriptionController.text,
-                                            schedules: formState.schedules,
-                                            isFamily: formState.isFamily,
-                                            priority: formState.priority,
-                                            cycleId: formState.cycleId,
-                                            assignedUserId:
-                                                formState.assignedUserId,
-                                            labelIds: formState.labelIds,
-                                          ),
-                                          dbInstances: dbInstances,
-                                          now: AppClock.now,
-                                        ),
+                                        _buildSpawnedInstancesList(formState),
                                       ],
                                     ],
                                   )
@@ -630,25 +592,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                       experimentalFeaturesCard,
                                       if (formState.schedules.isNotEmpty) ...[
                                         const SizedBox(height: 24),
-                                        SpawnedInstancesList(
-                                          task: TaskSchedule(
-                                            id: formState.taskScheduleId,
-                                            title: _titleController.text.isEmpty
-                                                ? 'Untitled'
-                                                : _titleController.text,
-                                            description:
-                                                _descriptionController.text,
-                                            schedules: formState.schedules,
-                                            isFamily: formState.isFamily,
-                                            priority: formState.priority,
-                                            cycleId: formState.cycleId,
-                                            assignedUserId:
-                                                formState.assignedUserId,
-                                            labelIds: formState.labelIds,
-                                          ),
-                                          dbInstances: dbInstances,
-                                          now: AppClock.now,
-                                        ),
+                                        _buildSpawnedInstancesList(formState),
                                       ],
                                     ],
                                   ),
@@ -672,6 +616,32 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSpawnedInstancesList(CreateTaskFormState formState) {
+    final instancesVal = ref.read(taskInstancesProvider);
+    final dbInstances =
+        instancesVal.value
+            ?.where((inst) => inst.scheduleId == formState.taskScheduleId)
+            .toList() ??
+        const <TaskInstance>[];
+    return SpawnedInstancesList(
+      task: TaskSchedule(
+        id: formState.taskScheduleId,
+        title: _titleController.text.isEmpty
+            ? 'Untitled'
+            : _titleController.text,
+        description: _descriptionController.text,
+        schedules: formState.schedules,
+        isFamily: formState.isFamily,
+        priority: formState.priority,
+        cycleId: formState.cycleId,
+        assignedUserId: formState.assignedUserId,
+        labelIds: formState.labelIds,
+      ),
+      dbInstances: dbInstances,
+      now: AppClock.now,
     );
   }
 }
