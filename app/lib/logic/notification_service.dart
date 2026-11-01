@@ -69,6 +69,8 @@ class PlatformNotificationService implements NotificationService {
   static final int _currentRunId = DateTime.now().millisecondsSinceEpoch;
   final int _runId = _currentRunId;
   bool _isDisposed = false;
+  bool _isInitialized = false;
+  Future<void>? _initFuture;
 
   final FlutterLocalNotificationsPlugin _plugin;
   Box<dynamic>? _notificationIdsBox;
@@ -94,7 +96,7 @@ class PlatformNotificationService implements NotificationService {
        _isWeb = isWeb,
        _onWebNotification = onWebNotification {
     _loadTrackedNotificationIds();
-    _initialize();
+    _initFuture = _initialize();
   }
 
   /// Exposes a read-only view of currently scheduled tasks.
@@ -153,6 +155,7 @@ class PlatformNotificationService implements NotificationService {
     if (_isWeb) {
       if (_isDisposed || _runId != _currentRunId) return;
       requestWebNotificationPermission();
+      _isInitialized = true;
       return;
     }
 
@@ -183,6 +186,8 @@ class PlatformNotificationService implements NotificationService {
         tz.setLocalLocation(tz.UTC);
       }
 
+      if (_isDisposed || _runId != _currentRunId) return;
+
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -200,7 +205,10 @@ class PlatformNotificationService implements NotificationService {
             linux: initializationSettingsLinux,
           );
 
-      await _plugin.initialize(settings: initializationSettings);
+      final initialized = await _plugin.initialize(
+        settings: initializationSettings,
+      );
+      _isInitialized = initialized ?? true;
 
       if (Platform.isAndroid) {
         final androidPlugin = _plugin
@@ -217,12 +225,13 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> scheduleNotifications(TaskSchedule task) async {
-    if (_isDisposed || _runId != _currentRunId) return;
+    await _initFuture;
+    if (_isDisposed || _runId != _currentRunId || !_isInitialized) return;
 
     // First, cancel any existing notifications for this task to avoid duplicates
     await cancelNotifications(task.id);
 
-    if (_isDisposed || _runId != _currentRunId) return;
+    if (_isDisposed || _runId != _currentRunId || !_isInitialized) return;
 
     _scheduledTasks[task.id] = task;
 
@@ -280,13 +289,9 @@ class PlatformNotificationService implements NotificationService {
             notifRel,
           );
           if (scheduledDate == null) continue;
-          final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
           final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
-          notifIds.add(notifId);
+          tz.TZDateTime? tzDate;
 
-          debugPrint(
-            '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
-          );
           const notificationDetails = NotificationDetails(
             android: AndroidNotificationDetails(
               'task_reminders_channel',
@@ -300,6 +305,10 @@ class PlatformNotificationService implements NotificationService {
             macOS: DarwinNotificationDetails(),
           );
           try {
+            tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
+            debugPrint(
+              '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
+            );
             await _plugin.zonedSchedule(
               id: notifId,
               title: task.title,
@@ -310,7 +319,12 @@ class PlatformNotificationService implements NotificationService {
               notificationDetails: notificationDetails,
               androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             );
+            notifIds.add(notifId);
           } catch (e) {
+            if (tzDate == null) {
+              debugPrint('Failed to convert scheduledDate to TZDateTime: $e');
+              continue;
+            }
             try {
               await _plugin.zonedSchedule(
                 id: notifId,
@@ -322,6 +336,7 @@ class PlatformNotificationService implements NotificationService {
                 notificationDetails: notificationDetails,
                 androidScheduleMode: AndroidScheduleMode.inexact,
               );
+              notifIds.add(notifId);
             } catch (ex) {
               debugPrint('Failed to schedule Android notification: $ex');
             }
@@ -344,7 +359,8 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> cancelNotifications(String taskId) async {
-    if (_isDisposed || _runId != _currentRunId) return;
+    await _initFuture;
+    if (_isDisposed || _runId != _currentRunId || !_isInitialized) return;
 
     debugPrint(
       'PlatformNotificationService: Cancelling notifications for task ID: $taskId',
@@ -409,7 +425,8 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> cancelAllNotifications() async {
-    if (_isDisposed || _runId != _currentRunId) return;
+    await _initFuture;
+    if (_isDisposed || _runId != _currentRunId || !_isInitialized) return;
 
     debugPrint('PlatformNotificationService: Cancelling all notifications');
 

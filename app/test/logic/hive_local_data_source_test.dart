@@ -724,4 +724,33 @@ void main() {
       );
     },
   );
+
+  test(
+    'persists and retrieves appEnvironment and isActivePremium across restarts',
+    () async {
+      expect(dataSource.getAppEnvironment(), isNull);
+      expect(dataSource.getIsActivePremium(), isNull);
+
+      await dataSource.setAppEnvironment('prod');
+      await dataSource.setIsActivePremium(true);
+
+      expect(dataSource.getAppEnvironment(), 'prod');
+      expect(dataSource.getIsActivePremium(), isTrue);
+
+      final reloadedDataSource = HiveLocalDataSource();
+      await reloadedDataSource.init();
+
+      expect(reloadedDataSource.getAppEnvironment(), 'prod');
+      expect(reloadedDataSource.getIsActivePremium(), isTrue);
+
+      await reloadedDataSource.setIsActivePremium(false);
+      expect(reloadedDataSource.getIsActivePremium(), isFalse);
+
+      await reloadedDataSource.resetAllData();
+      expect(reloadedDataSource.getIsActivePremium(), isNull);
+      expect(reloadedDataSource.getAppEnvironment(), 'prod');
+
+      await reloadedDataSource.dispose();
+    },
+  );
 }
