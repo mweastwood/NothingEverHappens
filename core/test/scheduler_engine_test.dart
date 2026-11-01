@@ -1889,6 +1889,82 @@ void main() {
           );
         },
       );
+
+      test(
+        'CompletionRelativePolicy does not advance lastSpawnedDate when spawning a pending instance, and multi-rule OneOffSchedule spawns newly added rule on same date',
+        () {
+          const engine = SchedulerEngine();
+          final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
+          const today = CivilDay(year: 2026, month: 6, day: 15);
+
+          // 1. Spawning the initial pending instance for a CompletionRelativePolicy rule does not set lastSpawnedDate
+          final crRule = DailySchedule(
+            id: 'R-cr-init',
+            scheduleId: 'S-cr-init',
+            startDate: today,
+            interval: 7,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 7),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+          final crTask = TaskSchedule(
+            id: 'S-cr-init',
+            title: 'CR Task',
+            description: '',
+            schedules: [crRule],
+          );
+          final crInitialAction = engine.evaluate(crTask, const [], evalNow);
+          expect(crInitialAction.instancesToSpawn, hasLength(1));
+          expect(
+            crInitialAction.instancesToSpawn.first.scheduledDate,
+            equals(today),
+          );
+          expect(crInitialAction.updatedSchedule?.lastSpawnedDate, isNull);
+
+          // 2. Multi-rule OneOffSchedule where rule 1 already spawned on today (setting lastSpawnedDate = today)
+          // still spawns newly added rule 2 on today
+          final oneOff1 = OneOffSchedule(
+            id: 'R-oneoff-1',
+            scheduleId: 'S-multi-oneoff',
+            date: today,
+          );
+          final oneOff2 = OneOffSchedule(
+            id: 'R-oneoff-2',
+            scheduleId: 'S-multi-oneoff',
+            date: today,
+          );
+          final multiOneOffTask = TaskSchedule(
+            id: 'S-multi-oneoff',
+            title: 'Multi One-Off',
+            description: '',
+            schedules: [oneOff1, oneOff2],
+            lastSpawnedDate: today,
+          );
+          final existingRule1Instance = TaskInstance(
+            id: 'I-oneoff-1',
+            scheduleId: 'S-multi-oneoff',
+            ruleId: 'R-oneoff-1',
+            title: 'Multi One-Off',
+            description: '',
+            scheduledDate: today,
+            startRelativeTime: oneOff1.startRelativeTime,
+            dueRelativeTime: oneOff1.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+          final multiAction = engine.evaluate(
+            multiOneOffTask,
+            [existingRule1Instance],
+            evalNow,
+          );
+          expect(multiAction.instancesToSpawn, hasLength(1));
+          expect(
+            multiAction.instancesToSpawn.single.ruleId,
+            equals('R-oneoff-2'),
+          );
+        },
+      );
     });
   });
 }

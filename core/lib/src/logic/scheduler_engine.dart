@@ -518,11 +518,6 @@ class SchedulerEngine {
       }
 
       if (dateToSpawn != null) {
-        if (dateToSpawn.compareTo(today) <= 0) {
-          if (maxSpawned == null || dateToSpawn.compareTo(maxSpawned) > 0) {
-            maxSpawned = dateToSpawn;
-          }
-        }
         toSpawn.add(
           _createInstanceForRule(
             task: task,
@@ -849,7 +844,19 @@ class SchedulerEngine {
         final hasResolved = existingForRule.any(
           (inst) => inst.status != TaskStatus.pending,
         );
+        final otherRuleAccountsForLastSpawned = task.lastSpawnedDate != null &&
+            task.schedules.any(
+              (other) =>
+                  other.id != s.id &&
+                  taskInstances.any(
+                    (inst) =>
+                        _isInstanceForRule(inst, other, task) &&
+                        inst.scheduledDate.compareTo(task.lastSpawnedDate!) ==
+                            0,
+                  ),
+            );
         final alreadySpawned = task.lastSpawnedDate != null &&
+            !otherRuleAccountsForLastSpawned &&
             s.scheduledDate.compareTo(task.lastSpawnedDate!) <= 0;
         if (!exists && !alreadySpawned) {
           toSpawn.add(
