@@ -41,11 +41,17 @@ Future<FamilySchedulerAuthResult> authenticateFamilySchedulerRequest(
   }
 
   // 2. Firebase ID Token authentication
-  final idToken = extractBearerToken(headers);
-  if (idToken != null) {
+  final verification = await verifyBearerIdToken(headers, auth: auth);
+  if (verification.hasToken) {
+    final decodedToken = verification.decodedToken;
+    if (decodedToken == null) {
+      return const FamilySchedulerAuthResult(
+        authenticated: false,
+        status: 401,
+        error: 'Unauthorized: Invalid or expired authentication token.',
+      );
+    }
     try {
-      final firebaseAuth = auth ?? getFirebaseAdminAuth();
-      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
       final uid = decodedToken.uid;
       final isAdmin = decodedToken.admin == true;
 
@@ -121,9 +127,10 @@ Future<void> handleProcessFamilySchedule(
   String? envSecret,
 }) async {
   if (req.method != 'POST') {
-    res
-        .status(405)
-        .json({'success': false, 'error': 'Method Not Allowed. Use POST.'});
+    res.status(405).json({
+      'success': false,
+      'error': 'Method Not Allowed. Use POST.',
+    });
     return;
   }
 
@@ -133,8 +140,9 @@ Future<void> handleProcessFamilySchedule(
 
   final familyId = body['familyId'] as String?;
   final now = parseScheduleTimestamp(body['now']);
-  final callerTimeZoneOffsetMinutes =
-      parseTimeZoneOffsetMinutes(body['timeZoneOffsetMinutes']);
+  final callerTimeZoneOffsetMinutes = parseTimeZoneOffsetMinutes(
+    body['timeZoneOffsetMinutes'],
+  );
 
   final firestoreDb = db ?? getFirebaseAdminDb();
   final authResult = await authenticateFamilySchedulerRequest(
@@ -202,20 +210,7 @@ int? parseTimeZoneOffsetMinutes(dynamic raw) =>
 
 /// Parses an incoming dynamic timestamp from HTTP payloads or JS interop.
 /// Supports epoch milliseconds as `int`, `num`, or numeric `String`, ISO strings, and `DateTime`.
-DateTime? parseScheduleTimestamp(dynamic now) {
-  if (now == null) return null;
-  if (now is DateTime) return now.toUtc();
-  if (now is num) {
-    return DateTime.fromMillisecondsSinceEpoch(now.toInt(), isUtc: true);
-  }
-  final str = now.toString().trim();
-  if (str.isEmpty) return null;
-  final asInt = int.tryParse(str);
-  if (asInt != null) {
-    return DateTime.fromMillisecondsSinceEpoch(asInt, isUtc: true);
-  }
-  return DateTime.tryParse(str)?.toUtc();
-}
+DateTime? parseScheduleTimestamp(dynamic now) => parseFlexibleTimestamp(now);
 
 /// Direct invocation helper for family scheduling, used by JS interop and direct calls.
 Future<dynamic> processFamilyScheduleDirect(
@@ -227,8 +222,9 @@ Future<dynamic> processFamilyScheduleDirect(
 }) async {
   final service = FamilySchedulerService(db);
   final effectiveNow = parseScheduleTimestamp(now);
-  final effectiveOffsetMinutes =
-      parseTimeZoneOffsetMinutes(timeZoneOffsetMinutes);
+  final effectiveOffsetMinutes = parseTimeZoneOffsetMinutes(
+    timeZoneOffsetMinutes,
+  );
   if (familyId != null && familyId.isNotEmpty) {
     return service.processFamily(
       familyId,

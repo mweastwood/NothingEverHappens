@@ -18,11 +18,7 @@ class TestHttpRequest implements HttpRequest {
   @override
   final dynamic body;
 
-  TestHttpRequest({
-    this.method = 'GET',
-    this.headers = const {},
-    this.body,
-  });
+  TestHttpRequest({this.method = 'GET', this.headers = const {}, this.body});
 }
 
 class TestHttpResponse implements HttpResponse {

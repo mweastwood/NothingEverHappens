@@ -1,6 +1,8 @@
 import 'package:meta/meta.dart';
+
 import '../interop/firebase_admin.dart';
 import '../interop/node_interop.dart';
+import 'auth_helpers.dart';
 
 @immutable
 class HistoryCleanupResult {
@@ -36,31 +38,15 @@ class HistoryCleanupResult {
   }
 
   @override
-  int get hashCode => Object.hash(
-        success,
-        totalDeleted,
-        batchesProcessed,
-        durationMs,
-      );
+  int get hashCode =>
+      Object.hash(success, totalDeleted, batchesProcessed, durationMs);
 }
 
 /// Default retention window (in days) for resolved (`completed` / `skipped`) task instances.
 const int defaultHistoryRetentionDays = 90;
 
-DateTime _parseCleanupReferenceNow(dynamic now) {
-  if (now == null) return DateTime.now().toUtc();
-  if (now is DateTime) return now.toUtc();
-  if (now is num) {
-    return DateTime.fromMillisecondsSinceEpoch(now.toInt(), isUtc: true);
-  }
-  final str = now.toString().trim();
-  if (str.isEmpty) return DateTime.now().toUtc();
-  final asInt = int.tryParse(str);
-  if (asInt != null) {
-    return DateTime.fromMillisecondsSinceEpoch(asInt, isUtc: true);
-  }
-  return DateTime.tryParse(str)?.toUtc() ?? DateTime.now().toUtc();
-}
+DateTime _parseCleanupReferenceNow(dynamic now) =>
+    parseFlexibleTimestamp(now, fallback: DateTime.now().toUtc())!;
 
 /// Core handler to process batch deletion of expired resolved task instances across Firestore.
 /// Queries `db.collectionGroup("instances")` for resolved (`completed` or `skipped`) documents

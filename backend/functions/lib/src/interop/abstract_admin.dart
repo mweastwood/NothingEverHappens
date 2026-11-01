@@ -23,11 +23,7 @@ class DecodedIdToken {
   final String? email;
   final bool? admin;
 
-  const DecodedIdToken({
-    required this.uid,
-    this.email,
-    this.admin,
-  });
+  const DecodedIdToken({required this.uid, this.email, this.admin});
 }
 
 /// Abstract Firebase Auth service.
@@ -88,4 +84,28 @@ abstract class WriteBatch {
   void update(DocumentReference ref, Map<String, dynamic> data);
   void delete(DocumentReference ref);
   Future<void> commit();
+}
+
+/// Commits [operations] across one or more Firestore [WriteBatch] instances,
+/// chunked to at most [chunkSize] operations per batch (default 499).
+Future<int> commitOperationsInChunks(
+  FirestoreDatabase db,
+  List<void Function(WriteBatch batch)> operations, {
+  int chunkSize = 499,
+}) async {
+  if (operations.isEmpty) return 0;
+  final effectiveChunkSize = chunkSize > 0 ? chunkSize : 499;
+  var batchesCommitted = 0;
+  for (var i = 0; i < operations.length; i += effectiveChunkSize) {
+    final batch = db.batch();
+    final end = (i + effectiveChunkSize < operations.length)
+        ? i + effectiveChunkSize
+        : operations.length;
+    for (var j = i; j < end; j++) {
+      operations[j](batch);
+    }
+    await batch.commit();
+    batchesCommitted++;
+  }
+  return batchesCommitted;
 }

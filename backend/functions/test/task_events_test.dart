@@ -4,6 +4,7 @@ import 'package:functions/src/interop/firebase_functions.dart';
 import 'package:core/core.dart' show CivilDay, TaskInstance;
 import 'package:functions/src/models/task_event.dart';
 import 'package:test/test.dart';
+
 import 'test_helpers.dart';
 
 void main() {
@@ -26,15 +27,14 @@ void main() {
     });
 
     test('rejects payload missing required fields', () {
-      final payload = {
-        'userId': 'user_123',
-        'date': '2026-08-30',
-      };
+      final payload = {'userId': 'user_123', 'date': '2026-08-30'};
 
       final result = validateTaskEvent(payload);
       expect(result.valid, isFalse);
       expect(
-          result.error, contains('Missing or invalid required string field'));
+        result.error,
+        contains('Missing or invalid required string field'),
+      );
     });
 
     test('rejects invalid date format', () {
@@ -102,16 +102,18 @@ void main() {
   });
 
   group('authenticateTaskEventRequest', () {
-    test('authenticates via valid service secret header (x-service-secret)',
-        () async {
-      final headers = {'x-service-secret': 'super_secret_token'};
-      final result = await authenticateTaskEventRequest(
-        headers,
-        'user_123',
-        envSecret: 'super_secret_token',
-      );
-      expect(result.authenticated, isTrue);
-    });
+    test(
+      'authenticates via valid service secret header (x-service-secret)',
+      () async {
+        final headers = {'x-service-secret': 'super_secret_token'};
+        final result = await authenticateTaskEventRequest(
+          headers,
+          'user_123',
+          envSecret: 'super_secret_token',
+        );
+        expect(result.authenticated, isTrue);
+      },
+    );
 
     test('authenticates via valid service secret header (x-api-key)', () async {
       final headers = {'x-api-key': 'api_key_secret'};
@@ -133,20 +135,22 @@ void main() {
       expect(result.authenticated, isTrue);
     });
 
-    test('authenticates via valid Firebase ID token matching target userId',
-        () async {
-      final mockAuth = MockAuthService();
-      mockAuth.onVerifyIdToken =
-          (token) async => const DecodedIdToken(uid: 'user_123');
+    test(
+      'authenticates via valid Firebase ID token matching target userId',
+      () async {
+        final mockAuth = MockAuthService();
+        mockAuth.onVerifyIdToken =
+            (token) async => const DecodedIdToken(uid: 'user_123');
 
-      final headers = {'authorization': 'Bearer valid_id_token'};
-      final result = await authenticateTaskEventRequest(
-        headers,
-        'user_123',
-        auth: mockAuth,
-      );
-      expect(result.authenticated, isTrue);
-    });
+        final headers = {'authorization': 'Bearer valid_id_token'};
+        final result = await authenticateTaskEventRequest(
+          headers,
+          'user_123',
+          auth: mockAuth,
+        );
+        expect(result.authenticated, isTrue);
+      },
+    );
 
     test('authenticates admin Firebase ID token even if uid differs', () async {
       final mockAuth = MockAuthService();
@@ -163,22 +167,23 @@ void main() {
     });
 
     test(
-        'rejects token when uid does not match target userId and not admin (403)',
-        () async {
-      final mockAuth = MockAuthService();
-      mockAuth.onVerifyIdToken = (token) async =>
-          const DecodedIdToken(uid: 'other_user', admin: false);
+      'rejects token when uid does not match target userId and not admin (403)',
+      () async {
+        final mockAuth = MockAuthService();
+        mockAuth.onVerifyIdToken = (token) async =>
+            const DecodedIdToken(uid: 'other_user', admin: false);
 
-      final headers = {'authorization': 'Bearer foreign_token'};
-      final result = await authenticateTaskEventRequest(
-        headers,
-        'user_123',
-        auth: mockAuth,
-      );
-      expect(result.authenticated, isFalse);
-      expect(result.status, equals(403));
-      expect(result.error, contains('Forbidden'));
-    });
+        final headers = {'authorization': 'Bearer foreign_token'};
+        final result = await authenticateTaskEventRequest(
+          headers,
+          'user_123',
+          auth: mockAuth,
+        );
+        expect(result.authenticated, isFalse);
+        expect(result.status, equals(403));
+        expect(result.error, contains('Forbidden'));
+      },
+    );
 
     test('rejects invalid/expired Firebase ID token (401)', () async {
       final mockAuth = MockAuthService();
@@ -221,7 +226,11 @@ void main() {
 
       instancesCol.cannedDocs = [
         MockDocumentSnapshot(
-            'inst_existing_123', existingDoc.docData, true, existingDoc)
+          'inst_existing_123',
+          existingDoc.docData,
+          true,
+          existingDoc,
+        ),
       ];
 
       const event = ExternalTaskEvent(
@@ -242,7 +251,9 @@ void main() {
       expect(updateData['status'], equals('completed'));
       expect(updateData['completedByUserId'], equals('user_123'));
       expect(
-          updateData['completedByUserIds'], equals(['other_user', 'user_123']));
+        updateData['completedByUserIds'],
+        equals(['other_user', 'user_123']),
+      );
     });
 
     test(
@@ -261,7 +272,11 @@ void main() {
 
       instancesCol.cannedDocs = [
         MockDocumentSnapshot(
-            'inst_existing_123', existingDoc.docData, true, existingDoc)
+          'inst_existing_123',
+          existingDoc.docData,
+          true,
+          existingDoc,
+        ),
       ];
 
       const event = ExternalTaskEvent(
@@ -297,7 +312,11 @@ void main() {
 
       instancesCol.cannedDocs = [
         MockDocumentSnapshot(
-            'inst_existing_123', existingDoc.docData, true, existingDoc)
+          'inst_existing_123',
+          existingDoc.docData,
+          true,
+          existingDoc,
+        ),
       ];
 
       const event = ExternalTaskEvent(
@@ -341,7 +360,11 @@ void main() {
 
       instancesCol.cannedDocs = [
         MockDocumentSnapshot(
-            'inst_family_ind_123', existingDoc.docData, true, existingDoc)
+          'inst_family_ind_123',
+          existingDoc.docData,
+          true,
+          existingDoc,
+        ),
       ];
 
       const event = ExternalTaskEvent(
@@ -364,41 +387,47 @@ void main() {
       expect(updateData['updatedAt'], isA<DateTime>());
     });
 
-    test('creates a new TaskInstance (JIT) when no existing instance matches',
-        () async {
-      final mockDb = MockFirestoreDatabase();
-      final instancesCol =
-          mockDb.collection('users').doc('user_123').collection('instances');
-      instancesCol.cannedDocs = []; // No existing instance
+    test(
+      'creates a new TaskInstance (JIT) when no existing instance matches',
+      () async {
+        final mockDb = MockFirestoreDatabase();
+        final instancesCol =
+            mockDb.collection('users').doc('user_123').collection('instances');
+        instancesCol.cannedDocs = []; // No existing instance
 
-      const event = ExternalTaskEvent(
-        userId: 'user_123',
-        providerId: 'twelve_stars',
-        entityType: 'prayer',
-        externalId: 'rosary',
-        date: '2026-08-30',
-        action: 'completed',
-      );
+        const event = ExternalTaskEvent(
+          userId: 'user_123',
+          providerId: 'twelve_stars',
+          entityType: 'prayer',
+          externalId: 'rosary',
+          date: '2026-08-30',
+          action: 'completed',
+        );
 
-      final result = await processExternalTaskEvent(mockDb, event);
-      expect(result.success, isTrue);
-      expect(result.createdNewInstance, isTrue);
-      expect(result.instanceId, isNotNull);
-      expect(result.instanceId, startsWith('I-'));
+        final result = await processExternalTaskEvent(mockDb, event);
+        expect(result.success, isTrue);
+        expect(result.createdNewInstance, isTrue);
+        expect(result.instanceId, isNotNull);
+        expect(result.instanceId, startsWith('I-'));
 
-      final newDoc = instancesCol.documents[result.instanceId];
-      expect(newDoc, isNotNull);
-      expect(newDoc!.setCalls.length, equals(1));
-      final setData = newDoc.setCalls.first;
-      expect(setData['scheduledDate'],
-          equals(const CivilDay(year: 2026, month: 8, day: 30).toJson()));
-      expect(setData['status'], equals('completed'));
-      expect(setData['statusReason'], equals('user_completed'));
-      expect(setData['completedByUserIds'], equals(['user_123']));
-      expect(
-          setData['integrationBinding']['providerId'], equals('twelve_stars'));
-      expect(setData['integrationBinding']['externalId'], equals('rosary'));
-    });
+        final newDoc = instancesCol.documents[result.instanceId];
+        expect(newDoc, isNotNull);
+        expect(newDoc!.setCalls.length, equals(1));
+        final setData = newDoc.setCalls.first;
+        expect(
+          setData['scheduledDate'],
+          equals(const CivilDay(year: 2026, month: 8, day: 30).toJson()),
+        );
+        expect(setData['status'], equals('completed'));
+        expect(setData['statusReason'], equals('user_completed'));
+        expect(setData['completedByUserIds'], equals(['user_123']));
+        expect(
+          setData['integrationBinding']['providerId'],
+          equals('twelve_stars'),
+        );
+        expect(setData['integrationBinding']['externalId'], equals('rosary'));
+      },
+    );
 
     test(
         'created JIT instance can be deserialized by TaskInstance.fromMap without TypeError',
@@ -423,8 +452,10 @@ void main() {
 
       final taskInstance = TaskInstance.fromMap(setData);
       expect(taskInstance.id, equals(result.instanceId));
-      expect(taskInstance.scheduledDate,
-          equals(const CivilDay(year: 2026, month: 8, day: 30)));
+      expect(
+        taskInstance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 8, day: 30)),
+      );
       expect(taskInstance.title, equals('twelve_stars: rosary'));
     });
 
@@ -451,13 +482,15 @@ void main() {
       await processExternalTaskEvent(mockDb, event);
 
       expect(
-        capturedQueries.any((q) =>
-            q['field'] == 'scheduledDate' &&
-            q['op'] == '==' &&
-            q['value'] is Map &&
-            (q['value'] as Map)['year'] == 2026 &&
-            (q['value'] as Map)['month'] == 9 &&
-            (q['value'] as Map)['day'] == 25),
+        capturedQueries.any(
+          (q) =>
+              q['field'] == 'scheduledDate' &&
+              q['op'] == '==' &&
+              q['value'] is Map &&
+              (q['value'] as Map)['year'] == 2026 &&
+              (q['value'] as Map)['month'] == 9 &&
+              (q['value'] as Map)['day'] == 25,
+        ),
         isTrue,
       );
     });

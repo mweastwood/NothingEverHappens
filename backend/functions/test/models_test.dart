@@ -1,4 +1,5 @@
 import 'package:functions/src/models/account_deletion.dart';
+import 'package:functions/src/models/family_scheduler.dart';
 import 'package:functions/src/models/task_event.dart';
 import 'package:test/test.dart';
 
@@ -96,6 +97,61 @@ void main() {
       expect(minimal.actionApplied, isEmpty);
       expect(minimal.instanceId, isNull);
       expect(minimal.toJson(), equals({'success': false, 'actionApplied': ''}));
+    });
+  });
+
+  group('FamilyScheduler models', () {
+    test('FamilyScheduleSummary toJson and equality', () {
+      const s1 = FamilyScheduleSummary(
+        familyId: 'fam-1',
+        tasksEvaluated: 3,
+        instancesSpawned: 2,
+        instancesUpdated: 1,
+        instancesDeleted: 0,
+        schedulesUpdated: 1,
+      );
+      const s2 = FamilyScheduleSummary(
+        familyId: 'fam-1',
+        tasksEvaluated: 3,
+        instancesSpawned: 2,
+        instancesUpdated: 1,
+        instancesDeleted: 0,
+        schedulesUpdated: 1,
+      );
+      expect(s1, equals(s2));
+      expect(s1.hashCode, equals(s2.hashCode));
+      expect(s1.toJson().containsKey('error'), isFalse);
+
+      const withErr = FamilyScheduleSummary(familyId: 'fam-1', error: 'boom');
+      expect(withErr.toJson()['error'], equals('boom'));
+    });
+
+    test('FamilySchedulerResult toJson and equality', () {
+      const r1 = FamilySchedulerResult(
+        success: true,
+        familiesProcessed: 1,
+        totalTasksEvaluated: 2,
+        totalInstancesSpawned: 1,
+        totalInstancesUpdated: 0,
+        totalInstancesDeleted: 0,
+        totalSchedulesUpdated: 1,
+        durationMs: 15,
+        familySummaries: [FamilyScheduleSummary(familyId: 'fam-1')],
+      );
+      const r2 = FamilySchedulerResult(
+        success: true,
+        familiesProcessed: 1,
+        totalTasksEvaluated: 2,
+        totalInstancesSpawned: 1,
+        totalInstancesUpdated: 0,
+        totalInstancesDeleted: 0,
+        totalSchedulesUpdated: 1,
+        durationMs: 15,
+        familySummaries: [FamilyScheduleSummary(familyId: 'fam-1')],
+      );
+      expect(r1, equals(r2));
+      expect(r1.hashCode, equals(r2.hashCode));
+      expect((r1.toJson()['familySummaries'] as List).length, equals(1));
     });
   });
 }

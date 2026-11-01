@@ -6,16 +6,10 @@ class AuthenticatedUser {
   final String uid;
   final String? email;
 
-  const AuthenticatedUser({
-    required this.uid,
-    this.email,
-  });
+  const AuthenticatedUser({required this.uid, this.email});
 
   Map<String, dynamic> toJson() {
-    return {
-      'uid': uid,
-      if (email != null) 'email': email,
-    };
+    return {'uid': uid, if (email != null) 'email': email};
   }
 
   @override
@@ -68,11 +62,7 @@ class AccountDeletionResult {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'message': message,
-      'userId': userId,
-    };
+    return {'success': success, 'message': message, 'userId': userId};
   }
 
   @override

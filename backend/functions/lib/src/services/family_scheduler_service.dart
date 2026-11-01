@@ -1,137 +1,19 @@
+export '../models/family_scheduler.dart';
+
 import 'package:core/core.dart';
 import 'package:meta/meta.dart';
+
 import '../interop/firebase_admin.dart';
 import '../interop/node_interop.dart';
-
-/// Summary of schedule evaluation for a single family.
-@immutable
-class FamilyScheduleSummary {
-  final String familyId;
-  final int tasksEvaluated;
-  final int instancesSpawned;
-  final int instancesUpdated;
-  final int instancesDeleted;
-  final int schedulesUpdated;
-  final String? error;
-
-  const FamilyScheduleSummary({
-    required this.familyId,
-    this.tasksEvaluated = 0,
-    this.instancesSpawned = 0,
-    this.instancesUpdated = 0,
-    this.instancesDeleted = 0,
-    this.schedulesUpdated = 0,
-    this.error,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'familyId': familyId,
-        'tasksEvaluated': tasksEvaluated,
-        'instancesSpawned': instancesSpawned,
-        'instancesUpdated': instancesUpdated,
-        'instancesDeleted': instancesDeleted,
-        'schedulesUpdated': schedulesUpdated,
-        if (error != null) 'error': error,
-      };
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is FamilyScheduleSummary &&
-        other.familyId == familyId &&
-        other.tasksEvaluated == tasksEvaluated &&
-        other.instancesSpawned == instancesSpawned &&
-        other.instancesUpdated == instancesUpdated &&
-        other.instancesDeleted == instancesDeleted &&
-        other.schedulesUpdated == schedulesUpdated &&
-        other.error == error;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-        familyId,
-        tasksEvaluated,
-        instancesSpawned,
-        instancesUpdated,
-        instancesDeleted,
-        schedulesUpdated,
-        error,
-      );
-}
-
-/// Aggregated result of processing family scheduling across multiple families.
-@immutable
-class FamilySchedulerResult {
-  final bool success;
-  final int familiesProcessed;
-  final int totalTasksEvaluated;
-  final int totalInstancesSpawned;
-  final int totalInstancesUpdated;
-  final int totalInstancesDeleted;
-  final int totalSchedulesUpdated;
-  final int durationMs;
-  final List<FamilyScheduleSummary> familySummaries;
-
-  const FamilySchedulerResult({
-    required this.success,
-    required this.familiesProcessed,
-    required this.totalTasksEvaluated,
-    required this.totalInstancesSpawned,
-    required this.totalInstancesUpdated,
-    required this.totalInstancesDeleted,
-    required this.totalSchedulesUpdated,
-    required this.durationMs,
-    required this.familySummaries,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'success': success,
-        'familiesProcessed': familiesProcessed,
-        'totalTasksEvaluated': totalTasksEvaluated,
-        'totalInstancesSpawned': totalInstancesSpawned,
-        'totalInstancesUpdated': totalInstancesUpdated,
-        'totalInstancesDeleted': totalInstancesDeleted,
-        'totalSchedulesUpdated': totalSchedulesUpdated,
-        'durationMs': durationMs,
-        'familySummaries': familySummaries.map((s) => s.toJson()).toList(),
-      };
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is FamilySchedulerResult &&
-        other.success == success &&
-        other.familiesProcessed == familiesProcessed &&
-        other.totalTasksEvaluated == totalTasksEvaluated &&
-        other.totalInstancesSpawned == totalInstancesSpawned &&
-        other.totalInstancesUpdated == totalInstancesUpdated &&
-        other.totalInstancesDeleted == totalInstancesDeleted &&
-        other.totalSchedulesUpdated == totalSchedulesUpdated &&
-        other.durationMs == durationMs;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-        success,
-        familiesProcessed,
-        totalTasksEvaluated,
-        totalInstancesSpawned,
-        totalInstancesUpdated,
-        totalInstancesDeleted,
-        totalSchedulesUpdated,
-        durationMs,
-      );
-}
+import '../models/family_scheduler.dart';
 
 /// Service that evaluates and spawns shared family tasks in Firestore using [SchedulerEngine].
 class FamilySchedulerService {
   final FirestoreDatabase db;
   final SchedulerEngine engine;
 
-  const FamilySchedulerService(
-    this.db, {
-    SchedulerEngine? engine,
-  }) : engine = engine ??
+  const FamilySchedulerService(this.db, {SchedulerEngine? engine})
+      : engine = engine ??
             const SchedulerEngine(
               platform: 'cloud_functions',
               appVersion: 'backend',
@@ -166,8 +48,9 @@ class FamilySchedulerService {
         final uid = entry.key.toString();
         final value = entry.value;
         if (value is Map) {
-          final parsed =
-              parseTimeZoneOffsetMinutes(value['timeZoneOffsetMinutes']);
+          final parsed = parseTimeZoneOffsetMinutes(
+            value['timeZoneOffsetMinutes'],
+          );
           if (parsed != null) {
             offsets[uid] = Duration(minutes: parsed);
           }
@@ -175,8 +58,9 @@ class FamilySchedulerService {
       }
     }
 
-    final callerParsed =
-        parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
+    final callerParsed = parseTimeZoneOffsetMinutes(
+      callerTimeZoneOffsetMinutes,
+    );
     if (callerParsed != null) {
       final key = (callerUserId != null && callerUserId.isNotEmpty)
           ? callerUserId
@@ -185,8 +69,9 @@ class FamilySchedulerService {
     }
 
     if (offsets.isEmpty) {
-      final familyLevelOffset =
-          parseTimeZoneOffsetMinutes(familyData?['timeZoneOffsetMinutes']);
+      final familyLevelOffset = parseTimeZoneOffsetMinutes(
+        familyData?['timeZoneOffsetMinutes'],
+      );
       if (familyLevelOffset != null) {
         offsets['_family'] = Duration(minutes: familyLevelOffset);
       }
@@ -265,8 +150,9 @@ class FamilySchedulerService {
         }
       }
 
-      final parsedCallerOffset =
-          parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
+      final parsedCallerOffset = parseTimeZoneOffsetMinutes(
+        callerTimeZoneOffsetMinutes,
+      );
       final hasCallerTimezoneToSync = parsedCallerOffset != null &&
           callerUserId != null &&
           callerUserId.isNotEmpty;
@@ -274,10 +160,7 @@ class FamilySchedulerService {
       if (familyTasks.isEmpty &&
           !instances.any((i) => i.status == TaskStatus.pending) &&
           !hasCallerTimezoneToSync) {
-        return FamilyScheduleSummary(
-          familyId: familyId,
-          tasksEvaluated: 0,
-        );
+        return FamilyScheduleSummary(familyId: familyId, tasksEvaluated: 0);
       }
 
       final memberOffsets = <String, Duration>{};
@@ -317,7 +200,8 @@ class FamilySchedulerService {
               if (userDoc.exists) {
                 final userData = userDoc.data();
                 final userOffset = parseTimeZoneOffsetMinutes(
-                    userData?['timeZoneOffsetMinutes']);
+                  userData?['timeZoneOffsetMinutes'],
+                );
                 if (userOffset != null) {
                   memberOffsets[uid] = Duration(minutes: userOffset);
                   backfilledMemberOffsets[uid] = userOffset;
@@ -474,11 +358,10 @@ class FamilySchedulerService {
       );
     } catch (error) {
       logError(
-          'Error evaluating family schedule for familyId=$familyId:', error);
-      return FamilyScheduleSummary(
-        familyId: familyId,
-        error: error.toString(),
+        'Error evaluating family schedule for familyId=$familyId:',
+        error,
       );
+      return FamilyScheduleSummary(familyId: familyId, error: error.toString());
     }
   }
 

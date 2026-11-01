@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:functions/src/interop/firebase_admin.dart';
 
 class MockAuthService implements AuthService {
@@ -39,7 +40,9 @@ class MockFirestoreDatabase implements FirestoreDatabase {
   MockCollectionReference collection(String path) {
     final cleanPath = path.replaceAll(RegExp(r'^/+|/+$'), '');
     return collections.putIfAbsent(
-        cleanPath, () => MockCollectionReference(cleanPath, this));
+      cleanPath,
+      () => MockCollectionReference(cleanPath, this),
+    );
   }
 
   @override
@@ -60,9 +63,11 @@ class MockFirestoreDatabase implements FirestoreDatabase {
       if (b is MockWriteBatch) committedBatches.add(b);
       return b;
     }
-    currentBatch = MockWriteBatch(onCommit: () {
-      committedBatches.add(currentBatch);
-    });
+    currentBatch = MockWriteBatch(
+      onCommit: () {
+        committedBatches.add(currentBatch);
+      },
+    );
     return currentBatch;
   }
 
@@ -222,8 +227,13 @@ class MockDocumentReference implements DocumentReference {
   final List<Map<String, dynamic>> setCalls = [];
   int deleteCalls = 0;
 
-  MockDocumentReference(this.id,
-      {this.path = '', this.db, this.docData, this.isExisting = true});
+  MockDocumentReference(
+    this.id, {
+    this.path = '',
+    this.db,
+    this.docData,
+    this.isExisting = true,
+  });
 
   @override
   MockCollectionReference collection(String subPath) {
@@ -232,7 +242,9 @@ class MockDocumentReference implements DocumentReference {
       return db!.collection(fullPath);
     }
     return subcollections.putIfAbsent(
-        subPath, () => MockCollectionReference('${this.path}/$subPath'));
+      subPath,
+      () => MockCollectionReference('${this.path}/$subPath'),
+    );
   }
 
   @override

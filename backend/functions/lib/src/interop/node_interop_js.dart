@@ -20,8 +20,9 @@ void exportFunction(String name, dynamic fn) {
 
 js.JsObject? _loggerInstance;
 js.JsObject get _logger {
-  _loggerInstance ??= js.context
-      .callMethod('require', ['firebase-functions/logger']) as js.JsObject;
+  _loggerInstance ??= js.context.callMethod('require', [
+    'firebase-functions/logger',
+  ]) as js.JsObject;
   return _loggerInstance!;
 }
 

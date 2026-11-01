@@ -125,11 +125,7 @@ class TaskEventValidation {
   final String? error;
   final ExternalTaskEvent? event;
 
-  const TaskEventValidation({
-    required this.valid,
-    this.error,
-    this.event,
-  });
+  const TaskEventValidation({required this.valid, this.error, this.event});
 }
 
 /// Authentication result for task event requests.

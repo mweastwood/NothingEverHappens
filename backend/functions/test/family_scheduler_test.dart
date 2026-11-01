@@ -4,6 +4,7 @@ import 'package:functions/src/interop/firebase_admin.dart';
 import 'package:functions/src/interop/firebase_functions.dart';
 import 'package:functions/src/services/family_scheduler_service.dart';
 import 'package:test/test.dart';
+
 import 'test_helpers.dart';
 
 void main() {
@@ -126,8 +127,11 @@ void main() {
       familyTasksCol.doc(task.id).set(task.toFirestore());
 
       final now = DateTime.utc(2026, 9, 10, 8, 0);
-      final summary = await service.processFamily('fam_1',
-          now: now, futureInstancesCount: 2);
+      final summary = await service.processFamily(
+        'fam_1',
+        now: now,
+        futureInstancesCount: 2,
+      );
 
       expect(summary.tasksEvaluated, equals(1));
       expect(summary.instancesSpawned, equals(3));
@@ -144,8 +148,11 @@ void main() {
       expect(firstInst['status'], equals('pending'));
 
       // Verify idempotency: re-running at same time spawns 0 new instances
-      final secondSummary = await service.processFamily('fam_1',
-          now: now, futureInstancesCount: 2);
+      final secondSummary = await service.processFamily(
+        'fam_1',
+        now: now,
+        futureInstancesCount: 2,
+      );
       expect(secondSummary.tasksEvaluated, equals(1));
       expect(secondSummary.instancesSpawned, equals(0));
       expect(secondSummary.instancesUpdated, equals(0));
@@ -153,53 +160,60 @@ void main() {
     });
 
     test(
-        'evaluates missed occurrence policy and marks overdue instances skipped',
-        () async {
-      const startDate = CivilDay(year: 2026, month: 9, day: 10);
-      final task = TaskSchedule(
-        id: 'task_auto_dismiss',
-        title: 'Morning stretch',
-        description: 'Morning yoga routine',
-        isFamily: true,
-        schedules: [
-          DailySchedule(
-            id: 'rule_1',
-            scheduleId: 'task_auto_dismiss',
-            startDate: startDate,
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
-            missedOccurrencePolicy: const MissedOccurrencePolicy(
-              policy: MissedPolicy.autoDismiss,
-              gracePeriod: Duration(hours: 2),
+      'evaluates missed occurrence policy and marks overdue instances skipped',
+      () async {
+        const startDate = CivilDay(year: 2026, month: 9, day: 10);
+        final task = TaskSchedule(
+          id: 'task_auto_dismiss',
+          title: 'Morning stretch',
+          description: 'Morning yoga routine',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              id: 'rule_1',
+              scheduleId: 'task_auto_dismiss',
+              startDate: startDate,
+              interval: 1,
+              startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+              dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+              missedOccurrencePolicy: const MissedOccurrencePolicy(
+                policy: MissedPolicy.autoDismiss,
+                gracePeriod: Duration(hours: 2),
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
 
-      final familyTasksCol = db.collection('families/fam_1/tasks');
-      familyTasksCol.doc(task.id).set(task.toFirestore());
+        final familyTasksCol = db.collection('families/fam_1/tasks');
+        familyTasksCol.doc(task.id).set(task.toFirestore());
 
-      // 1. First run at 8:00 AM spawns pending instance
-      final nowMorning = DateTime(2026, 9, 10, 8, 0);
-      final summaryMorning = await service.processFamily('fam_1',
-          now: nowMorning, futureInstancesCount: 0);
-      expect(summaryMorning.instancesSpawned, equals(1));
+        // 1. First run at 8:00 AM spawns pending instance
+        final nowMorning = DateTime(2026, 9, 10, 8, 0);
+        final summaryMorning = await service.processFamily(
+          'fam_1',
+          now: nowMorning,
+          futureInstancesCount: 0,
+        );
+        expect(summaryMorning.instancesSpawned, equals(1));
 
-      // 2. Advance time past due time + 2 hour grace period (12:00 PM)
-      final nowAfternoon = DateTime(2026, 9, 10, 12, 0);
-      final summaryAfternoon = await service.processFamily('fam_1',
-          now: nowAfternoon, futureInstancesCount: 0);
+        // 2. Advance time past due time + 2 hour grace period (12:00 PM)
+        final nowAfternoon = DateTime(2026, 9, 10, 12, 0);
+        final summaryAfternoon = await service.processFamily(
+          'fam_1',
+          now: nowAfternoon,
+          futureInstancesCount: 0,
+        );
 
-      expect(summaryAfternoon.instancesUpdated, equals(1));
+        expect(summaryAfternoon.instancesUpdated, equals(1));
 
-      final instancesCol = db.collection('families/fam_1/instances');
-      final instData = instancesCol.documents.values.first.docData!;
-      expect(instData['status'], equals('skipped'));
-      expect(instData['statusReason'], equals('scheduler_auto_dismiss'));
-      expect(instData['lastModifiedByPlatform'], equals('cloud_functions'));
-      expect(instData['lastModifiedByUserId'], equals('cloud_scheduler'));
-    });
+        final instancesCol = db.collection('families/fam_1/instances');
+        final instData = instancesCol.documents.values.first.docData!;
+        expect(instData['status'], equals('skipped'));
+        expect(instData['statusReason'], equals('scheduler_auto_dismiss'));
+        expect(instData['lastModifiedByPlatform'], equals('cloud_functions'));
+        expect(instData['lastModifiedByUserId'], equals('cloud_scheduler'));
+      },
+    );
 
     test(
         'completion-relative recurring family task spawns next instance when completed',
@@ -260,10 +274,13 @@ void main() {
       final instancesList = instancesCol.documents.values
           .map((d) => TaskInstance.fromMap(d.docData!, id: d.id))
           .toList();
-      final pendingInst =
-          instancesList.firstWhere((i) => i.status == TaskStatus.pending);
-      expect(pendingInst.scheduledDate,
-          equals(const CivilDay(year: 2026, month: 9, day: 13)));
+      final pendingInst = instancesList.firstWhere(
+        (i) => i.status == TaskStatus.pending,
+      );
+      expect(
+        pendingInst.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 9, day: 13)),
+      );
     });
   });
 
@@ -345,19 +362,21 @@ void main() {
       expect(result.totalInstancesSpawned, equals(0));
     });
 
-    test('marks result success as false if any family encountered an error',
-        () async {
-      db.collection('families').doc('fam_ok').set({'name': 'OK Family'});
-      db.collection('families').doc('fam_err').set({'name': 'Err Family'});
+    test(
+      'marks result success as false if any family encountered an error',
+      () async {
+        db.collection('families').doc('fam_ok').set({'name': 'OK Family'});
+        db.collection('families').doc('fam_err').set({'name': 'Err Family'});
 
-      db.collection('families/fam_err/tasks').onGet =
-          () => throw Exception('Firestore query failed');
+        db.collection('families/fam_err/tasks').onGet =
+            () => throw Exception('Firestore query failed');
 
-      final result = await service.processAllFamilies();
-      expect(result.success, isFalse);
-      expect(result.familiesProcessed, equals(2));
-      expect(result.familySummaries.any((s) => s.error != null), isTrue);
-    });
+        final result = await service.processAllFamilies();
+        expect(result.success, isFalse);
+        expect(result.familiesProcessed, equals(2));
+        expect(result.familySummaries.any((s) => s.error != null), isTrue);
+      },
+    );
   });
 
   group('authenticateFamilySchedulerRequest', () {
@@ -370,69 +389,68 @@ void main() {
     });
 
     test('authenticates valid service secret in x-service-secret', () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'x-service-secret': 'test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
+      final result = await authenticateFamilySchedulerRequest({
+        'x-service-secret': 'test_secret_123',
+      }, envSecret: 'test_secret_123');
       expect(result.authenticated, isTrue);
       expect(result.isAdmin, isTrue);
     });
 
     test('authenticates valid service secret in x-api-key', () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'x-api-key': 'test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
-      expect(result.authenticated, isTrue);
-      expect(result.isAdmin, isTrue);
-    });
-
-    test('authenticates valid service secret in capitalized X-Service-Secret',
-        () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'X-Service-Secret': 'test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
-      expect(result.authenticated, isTrue);
-      expect(result.isAdmin, isTrue);
-    });
-
-    test('authenticates valid service secret in capitalized X-Api-Key',
-        () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'X-Api-Key': 'test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
-      expect(result.authenticated, isTrue);
-      expect(result.isAdmin, isTrue);
-    });
-
-    test('authenticates valid service secret in Authorization Bearer',
-        () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'authorization': 'Bearer test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
+      final result = await authenticateFamilySchedulerRequest({
+        'x-api-key': 'test_secret_123',
+      }, envSecret: 'test_secret_123');
       expect(result.authenticated, isTrue);
       expect(result.isAdmin, isTrue);
     });
 
     test(
-        'authenticates valid service secret in capitalized Authorization Bearer',
-        () async {
-      final result = await authenticateFamilySchedulerRequest(
-        {'Authorization': 'Bearer test_secret_123'},
-        envSecret: 'test_secret_123',
-      );
-      expect(result.authenticated, isTrue);
-      expect(result.isAdmin, isTrue);
-    });
+      'authenticates valid service secret in capitalized X-Service-Secret',
+      () async {
+        final result = await authenticateFamilySchedulerRequest({
+          'X-Service-Secret': 'test_secret_123',
+        }, envSecret: 'test_secret_123');
+        expect(result.authenticated, isTrue);
+        expect(result.isAdmin, isTrue);
+      },
+    );
+
+    test(
+      'authenticates valid service secret in capitalized X-Api-Key',
+      () async {
+        final result = await authenticateFamilySchedulerRequest({
+          'X-Api-Key': 'test_secret_123',
+        }, envSecret: 'test_secret_123');
+        expect(result.authenticated, isTrue);
+        expect(result.isAdmin, isTrue);
+      },
+    );
+
+    test(
+      'authenticates valid service secret in Authorization Bearer',
+      () async {
+        final result = await authenticateFamilySchedulerRequest({
+          'authorization': 'Bearer test_secret_123',
+        }, envSecret: 'test_secret_123');
+        expect(result.authenticated, isTrue);
+        expect(result.isAdmin, isTrue);
+      },
+    );
+
+    test(
+      'authenticates valid service secret in capitalized Authorization Bearer',
+      () async {
+        final result = await authenticateFamilySchedulerRequest({
+          'Authorization': 'Bearer test_secret_123',
+        }, envSecret: 'test_secret_123');
+        expect(result.authenticated, isTrue);
+        expect(result.isAdmin, isTrue);
+      },
+    );
 
     test('authenticates admin user for any family or all families', () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'admin_user',
-            admin: true,
-          );
+      auth.onVerifyIdToken =
+          (token) async => const DecodedIdToken(uid: 'admin_user', admin: true);
 
       final result = await authenticateFamilySchedulerRequest(
         {'authorization': 'Bearer valid_admin_token'},
@@ -444,10 +462,8 @@ void main() {
     });
 
     test('authenticates family member for their specific family', () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'member_user',
-            admin: false,
-          );
+      auth.onVerifyIdToken = (token) async =>
+          const DecodedIdToken(uid: 'member_user', admin: false);
 
       db.collection('families').doc('fam_123').set({
         'name': 'Family',
@@ -468,10 +484,8 @@ void main() {
     });
 
     test('rejects non-member user accessing family with 403', () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'stranger_user',
-            admin: false,
-          );
+      auth.onVerifyIdToken = (token) async =>
+          const DecodedIdToken(uid: 'stranger_user', admin: false);
 
       db.collection('families').doc('fam_123').set({
         'name': 'Family',
@@ -492,10 +506,8 @@ void main() {
     });
 
     test('rejects non-admin user requesting all families with 403', () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'regular_user',
-            admin: false,
-          );
+      auth.onVerifyIdToken = (token) async =>
+          const DecodedIdToken(uid: 'regular_user', admin: false);
 
       final result = await authenticateFamilySchedulerRequest(
         {'authorization': 'Bearer regular_token'},
@@ -552,10 +564,7 @@ void main() {
       final req = TestHttpRequest(
         method: 'POST',
         headers: {'x-service-secret': 'sec123'},
-        body: {
-          'familyId': 'fam_1',
-          'now': '2026-09-10T10:00:00Z',
-        },
+        body: {'familyId': 'fam_1', 'now': '2026-09-10T10:00:00Z'},
       );
       final res = TestHttpResponse();
 
@@ -598,10 +607,8 @@ void main() {
     });
 
     test('successfully processes all families when admin', () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'admin_1',
-            admin: true,
-          );
+      auth.onVerifyIdToken =
+          (token) async => const DecodedIdToken(uid: 'admin_1', admin: true);
 
       final req = TestHttpRequest(
         method: 'POST',
@@ -623,72 +630,71 @@ void main() {
       expect(res.responseData['success'], isTrue);
     });
 
-    test('returns HTTP 500 when single family evaluation results in an error',
-        () async {
-      final req = TestHttpRequest(
-        method: 'POST',
-        headers: {'X-Service-Secret': 'sec123'},
-        body: {'familyId': 'fam_err'},
-      );
-      final res = TestHttpResponse();
+    test(
+      'returns HTTP 500 when single family evaluation results in an error',
+      () async {
+        final req = TestHttpRequest(
+          method: 'POST',
+          headers: {'X-Service-Secret': 'sec123'},
+          body: {'familyId': 'fam_err'},
+        );
+        final res = TestHttpResponse();
 
-      db.collection('families/fam_err/tasks').onGet =
-          () => throw Exception('Database failure');
+        db.collection('families/fam_err/tasks').onGet =
+            () => throw Exception('Database failure');
 
-      await handleProcessFamilySchedule(
-        req,
-        res,
-        db: db,
-        auth: auth,
-        service: FamilySchedulerService(db),
-        envSecret: 'sec123',
-      );
+        await handleProcessFamilySchedule(
+          req,
+          res,
+          db: db,
+          auth: auth,
+          service: FamilySchedulerService(db),
+          envSecret: 'sec123',
+        );
 
-      expect(res.statusCode, equals(500));
-      expect(res.responseData, isNotNull);
-      expect(res.responseData['familyId'], equals('fam_err'));
-      expect(res.responseData['error'], contains('Database failure'));
-    });
+        expect(res.statusCode, equals(500));
+        expect(res.responseData, isNotNull);
+        expect(res.responseData['familyId'], equals('fam_err'));
+        expect(res.responseData['error'], contains('Database failure'));
+      },
+    );
 
-    test('returns HTTP 500 when processAllFamilies encounters errors',
-        () async {
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'admin_1',
-            admin: true,
-          );
+    test(
+      'returns HTTP 500 when processAllFamilies encounters errors',
+      () async {
+        auth.onVerifyIdToken =
+            (token) async => const DecodedIdToken(uid: 'admin_1', admin: true);
 
-      final req = TestHttpRequest(
-        method: 'POST',
-        headers: {'Authorization': 'Bearer admin_token'},
-        body: {},
-      );
-      final res = TestHttpResponse();
+        final req = TestHttpRequest(
+          method: 'POST',
+          headers: {'Authorization': 'Bearer admin_token'},
+          body: {},
+        );
+        final res = TestHttpResponse();
 
-      db.collection('families').doc('fam_err').set({'name': 'Err Family'});
-      db.collection('families/fam_err/tasks').onGet =
-          () => throw Exception('Database failure');
+        db.collection('families').doc('fam_err').set({'name': 'Err Family'});
+        db.collection('families/fam_err/tasks').onGet =
+            () => throw Exception('Database failure');
 
-      await handleProcessFamilySchedule(
-        req,
-        res,
-        db: db,
-        auth: auth,
-        service: FamilySchedulerService(db),
-      );
+        await handleProcessFamilySchedule(
+          req,
+          res,
+          db: db,
+          auth: auth,
+          service: FamilySchedulerService(db),
+        );
 
-      expect(res.statusCode, equals(500));
-      expect(res.responseData, isNotNull);
-      expect(res.responseData['success'], isFalse);
-    });
+        expect(res.statusCode, equals(500));
+        expect(res.responseData, isNotNull);
+        expect(res.responseData['success'], isFalse);
+      },
+    );
 
     test('accepts numeric epoch timestamp in request body', () async {
       final req = TestHttpRequest(
         method: 'POST',
         headers: {'x-service-secret': 'sec123'},
-        body: {
-          'familyId': 'fam_1',
-          'now': 1725964800000,
-        },
+        body: {'familyId': 'fam_1', 'now': 1725964800000},
       );
       final res = TestHttpResponse();
 
@@ -719,8 +725,10 @@ void main() {
       expect(parseScheduleTimestamp(dt), equals(dt));
 
       const epochMs = 1725964800000;
-      final expectedDate =
-          DateTime.fromMillisecondsSinceEpoch(epochMs, isUtc: true);
+      final expectedDate = DateTime.fromMillisecondsSinceEpoch(
+        epochMs,
+        isUtc: true,
+      );
 
       // int epoch
       expect(parseScheduleTimestamp(epochMs), equals(expectedDate));
@@ -913,17 +921,13 @@ void main() {
         'handleProcessFamilySchedule accepts timeZoneOffsetMinutes and persists it to family member metadata',
         () async {
       final auth = MockAuthService();
-      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
-            uid: 'user_pdt',
-          );
+      auth.onVerifyIdToken =
+          (token) async => const DecodedIdToken(uid: 'user_pdt');
 
       db.collection('families').doc('fam_caller_tz').set({
         'name': 'Caller TZ Family',
         'members': {
-          'user_pdt': {
-            'displayName': 'PDT User',
-            'role': 'admin',
-          },
+          'user_pdt': {'displayName': 'PDT User', 'role': 'admin'},
         },
       });
 
@@ -987,9 +991,7 @@ void main() {
       final familyDocRef = db.collection('families').doc('fam_caller_tz');
       expect(
         familyDocRef.updateCalls,
-        contains(
-          containsPair('members.user_pdt.timeZoneOffsetMinutes', -420),
-        ),
+        contains(containsPair('members.user_pdt.timeZoneOffsetMinutes', -420)),
       );
     });
 
@@ -1003,10 +1005,7 @@ void main() {
       db.collection('families').doc('fam_legacy').set({
         'name': 'Legacy Family',
         'members': {
-          'user_legacy': {
-            'displayName': 'Legacy User',
-            'role': 'parent',
-          },
+          'user_legacy': {'displayName': 'Legacy User', 'role': 'parent'},
         },
       });
       db.collection('users').doc('user_legacy').set({
@@ -1256,10 +1255,7 @@ void main() {
           .doc(orphanCompleted.id)
           .set(orphanCompleted.toFirestore());
 
-      final summary = await service.processFamily(
-        'fam_no_tasks',
-        now: now,
-      );
+      final summary = await service.processFamily('fam_no_tasks', now: now);
 
       expect(summary.tasksEvaluated, equals(0));
       expect(summary.instancesDeleted, equals(1));
@@ -1275,10 +1271,7 @@ void main() {
       await familyDoc.set({
         'name': 'Empty Tasks Family',
         'members': {
-          'member_1': {
-            'displayName': 'Member 1',
-            'role': 'parent',
-          },
+          'member_1': {'displayName': 'Member 1', 'role': 'parent'},
         },
       });
 
@@ -1292,9 +1285,7 @@ void main() {
       expect(summary.tasksEvaluated, equals(0));
       expect(
         familyDoc.updateCalls,
-        contains(
-          containsPair('members.member_1.timeZoneOffsetMinutes', -300),
-        ),
+        contains(containsPair('members.member_1.timeZoneOffsetMinutes', -300)),
       );
     });
   });
