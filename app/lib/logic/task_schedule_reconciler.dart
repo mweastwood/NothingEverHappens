@@ -33,6 +33,7 @@ class TaskScheduleReconciler {
 
     if (schedulesChanged) {
       final preservedCompletionRelativeRules = <String>{};
+      final seenDatesByRule = <String, Set<CivilDay>>{};
       for (final inst in instances) {
         final newRule = updatedTask.schedules
             .where((s) => s.id == inst.ruleId)
@@ -79,6 +80,19 @@ class TaskScheduleReconciler {
               );
             } else {
               updatedScheduledDate = newRule.scheduledDate;
+            }
+          }
+          final effectiveDate = updatedScheduledDate ?? inst.scheduledDate;
+          if (updatedTask.workflowType != 'mealWorkflow' &&
+              inst.workflowPayload != null) {
+            final seenDates = seenDatesByRule.putIfAbsent(
+              inst.ruleId,
+              () => <CivilDay>{},
+            );
+            if (!seenDates.add(effectiveDate)) {
+              await _localDataSource.deleteInstance(inst.id);
+              await _localDataSource.markDirty(inst.id);
+              continue;
             }
           }
           final updatedInst = buildUpdatedPendingInstance(
@@ -170,6 +184,7 @@ class TaskScheduleReconciler {
       return true;
     }
     final hasActiveWorkflowProgress =
+        newTask.workflowType == 'mealWorkflow' &&
         inst.workflowPayload != null &&
         inst.workflowPayload!.stage != WorkflowStage.selectMeal;
     if (hasActiveWorkflowProgress || inst.completedByUserIds.isNotEmpty) {
