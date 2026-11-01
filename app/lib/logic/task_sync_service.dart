@@ -709,27 +709,7 @@ class TaskSyncService {
             );
             if (e is FirebaseException && e.code == 'permission-denied') {
               await _localDataSource.clearDirty(taskId);
-              if (taskId.startsWith('S-')) {
-                final localTask = _localDataSource
-                    .getTasks()
-                    .where((t) => t.id == taskId)
-                    .firstOrNull;
-                if (localTask != null && localTask.hasPendingWrites) {
-                  await _localDataSource.saveTask(
-                    localTask.copyWith(hasPendingWrites: false),
-                  );
-                }
-              } else if (taskId.startsWith('I-')) {
-                final localInst = _localDataSource
-                    .getInstances()
-                    .where((i) => i.id == taskId)
-                    .firstOrNull;
-                if (localInst != null && localInst.hasPendingWrites) {
-                  await _localDataSource.saveInstance(
-                    localInst.copyWith(hasPendingWrites: false),
-                  );
-                }
-              }
+              await _reconcilePermissionDeniedEntity(taskId);
             } else {
               rethrow;
             }
@@ -746,6 +726,143 @@ class TaskSyncService {
       _isSyncing = false;
       if (!_isSyncingSubject.isClosed && !_isDisposed) {
         _isSyncingSubject.add(false);
+      }
+    }
+  }
+
+  Future<void> _reconcilePermissionDeniedEntity(String entityId) async {
+    final familyId = await _getFamilyId();
+    if (entityId.startsWith('S-')) {
+      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
+      try {
+        if (familyId != null && familyId.isNotEmpty) {
+          final famDoc = await _firestore
+              .collection(FirestorePaths.families)
+              .doc(familyId)
+              .collection(FirestorePaths.tasks)
+              .doc(entityId)
+              .get();
+          if (famDoc.exists && famDoc.data() != null) {
+            remoteDoc = famDoc;
+          }
+        }
+        if (remoteDoc == null) {
+          final userDoc = await _firestore
+              .collection(FirestorePaths.users)
+              .doc(_userId)
+              .collection(FirestorePaths.tasks)
+              .doc(entityId)
+              .get();
+          if (userDoc.exists && userDoc.data() != null) {
+            remoteDoc = userDoc;
+          }
+        }
+      } catch (_) {}
+
+      if (remoteDoc != null && remoteDoc.data() != null) {
+        final remoteTask = TaskSchedule.fromFirestore(
+          remoteDoc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false);
+        await _localDataSource.saveTask(remoteTask);
+        return;
+      }
+
+      final localTask = _localDataSource
+          .getTasks()
+          .where((t) => t.id == entityId)
+          .firstOrNull;
+      if (localTask != null && localTask.hasPendingWrites) {
+        await _localDataSource.saveTask(
+          localTask.copyWith(hasPendingWrites: false),
+        );
+      }
+    } else if (entityId.startsWith('I-')) {
+      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
+      try {
+        if (familyId != null && familyId.isNotEmpty) {
+          final famDoc = await _firestore
+              .collection(FirestorePaths.families)
+              .doc(familyId)
+              .collection(FirestorePaths.instances)
+              .doc(entityId)
+              .get();
+          if (famDoc.exists && famDoc.data() != null) {
+            remoteDoc = famDoc;
+          }
+        }
+        if (remoteDoc == null) {
+          final userDoc = await _firestore
+              .collection(FirestorePaths.users)
+              .doc(_userId)
+              .collection(FirestorePaths.instances)
+              .doc(entityId)
+              .get();
+          if (userDoc.exists && userDoc.data() != null) {
+            remoteDoc = userDoc;
+          }
+        }
+      } catch (_) {}
+
+      if (remoteDoc != null && remoteDoc.data() != null) {
+        final remoteInst = TaskInstance.fromFirestore(
+          remoteDoc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false);
+        await _localDataSource.saveInstance(remoteInst);
+        return;
+      }
+
+      final localInst = _localDataSource
+          .getInstances()
+          .where((i) => i.id == entityId)
+          .firstOrNull;
+      if (localInst != null && localInst.hasPendingWrites) {
+        await _localDataSource.saveInstance(
+          localInst.copyWith(hasPendingWrites: false),
+        );
+      }
+    } else if (entityId.startsWith('R-')) {
+      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
+      try {
+        if (familyId != null && familyId.isNotEmpty) {
+          final famDoc = await _firestore
+              .collection(FirestorePaths.families)
+              .doc(familyId)
+              .collection(FirestorePaths.recipes)
+              .doc(entityId)
+              .get();
+          if (famDoc.exists && famDoc.data() != null) {
+            remoteDoc = famDoc;
+          }
+        }
+        if (remoteDoc == null) {
+          final userDoc = await _firestore
+              .collection(FirestorePaths.users)
+              .doc(_userId)
+              .collection(FirestorePaths.recipes)
+              .doc(entityId)
+              .get();
+          if (userDoc.exists && userDoc.data() != null) {
+            remoteDoc = userDoc;
+          }
+        }
+      } catch (_) {}
+
+      if (remoteDoc != null && remoteDoc.data() != null) {
+        final remoteRecipe = Recipe.fromFirestore(
+          remoteDoc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false);
+        await _localDataSource.saveRecipe(remoteRecipe);
+        return;
+      }
+
+      final localRecipe = _localDataSource
+          .getRecipes()
+          .where((r) => r.id == entityId)
+          .firstOrNull;
+      if (localRecipe != null && localRecipe.hasPendingWrites) {
+        await _localDataSource.saveRecipe(
+          localRecipe.copyWith(hasPendingWrites: false),
+        );
       }
     }
   }
