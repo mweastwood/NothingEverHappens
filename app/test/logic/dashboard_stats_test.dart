@@ -1604,5 +1604,170 @@ void main() {
         expect(bobStats.completedHours, 1.0);
       },
     );
+
+    testWidgets(
+      'familyLastWeekStatsProvider excludes future-dated skipped and uncompleted future instances from 7-day summary totals and memberStats while preserving 13-day dailyStats',
+      (tester) async {
+        const dayPastCompleted = CivilDay(year: 2026, month: 7, day: 9);
+        const dayPastSkipped = CivilDay(year: 2026, month: 7, day: 8);
+        const dayFutureCapacitySkipped = CivilDay(
+          year: 2026,
+          month: 7,
+          day: 12,
+        );
+        const dayFutureEarlyCompleted = CivilDay(year: 2026, month: 7, day: 13);
+        const dayFutureScheduledCompleted = CivilDay(
+          year: 2026,
+          month: 7,
+          day: 14,
+        );
+
+        final instances = [
+          TaskInstance(
+            id: 'i-past-completed',
+            scheduleId: scheduleAnyone.id,
+            ruleId: 'r-1',
+            title: 'Shared Anyone Chore',
+            description: '',
+            scheduledDate: dayPastCompleted,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedByUserId: 'user-alice',
+            completedAt: DateTime(2026, 7, 9, 15, 0),
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          ),
+          TaskInstance(
+            id: 'i-past-skipped',
+            scheduleId: scheduleAnyone.id,
+            ruleId: 'r-1',
+            title: 'Shared Anyone Chore',
+            description: '',
+            scheduledDate: dayPastSkipped,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            assignedUserId: 'user-bob',
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          ),
+          TaskInstance(
+            id: 'i-future-capacity-skipped',
+            scheduleId: scheduleAnyone.id,
+            ruleId: 'r-1',
+            title: 'Shared Anyone Chore',
+            description: '',
+            scheduledDate: dayFutureCapacitySkipped,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            statusReason: 'scheduler_capacity_limit',
+            assignedUserId: 'user-bob',
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          ),
+          TaskInstance(
+            id: 'i-future-early-completed',
+            scheduleId: scheduleAnyone.id,
+            ruleId: 'r-1',
+            title: 'Shared Anyone Chore',
+            description: '',
+            scheduledDate: dayFutureEarlyCompleted,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedByUserId: 'user-bob',
+            completedAt: DateTime(2026, 7, 10, 10, 0), // completed today
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          ),
+          TaskInstance(
+            id: 'i-future-scheduled-completed',
+            scheduleId: scheduleAnyone.id,
+            ruleId: 'r-1',
+            title: 'Shared Anyone Chore',
+            description: '',
+            scheduledDate: dayFutureScheduledCompleted,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedByUserId: 'user-alice',
+            // No completedAt within past week (e.g., future or null)
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          ),
+        ];
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleAnyone,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
+          instances,
+        );
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+        });
+
+        late FamilyLastWeekStats? familyStats;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              familyProfileStreamProvider.overrideWith(
+                (ref) => profileSubject.stream,
+              ),
+              familyStreamProvider(
+                'fam-100',
+              ).overrideWith((ref) => familySubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                familyStats = ref.watch(familyLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(familyStats, isNotNull);
+
+        // 13-day timeline is preserved for the chart
+        expect(familyStats!.dailyStats.length, 13);
+
+        // Summary totals only include past 7 days + future tasks completed within past 7 days:
+        // Completed: i-past-completed (Alice, 1h) + i-future-early-completed (Bob, 1h, completed today) = 2 tasks, 2.0h
+        // i-future-scheduled-completed (on today + 4 with no past-week completedAt) is excluded from 7-day totals.
+        expect(familyStats!.totalCompletedCount, 2);
+        expect(familyStats!.totalCompletedHours, 2.0);
+
+        // Skipped: only i-past-skipped (1), NOT i-future-capacity-skipped on today + 2
+        expect(familyStats!.totalSkippedCount, 1);
+        expect(familyStats!.totalMissedCount, 0);
+        expect(familyStats!.completionRate, closeTo(2 / 3, 0.0001));
+
+        final aliceStats = familyStats!.memberStats.firstWhere(
+          (m) => m.userId == 'user-alice',
+        );
+        final bobStats = familyStats!.memberStats.firstWhere(
+          (m) => m.userId == 'user-bob',
+        );
+
+        expect(aliceStats.completedCount, 1);
+        expect(aliceStats.completedHours, 1.0);
+        expect(aliceStats.skippedCount, 0);
+
+        expect(bobStats.completedCount, 1);
+        expect(bobStats.completedHours, 1.0);
+        expect(bobStats.skippedCount, 1);
+      },
+    );
   });
 }
