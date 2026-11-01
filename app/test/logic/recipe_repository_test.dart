@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -573,6 +574,80 @@ void main() {
           .get();
       expect(userDocAfterDelete.exists, isFalse);
       expect(localDataSource.getDirtyTaskIds(), isEmpty);
+    },
+  );
+
+  test(
+    'RecipeRepository with active TaskSyncService delegates saveRecipe and deleteRecipe to syncService.sync()',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      final syncService = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(syncService.dispose);
+
+      final repo = RecipeRepository(
+        localDataSource: localDataSource,
+        firestore: firestore,
+        userId: 'user1',
+        isActivePremium: true,
+        familyId: 'fam1',
+        syncService: syncService,
+      );
+
+      final recipe = Recipe(
+        id: 'R-delegated',
+        title: 'Delegated Family Recipe',
+        isFamily: true,
+      );
+      await repo.saveRecipe(recipe);
+
+      expect(repo.getRecipeById('R-delegated')!.hasPendingWrites, isFalse);
+      expect(localDataSource.getDirtyTaskIds(), isEmpty);
+
+      final famDoc = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('recipes')
+          .doc('R-delegated')
+          .get();
+      expect(famDoc.exists, isTrue);
+      expect(famDoc.data()?['title'], 'Delegated Family Recipe');
+
+      // Convert to personal via delegated sync
+      await repo.saveRecipe(recipe.copyWith(isFamily: false));
+      final famDocAfterConvert = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('recipes')
+          .doc('R-delegated')
+          .get();
+      expect(famDocAfterConvert.exists, isFalse);
+      final userDocAfterConvert = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('recipes')
+          .doc('R-delegated')
+          .get();
+      expect(userDocAfterConvert.exists, isTrue);
+
+      // Delete via delegated sync
+      await repo.deleteRecipe('R-delegated');
+      expect(repo.getRecipeById('R-delegated'), isNull);
+      expect(localDataSource.getDirtyTaskIds(), isEmpty);
+      final userDocAfterDelete = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('recipes')
+          .doc('R-delegated')
+          .get();
+      expect(userDocAfterDelete.exists, isFalse);
     },
   );
 }
