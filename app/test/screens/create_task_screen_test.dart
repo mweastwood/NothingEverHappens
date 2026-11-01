@@ -2146,5 +2146,115 @@ void main() {
       expect(savedSchedule, isNotNull);
       expect(savedSchedule!.labelIds, contains('lbl-work'));
     });
+
+    testWidgets(
+      'CreateTaskScreen defaultToRepeating after 17:00 defaults startRelativeTime to 09:00 so start <= due',
+      (WidgetTester tester) async {
+        AppClock.setMockTime(DateTime(2026, 3, 8, 20, 30));
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        TaskSchedule? savedSchedule;
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          savedSchedule = invocation.positionalArguments[0] as TaskSchedule;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(defaultToRepeating: true),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Evening Repeating Task',
+        );
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.addTaskSchedule(any)).called(1);
+        expect(savedSchedule, isNotNull);
+        final rule = savedSchedule!.schedules.single;
+        expect(
+          rule.startRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        );
+        expect(
+          rule.dueRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        );
+        expect(
+          rule.startRelativeTime.inMinutes <= rule.dueRelativeTime.inMinutes,
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'CreateTaskScreen blocks saving when WeeklySchedule has empty daysOfWeek',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final existingTask = TaskSchedule(
+          id: 'S-weekly-empty',
+          title: 'Weekly Task',
+          description: '',
+          schedules: [
+            WeeklySchedule(
+              id: 'R-weekly-1',
+              scheduleId: 'S-weekly-empty',
+              startDate: const CivilDay(year: 2026, month: 3, day: 8),
+              interval: 1,
+              daysOfWeek: const {1},
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: CreateTaskScreen(taskToEdit: existingTask),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Clear button on DayOfWeekSelector
+        final clearButton = find.byKey(const Key('preset_clear_button'));
+        await tester.ensureVisible(clearButton);
+        await tester.tap(clearButton);
+        await tester.pumpAndSettle();
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verifyNever(mockRepository.updateTaskSchedule(any));
+        expect(
+          find.text('Please select at least one day of the week'),
+          findsWidgets,
+        );
+      },
+    );
   });
 }

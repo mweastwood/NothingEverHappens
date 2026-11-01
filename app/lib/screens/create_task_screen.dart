@@ -133,6 +133,25 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         return;
       }
 
+      for (final s in formState.schedules) {
+        if (s is WeeklySchedule &&
+            s.schedulingPolicy is! CompletionRelativePolicy &&
+            s.daysOfWeek.isEmpty) {
+          AppSnackBar.show(
+            context,
+            content: Text(l10n.selectAtLeastOneDayError),
+          );
+          return;
+        }
+      }
+
+      final normalizedSchedules = formState.schedules.map((s) {
+        if (s.startRelativeTime.inMinutes > s.dueRelativeTime.inMinutes) {
+          return s.copyWithTiming(startRelativeTime: s.dueRelativeTime);
+        }
+        return s;
+      }).toList();
+
       final minutesText = _estimatedDurationController.text.trim();
       final minutes = minutesText.isNotEmpty ? int.tryParse(minutesText) : null;
       final estimatedDuration = minutes != null
@@ -185,7 +204,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           id: formState.taskScheduleId,
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
-          schedules: formState.schedules,
+          schedules: normalizedSchedules,
           estimatedDuration: estimatedDuration,
           isMaster:
               hasRepeating &&
@@ -216,7 +235,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             final modification = widget.taskToEdit!.edit(
               newTitle: _titleController.text.trim(),
               newDescription: _descriptionController.text.trim(),
-              newSchedules: formState.schedules,
+              newSchedules: normalizedSchedules,
               newEstimatedDuration: estimatedDuration,
               newMissedPolicy: hasRepeating
                   ? firstLegacyPolicy

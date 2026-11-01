@@ -57,6 +57,9 @@ class RelativeTime {
   /// Total minutes from midnight within the current day offset.
   int get minutes => hour * 60 + minute;
 
+  /// Total minutes relative to midnight of the reference day (`dayOffset * 1440 + minutes`).
+  int get inMinutes => dayOffset * 1440 + minutes;
+
   Map<String, dynamic> toJson() {
     return {
       'dayOffset': dayOffset,
