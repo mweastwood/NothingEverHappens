@@ -13,6 +13,7 @@ void main() {
       description: 'Daily dinner workflow',
       workflowType: 'mealWorkflow',
       mealWorkflowConfig: const MealWorkflowConfig(),
+      labelIds: const ['label-food', 'label-family'],
     );
 
     final testDay = CivilDay(year: 2026, month: 8, day: 16);
@@ -93,6 +94,7 @@ void main() {
           (i) => i.workflowPayload?.stage == WorkflowStage.shoppingList,
         );
         expect(shop.title, 'Shop: Tomato Basil Pasta');
+        expect(shop.labelIds, equals(const ['label-food', 'label-family']));
         expect(shop.workflowPayload?.shoppingItems.length, 2);
         // Scaled 400g * (6/4) = 600g
         expect(shop.workflowPayload?.shoppingItems.first.quantity, 600.0);
@@ -102,6 +104,7 @@ void main() {
           (i) => i.workflowPayload?.stage == WorkflowStage.prepDinner,
         );
         expect(prep.title, 'Prep & Cook: Tomato Basil Pasta');
+        expect(prep.labelIds, equals(const ['label-food', 'label-family']));
         expect(prep.workflowPayload?.recipeId, 'R-pasta');
       },
     );
@@ -123,6 +126,28 @@ void main() {
         expect(prep.workflowPayload?.stage, WorkflowStage.prepDinner);
         expect(prep.title, 'Reheat Leftovers');
         expect(prep.description, 'Lasagna in fridge');
+        expect(prep.labelIds, equals(const ['label-food', 'label-family']));
+      },
+    );
+
+    test(
+      'processMealSelection for Delivery spawns Stage 3 Order Delivery with schedule labelIds',
+      () {
+        final selectInstance = createSelectInstance();
+
+        final results = MealWorkflowEngine.processMealSelection(
+          schedule: schedule,
+          selectInstance: selectInstance,
+          selectedOption: MealSelectionOption.delivery,
+          customNote: 'Thai place',
+        );
+
+        expect(results.length, 1);
+        final prep = results.first;
+        expect(prep.workflowPayload?.stage, WorkflowStage.prepDinner);
+        expect(prep.title, 'Order Delivery');
+        expect(prep.description, 'Order dinner delivery (Thai place)');
+        expect(prep.labelIds, equals(const ['label-food', 'label-family']));
       },
     );
 

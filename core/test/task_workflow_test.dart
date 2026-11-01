@@ -467,4 +467,216 @@ void main() {
       expect(unchanged.customMealNote, original.customMealNote);
     });
   });
+
+  group('SchedulerEngine MealWorkflow Stage Deduplication', () {
+    const engine = SchedulerEngine();
+    const today = CivilDay(year: 2026, month: 8, day: 16);
+    final now = DateTime.utc(2026, 8, 16, 12, 0);
+
+    TaskInstance buildStageInstance({
+      required String id,
+      required String scheduleId,
+      required String ruleId,
+      required CivilDay date,
+      required WorkflowStage stage,
+      required TaskStatus status,
+      required DateTime updatedAt,
+      DateTime? completedAt,
+    }) {
+      return TaskInstance(
+        id: id,
+        scheduleId: scheduleId,
+        ruleId: ruleId,
+        title: 'Stage ${stage.name}',
+        description: 'Desc',
+        scheduledDate: date,
+        startRelativeTime:
+            const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+        status: status,
+        completedAt: completedAt,
+        updatedAt: updatedAt,
+        workflowPayload: WorkflowInstancePayload(
+          workflowType: 'mealWorkflow',
+          stage: stage,
+          workflowGroupId: '$scheduleId-${date.year}-${date.month}-${date.day}',
+        ),
+      );
+    }
+
+    test(
+      'fixed-calendar rule preserves selectMeal, shoppingList, and prepDinner on the same date while deleting true same-stage duplicates',
+      () {
+        final schedule = TaskSchedule(
+          id: 'S-meal-daily',
+          title: 'Daily Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(),
+          schedules: [
+            DailySchedule(
+              id: 'R-daily',
+              startDate: today,
+              interval: 1,
+              startRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+              dueRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+            ),
+          ],
+        );
+
+        final selectInst = buildStageInstance(
+          id: 'I-select',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily',
+          date: today,
+          stage: WorkflowStage.selectMeal,
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 10, 5),
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+        final shopInst = buildStageInstance(
+          id: 'I-shop',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily',
+          date: today,
+          stage: WorkflowStage.shoppingList,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+        final shopDuplicate = buildStageInstance(
+          id: 'I-shop-dup',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily',
+          date: today,
+          stage: WorkflowStage.shoppingList,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 4),
+        );
+        final prepInst = buildStageInstance(
+          id: 'I-prep',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily',
+          date: today,
+          stage: WorkflowStage.prepDinner,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+
+        final action = engine.evaluate(
+          schedule,
+          [selectInst, shopInst, shopDuplicate, prepInst],
+          now,
+          utcOffset: Duration.zero,
+        );
+
+        expect(action.instancesToDelete, equals(['I-shop-dup']));
+        expect(action.instancesToDelete, isNot(contains('I-select')));
+        expect(action.instancesToDelete, isNot(contains('I-shop')));
+        expect(action.instancesToDelete, isNot(contains('I-prep')));
+      },
+    );
+
+    test(
+      'completion-relative rule preserves pending sibling workflow stages and waits until all stages complete before spawning next occurrence',
+      () {
+        final schedule = TaskSchedule(
+          id: 'S-meal-rel',
+          title: 'Flexible Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(),
+          schedules: [
+            DailySchedule(
+              id: 'R-rel',
+              startDate: today,
+              interval: 1,
+              startRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+              dueRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 1),
+                targetHour: 10,
+                targetMinute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final selectInst = buildStageInstance(
+          id: 'I-select',
+          scheduleId: schedule.id,
+          ruleId: 'R-rel',
+          date: today,
+          stage: WorkflowStage.selectMeal,
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 10, 5),
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+        final shopInst = buildStageInstance(
+          id: 'I-shop',
+          scheduleId: schedule.id,
+          ruleId: 'R-rel',
+          date: today,
+          stage: WorkflowStage.shoppingList,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 6),
+        );
+        final prepInst = buildStageInstance(
+          id: 'I-prep',
+          scheduleId: schedule.id,
+          ruleId: 'R-rel',
+          date: today,
+          stage: WorkflowStage.prepDinner,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+
+        // Even if evaluated the next day after interval elapsed, pending shop/prep
+        // must not be deleted and must block spawning a new occurrence.
+        final nextDayNow = DateTime.utc(2026, 8, 17, 20, 0);
+        final whilePendingAction = engine.evaluate(
+          schedule,
+          [selectInst, shopInst, prepInst],
+          nextDayNow,
+          utcOffset: Duration.zero,
+        );
+
+        expect(whilePendingAction.instancesToDelete, isEmpty);
+        expect(whilePendingAction.instancesToSpawn, isEmpty);
+
+        // Once both shop and prep are completed and interval has passed, spawn next selectMeal.
+        final completedShop = shopInst.copyWith(
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 16, 0),
+          updatedAt: DateTime.utc(2026, 8, 16, 16, 0),
+        );
+        final completedPrep = prepInst.copyWith(
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 19, 0),
+          updatedAt: DateTime.utc(2026, 8, 16, 19, 0),
+        );
+
+        final afterCompletedAction = engine.evaluate(
+          schedule,
+          [selectInst, completedShop, completedPrep],
+          nextDayNow,
+          utcOffset: Duration.zero,
+        );
+
+        expect(afterCompletedAction.instancesToDelete, isEmpty);
+        expect(afterCompletedAction.instancesToSpawn, hasLength(1));
+        expect(
+          afterCompletedAction.instancesToSpawn.first.workflowPayload?.stage,
+          WorkflowStage.selectMeal,
+        );
+        expect(
+          afterCompletedAction.instancesToSpawn.first.scheduledDate,
+          const CivilDay(year: 2026, month: 8, day: 17),
+        );
+      },
+    );
+  });
 }
