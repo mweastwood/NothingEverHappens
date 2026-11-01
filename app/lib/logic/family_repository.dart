@@ -263,6 +263,46 @@ class FamilyRepository {
     }
   }
 
+  Future<void> _migrateSubcollectionToPersonal(
+    DocumentReference<Map<String, dynamic>> familyRef,
+    String subcollection,
+    List<void Function(WriteBatch)> ops,
+    void Function(Map<String, dynamic> data) transform,
+  ) async {
+    final snap = await familyRef.collection(subcollection).get();
+    final userCol = _firestore
+        .collection(FirestorePaths.users)
+        .doc(_userId)
+        .collection(subcollection);
+    for (final doc in snap.docs) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['isFamily'] = false;
+      transform(data);
+      final userDocRef = userCol.doc(doc.id);
+      final docRef = doc.reference;
+      ops.add((b) => b.set(userDocRef, data));
+      ops.add((b) => b.delete(docRef));
+    }
+  }
+
+  Future<void> _unassignUserInSubcollection(
+    DocumentReference<Map<String, dynamic>> familyRef,
+    String subcollection,
+    Timestamp nowTs,
+    List<void Function(WriteBatch)> ops,
+  ) async {
+    final snap = await familyRef
+        .collection(subcollection)
+        .where('assignedUserId', isEqualTo: _userId)
+        .get();
+    for (final doc in snap.docs) {
+      final docRef = doc.reference;
+      ops.add(
+        (b) => b.update(docRef, {'assignedUserId': null, 'updatedAt': nowTs}),
+      );
+    }
+  }
+
   Future<void> leaveFamily(
     String familyId, {
     WriteBatch? batch,
@@ -294,102 +334,54 @@ class FamilyRepository {
       final nowIso = nowUtc.toIso8601String();
 
       if (remainingMembers.isEmpty) {
-        final tasksSnap = await familyRef
-            .collection(FirestorePaths.tasks)
-            .get();
-        for (final doc in tasksSnap.docs) {
-          final data = Map<String, dynamic>.from(doc.data());
-          data['isFamily'] = false;
-          data['assignedUserId'] = null;
-          data['updatedAt'] = nowTs;
-          final userDocRef = _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.tasks)
-              .doc(doc.id);
-          final docRef = doc.reference;
-          ops.add((b) => b.set(userDocRef, data));
-          ops.add((b) => b.delete(docRef));
-        }
-
-        final instancesSnap = await familyRef
-            .collection(FirestorePaths.instances)
-            .get();
-        for (final doc in instancesSnap.docs) {
-          final data = Map<String, dynamic>.from(doc.data());
-          data['isFamily'] = false;
-          data['assignedUserId'] = null;
-          data['updatedAt'] = nowTs;
-          final userDocRef = _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.instances)
-              .doc(doc.id);
-          final docRef = doc.reference;
-          ops.add((b) => b.set(userDocRef, data));
-          ops.add((b) => b.delete(docRef));
-        }
-
-        final recipesSnap = await familyRef
-            .collection(FirestorePaths.recipes)
-            .get();
-        for (final doc in recipesSnap.docs) {
-          final data = Map<String, dynamic>.from(doc.data());
-          data['isFamily'] = false;
-          data['updatedAt'] = nowTs;
-          final userDocRef = _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.recipes)
-              .doc(doc.id);
-          final docRef = doc.reference;
-          ops.add((b) => b.set(userDocRef, data));
-          ops.add((b) => b.delete(docRef));
-        }
-
-        final labelsSnap = await familyRef
-            .collection(FirestorePaths.labels)
-            .get();
-        for (final doc in labelsSnap.docs) {
-          final data = Map<String, dynamic>.from(doc.data());
-          data['isFamily'] = false;
-          data['scope'] = 'personal';
-          data['updatedAt'] = nowIso;
-          final userDocRef = _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.labels)
-              .doc(doc.id);
-          final docRef = doc.reference;
-          ops.add((b) => b.set(userDocRef, data));
-          ops.add((b) => b.delete(docRef));
-        }
+        await _migrateSubcollectionToPersonal(
+          familyRef,
+          FirestorePaths.tasks,
+          ops,
+          (data) {
+            data['assignedUserId'] = null;
+            data['updatedAt'] = nowTs;
+          },
+        );
+        await _migrateSubcollectionToPersonal(
+          familyRef,
+          FirestorePaths.instances,
+          ops,
+          (data) {
+            data['assignedUserId'] = null;
+            data['updatedAt'] = nowTs;
+          },
+        );
+        await _migrateSubcollectionToPersonal(
+          familyRef,
+          FirestorePaths.recipes,
+          ops,
+          (data) => data['updatedAt'] = nowTs,
+        );
+        await _migrateSubcollectionToPersonal(
+          familyRef,
+          FirestorePaths.labels,
+          ops,
+          (data) {
+            data['scope'] = 'personal';
+            data['updatedAt'] = nowIso;
+          },
+        );
 
         ops.add((b) => b.delete(familyRef));
       } else {
-        final assignedTasksSnap = await familyRef
-            .collection(FirestorePaths.tasks)
-            .where('assignedUserId', isEqualTo: _userId)
-            .get();
-        for (final doc in assignedTasksSnap.docs) {
-          final docRef = doc.reference;
-          ops.add(
-            (b) =>
-                b.update(docRef, {'assignedUserId': null, 'updatedAt': nowTs}),
-          );
-        }
-
-        final assignedInstancesSnap = await familyRef
-            .collection(FirestorePaths.instances)
-            .where('assignedUserId', isEqualTo: _userId)
-            .get();
-        for (final doc in assignedInstancesSnap.docs) {
-          final docRef = doc.reference;
-          ops.add(
-            (b) =>
-                b.update(docRef, {'assignedUserId': null, 'updatedAt': nowTs}),
-          );
-        }
+        await _unassignUserInSubcollection(
+          familyRef,
+          FirestorePaths.tasks,
+          nowTs,
+          ops,
+        );
+        await _unassignUserInSubcollection(
+          familyRef,
+          FirestorePaths.instances,
+          nowTs,
+          ops,
+        );
 
         ops.add(
           (b) => b.update(familyRef, {'members.$_userId': FieldValue.delete()}),

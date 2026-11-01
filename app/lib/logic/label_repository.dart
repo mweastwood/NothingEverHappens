@@ -61,9 +61,10 @@ class LabelRepository {
   LabelRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  Stream<List<TaskLabel>> watchPersonalLabels(String userId) {
-    if (userId.isEmpty) return Stream.value(const []);
-    return FirestoreCollections.userLabels(_firestore, userId).snapshots().map(
+  Stream<List<TaskLabel>> _watchLabels(
+    CollectionReference<TaskLabel> collection,
+  ) {
+    return collection.snapshots().map(
       (snapshot) =>
           snapshot.docs.map((doc) => doc.data()).toList()..sort((a, b) {
             final orderComparison = a.order.compareTo(b.order);
@@ -73,88 +74,83 @@ class LabelRepository {
     );
   }
 
+  Future<void> _reorderLabels(
+    CollectionReference<TaskLabel> collection,
+    List<TaskLabel> reorderedLabels,
+  ) async {
+    final batch = _firestore.batch();
+    for (var i = 0; i < reorderedLabels.length; i++) {
+      final label = reorderedLabels[i];
+      if (label.order != i) {
+        batch.set(
+          collection.doc(label.id),
+          label.copyWith(order: i, updatedAt: DateTime.now().toUtc()),
+          SetOptions(merge: true),
+        );
+      }
+    }
+    await batch.commit();
+  }
+
+  Future<void> _saveLabel(
+    CollectionReference<TaskLabel> collection,
+    TaskLabel label,
+  ) async {
+    await collection.doc(label.id).set(label, SetOptions(merge: true));
+  }
+
+  Future<void> _deleteLabel(
+    CollectionReference<TaskLabel> collection,
+    String labelId,
+  ) async {
+    await collection.doc(labelId).delete();
+  }
+
+  Stream<List<TaskLabel>> watchPersonalLabels(String userId) {
+    if (userId.isEmpty) return Stream.value(const []);
+    return _watchLabels(FirestoreCollections.userLabels(_firestore, userId));
+  }
+
   Stream<List<TaskLabel>> watchFamilyLabels(String familyId) {
     if (familyId.isEmpty) return Stream.value(const []);
-    return FirestoreCollections.familyLabels(
-      _firestore,
-      familyId,
-    ).snapshots().map(
-      (snapshot) =>
-          snapshot.docs.map((doc) => doc.data()).toList()..sort((a, b) {
-            final orderComparison = a.order.compareTo(b.order);
-            if (orderComparison != 0) return orderComparison;
-            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-          }),
+    return _watchLabels(
+      FirestoreCollections.familyLabels(_firestore, familyId),
     );
   }
 
   Future<void> reorderPersonalLabels(
     String userId,
     List<TaskLabel> reorderedLabels,
-  ) async {
-    final batch = _firestore.batch();
-    final collection = FirestoreCollections.userLabels(_firestore, userId);
-    for (var i = 0; i < reorderedLabels.length; i++) {
-      final label = reorderedLabels[i];
-      if (label.order != i) {
-        batch.set(
-          collection.doc(label.id),
-          label.copyWith(order: i, updatedAt: DateTime.now().toUtc()),
-          SetOptions(merge: true),
-        );
-      }
-    }
-    await batch.commit();
-  }
+  ) => _reorderLabels(
+    FirestoreCollections.userLabels(_firestore, userId),
+    reorderedLabels,
+  );
 
   Future<void> reorderFamilyLabels(
     String familyId,
     List<TaskLabel> reorderedLabels,
-  ) async {
-    final batch = _firestore.batch();
-    final collection = FirestoreCollections.familyLabels(_firestore, familyId);
-    for (var i = 0; i < reorderedLabels.length; i++) {
-      final label = reorderedLabels[i];
-      if (label.order != i) {
-        batch.set(
-          collection.doc(label.id),
-          label.copyWith(order: i, updatedAt: DateTime.now().toUtc()),
-          SetOptions(merge: true),
-        );
-      }
-    }
-    await batch.commit();
-  }
+  ) => _reorderLabels(
+    FirestoreCollections.familyLabels(_firestore, familyId),
+    reorderedLabels,
+  );
 
-  Future<void> savePersonalLabel(String userId, TaskLabel label) async {
-    final docRef = FirestoreCollections.userLabels(
-      _firestore,
-      userId,
-    ).doc(label.id);
-    await docRef.set(label, SetOptions(merge: true));
-  }
+  Future<void> savePersonalLabel(String userId, TaskLabel label) =>
+      _saveLabel(FirestoreCollections.userLabels(_firestore, userId), label);
 
-  Future<void> deletePersonalLabel(String userId, String labelId) async {
-    final docRef = FirestoreCollections.userLabels(
-      _firestore,
-      userId,
-    ).doc(labelId);
-    await docRef.delete();
-  }
+  Future<void> deletePersonalLabel(String userId, String labelId) =>
+      _deleteLabel(
+        FirestoreCollections.userLabels(_firestore, userId),
+        labelId,
+      );
 
-  Future<void> saveFamilyLabel(String familyId, TaskLabel label) async {
-    final docRef = FirestoreCollections.familyLabels(
-      _firestore,
-      familyId,
-    ).doc(label.id);
-    await docRef.set(label, SetOptions(merge: true));
-  }
+  Future<void> saveFamilyLabel(String familyId, TaskLabel label) => _saveLabel(
+    FirestoreCollections.familyLabels(_firestore, familyId),
+    label,
+  );
 
-  Future<void> deleteFamilyLabel(String familyId, String labelId) async {
-    final docRef = FirestoreCollections.familyLabels(
-      _firestore,
-      familyId,
-    ).doc(labelId);
-    await docRef.delete();
-  }
+  Future<void> deleteFamilyLabel(String familyId, String labelId) =>
+      _deleteLabel(
+        FirestoreCollections.familyLabels(_firestore, familyId),
+        labelId,
+      );
 }
