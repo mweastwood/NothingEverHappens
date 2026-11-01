@@ -401,27 +401,49 @@ class HiveLocalDataSource {
     onEmit();
   }
 
+  Future<void> _saveEntities<T>({
+    required List<T> items,
+    required Map<String, T> memoryMap,
+    required Box<Map>? box,
+    required String Function(T) idOf,
+    required T Function(T) normalize,
+    required Map<String, dynamic> Function(T) serialize,
+    required void Function() onEmit,
+  }) async {
+    if (items.isEmpty) return;
+    _isWritingInternally = true;
+    try {
+      final normalizedItems = items.map(normalize).toList();
+      for (final item in normalizedItems) {
+        memoryMap[idOf(item)] = item;
+      }
+      if (box != null && box.isOpen) {
+        final entries = <String, Map<String, dynamic>>{};
+        for (final item in normalizedItems) {
+          entries[idOf(item)] = serialize(item);
+        }
+        await box.putAll(entries);
+      }
+    } finally {
+      _isWritingInternally = false;
+    }
+    onEmit();
+  }
+
   Future<void> saveTask(TaskSchedule task) async {
     await saveTasks([task]);
   }
 
-  Future<void> saveTasks(List<TaskSchedule> tasks) async {
-    if (tasks.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      final normalizedTasks = tasks.map((task) {
-        if (task.updatedAt.isUtc) {
-          return task;
-        }
-        return task.copyWith(updatedAt: task.updatedAt.toUtc());
-      }).toList();
-
-      for (final task in normalizedTasks) {
-        _memTasks[task.id] = task;
-      }
-      if (_tasksBox != null && _tasksBox!.isOpen) {
-        final entries = <String, Map<String, dynamic>>{};
-        for (final task in normalizedTasks) {
+  Future<void> saveTasks(List<TaskSchedule> tasks) =>
+      _saveEntities<TaskSchedule>(
+        items: tasks,
+        memoryMap: _memTasks,
+        box: _tasksBox,
+        idOf: (task) => task.id,
+        normalize: (task) => task.updatedAt.isUtc
+            ? task
+            : task.copyWith(updatedAt: task.updatedAt.toUtc()),
+        serialize: (task) {
           final data = task.toFirestore();
           data['id'] = task.id;
           if (data['updatedAt'] is DateTime) {
@@ -429,15 +451,10 @@ class HiveLocalDataSource {
                 .toUtc()
                 .toIso8601String();
           }
-          entries[task.id] = data;
-        }
-        await _tasksBox!.putAll(entries);
-      }
-    } finally {
-      _isWritingInternally = false;
-    }
-    _emitTasks();
-  }
+          return data;
+        },
+        onEmit: _emitTasks,
+      );
 
   Future<void> deleteTask(String id) async {
     await deleteTasks([id]);
@@ -454,27 +471,23 @@ class HiveLocalDataSource {
     await saveInstances([instance]);
   }
 
-  Future<void> saveInstances(List<TaskInstance> instances) async {
-    if (instances.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      final normalizedInstances = instances.map((instance) {
-        if (instance.updatedAt.isUtc &&
-            (instance.completedAt == null || instance.completedAt!.isUtc)) {
-          return instance;
-        }
-        return instance.copyWith(
-          updatedAt: instance.updatedAt.toUtc(),
-          completedAt: instance.completedAt?.toUtc(),
-        );
-      }).toList();
-
-      for (final instance in normalizedInstances) {
-        _memInstances[instance.id] = instance;
-      }
-      if (_instancesBox != null && _instancesBox!.isOpen) {
-        final entries = <String, Map<String, dynamic>>{};
-        for (final instance in normalizedInstances) {
+  Future<void> saveInstances(List<TaskInstance> instances) =>
+      _saveEntities<TaskInstance>(
+        items: instances,
+        memoryMap: _memInstances,
+        box: _instancesBox,
+        idOf: (instance) => instance.id,
+        normalize: (instance) {
+          if (instance.updatedAt.isUtc &&
+              (instance.completedAt == null || instance.completedAt!.isUtc)) {
+            return instance;
+          }
+          return instance.copyWith(
+            updatedAt: instance.updatedAt.toUtc(),
+            completedAt: instance.completedAt?.toUtc(),
+          );
+        },
+        serialize: (instance) {
           final data = instance.toFirestore();
           data['id'] = instance.id;
           if (data['updatedAt'] is DateTime) {
@@ -487,15 +500,10 @@ class HiveLocalDataSource {
                 .toUtc()
                 .toIso8601String();
           }
-          entries[instance.id] = data;
-        }
-        await _instancesBox!.putAll(entries);
-      }
-    } finally {
-      _isWritingInternally = false;
-    }
-    _emitInstances();
-  }
+          return data;
+        },
+        onEmit: _emitInstances,
+      );
 
   Future<void> deleteInstance(String id) async {
     await deleteInstances([id]);
@@ -520,25 +528,15 @@ class HiveLocalDataSource {
     await saveRecipes([recipe]);
   }
 
-  Future<void> saveRecipes(List<Recipe> recipes) async {
-    if (recipes.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      for (final recipe in recipes) {
-        _memRecipes[recipe.id] = recipe;
-      }
-      if (_recipesBox != null && _recipesBox!.isOpen) {
-        final entries = <String, Map<String, dynamic>>{};
-        for (final recipe in recipes) {
-          entries[recipe.id] = recipe.toJson();
-        }
-        await _recipesBox!.putAll(entries);
-      }
-    } finally {
-      _isWritingInternally = false;
-    }
-    _emitRecipes();
-  }
+  Future<void> saveRecipes(List<Recipe> recipes) => _saveEntities<Recipe>(
+    items: recipes,
+    memoryMap: _memRecipes,
+    box: _recipesBox,
+    idOf: (recipe) => recipe.id,
+    normalize: (recipe) => recipe,
+    serialize: (recipe) => recipe.toJson(),
+    onEmit: _emitRecipes,
+  );
 
   Future<void> deleteRecipe(String id) async {
     await deleteRecipes([id]);

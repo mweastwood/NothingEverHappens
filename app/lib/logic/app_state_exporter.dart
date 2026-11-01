@@ -463,86 +463,31 @@ class AppStateExporter {
       final userDocRef = _firestore.collection(FirestorePaths.users).doc(uid);
 
       // Probe A: Server get()
-      final serverGetWatch = Stopwatch()..start();
-      try {
-        final snap = await userDocRef
-            .get(const GetOptions(source: Source.server))
-            .timeout(const Duration(seconds: 4));
-        firestoreProbes['serverGet'] = {
-          'success': true,
-          'durationMs': serverGetWatch.elapsedMilliseconds,
-          'exists': snap.exists,
-        };
-      } catch (e) {
-        firestoreProbes['serverGet'] = {
-          'success': false,
-          'durationMs': serverGetWatch.elapsedMilliseconds,
-          'error': e.toString(),
-          'errorType': e.runtimeType.toString(),
-        };
-      }
+      firestoreProbes['serverGet'] = await _runTimedProbe(
+        () => userDocRef.get(const GetOptions(source: Source.server)),
+        (snap) => {'exists': snap.exists},
+      );
 
       // Probe B: Cache get()
-      final cacheGetWatch = Stopwatch()..start();
-      try {
-        final snap = await userDocRef
-            .get(const GetOptions(source: Source.cache))
-            .timeout(const Duration(seconds: 4));
-        firestoreProbes['cacheGet'] = {
-          'success': true,
-          'durationMs': cacheGetWatch.elapsedMilliseconds,
-          'exists': snap.exists,
-        };
-      } catch (e) {
-        firestoreProbes['cacheGet'] = {
-          'success': false,
-          'durationMs': cacheGetWatch.elapsedMilliseconds,
-          'error': e.toString(),
-          'errorType': e.runtimeType.toString(),
-        };
-      }
+      firestoreProbes['cacheGet'] = await _runTimedProbe(
+        () => userDocRef.get(const GetOptions(source: Source.cache)),
+        (snap) => {'exists': snap.exists},
+      );
 
       // Probe C: snapshots().first
-      final streamWatch = Stopwatch()..start();
-      try {
-        final snap = await userDocRef.snapshots().first.timeout(
-          const Duration(seconds: 4),
-        );
-        firestoreProbes['snapshotStream'] = {
-          'success': true,
-          'durationMs': streamWatch.elapsedMilliseconds,
-          'exists': snap.exists,
-        };
-      } catch (e) {
-        firestoreProbes['snapshotStream'] = {
-          'success': false,
-          'durationMs': streamWatch.elapsedMilliseconds,
-          'error': e.toString(),
-          'errorType': e.runtimeType.toString(),
-        };
-      }
+      firestoreProbes['snapshotStream'] = await _runTimedProbe(
+        () => userDocRef.snapshots().first,
+        (snap) => {'exists': snap.exists},
+      );
 
       // Probe D: Query test
-      final queryWatch = Stopwatch()..start();
-      try {
-        final qSnap = await userDocRef
+      firestoreProbes['serverQuery'] = await _runTimedProbe(
+        () => userDocRef
             .collection(FirestorePaths.tasks)
             .limit(1)
-            .get(const GetOptions(source: Source.server))
-            .timeout(const Duration(seconds: 4));
-        firestoreProbes['serverQuery'] = {
-          'success': true,
-          'durationMs': queryWatch.elapsedMilliseconds,
-          'docsCount': qSnap.docs.length,
-        };
-      } catch (e) {
-        firestoreProbes['serverQuery'] = {
-          'success': false,
-          'durationMs': queryWatch.elapsedMilliseconds,
-          'error': e.toString(),
-          'errorType': e.runtimeType.toString(),
-        };
-      }
+            .get(const GetOptions(source: Source.server)),
+        (qSnap) => {'docsCount': qSnap.docs.length},
+      );
 
       diagnostics['firestoreProbes'] = firestoreProbes;
     }
@@ -561,6 +506,28 @@ class AppStateExporter {
     };
 
     return PiiSanitizer.sanitize(rawMap) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _runTimedProbe<T>(
+    Future<T> Function() action,
+    Map<String, dynamic> Function(T result) onSuccess,
+  ) async {
+    final watch = Stopwatch()..start();
+    try {
+      final result = await action().timeout(const Duration(seconds: 4));
+      return {
+        'success': true,
+        'durationMs': watch.elapsedMilliseconds,
+        ...onSuccess(result),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'durationMs': watch.elapsedMilliseconds,
+        'error': e.toString(),
+        'errorType': e.runtimeType.toString(),
+      };
+    }
   }
 
   Future<String> exportStateJson({bool pretty = true}) async {

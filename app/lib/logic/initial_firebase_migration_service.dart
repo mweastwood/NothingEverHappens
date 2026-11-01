@@ -146,38 +146,13 @@ class InitialFirebaseMigrationService {
       final instanceStepWatch = Stopwatch()..start();
       final cutoffDate = AppClock.now.subtract(const Duration(days: 90));
 
-      QuerySnapshot<Map<String, dynamic>> personalInstancesSnap;
-      try {
-        personalInstancesSnap = await _firestore
+      final personalInstancesSnap = await _fetchRecentInstances(
+        _firestore
             .collection(FirestorePaths.users)
             .doc(_userId)
-            .collection(FirestorePaths.instances)
-            .where('updatedAt', isGreaterThan: cutoffDate)
-            .safeGet(timeout: const Duration(seconds: 15));
-        if (personalInstancesSnap.docs.isEmpty) {
-          final fallbackSnap = await _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.instances)
-              .limit(300)
-              .safeGet(timeout: const Duration(seconds: 15));
-          if (fallbackSnap.docs.isNotEmpty) {
-            personalInstancesSnap = fallbackSnap;
-          }
-        }
-      } catch (e) {
-        _logger?.warning(
-          'sync',
-          'Failed to query instances with cutoffDate, falling back to limit(300)',
-          error: e,
-        );
-        personalInstancesSnap = await _firestore
-            .collection(FirestorePaths.users)
-            .doc(_userId)
-            .collection(FirestorePaths.instances)
-            .limit(300)
-            .safeGet(timeout: const Duration(seconds: 15));
-      }
+            .collection(FirestorePaths.instances),
+        cutoffDate,
+      );
 
       instancesToMigrate.addAll(
         personalInstancesSnap.docs.map(
@@ -206,38 +181,14 @@ class InitialFirebaseMigrationService {
           familyTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
         );
 
-        QuerySnapshot<Map<String, dynamic>> familyInstancesSnap;
-        try {
-          familyInstancesSnap = await _firestore
+        final familyInstancesSnap = await _fetchRecentInstances(
+          _firestore
               .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection(FirestorePaths.instances)
-              .where('updatedAt', isGreaterThan: cutoffDate)
-              .safeGet(timeout: const Duration(seconds: 15));
-          if (familyInstancesSnap.docs.isEmpty) {
-            final fallbackSnap = await _firestore
-                .collection(FirestorePaths.families)
-                .doc(familyId)
-                .collection(FirestorePaths.instances)
-                .limit(300)
-                .safeGet(timeout: const Duration(seconds: 15));
-            if (fallbackSnap.docs.isNotEmpty) {
-              familyInstancesSnap = fallbackSnap;
-            }
-          }
-        } catch (e) {
-          _logger?.warning(
-            'sync',
-            'Failed to query family instances with cutoffDate, falling back to limit(300)',
-            error: e,
-          );
-          familyInstancesSnap = await _firestore
-              .collection(FirestorePaths.families)
-              .doc(familyId)
-              .collection(FirestorePaths.instances)
-              .limit(300)
-              .safeGet(timeout: const Duration(seconds: 15));
-        }
+              .collection(FirestorePaths.instances),
+          cutoffDate,
+          label: 'family instances',
+        );
 
         instancesToMigrate.addAll(
           familyInstancesSnap.docs.map(
@@ -275,54 +226,38 @@ class InitialFirebaseMigrationService {
       final wasFreeTier = _localDataSource.getIsActivePremium() == false;
 
       if (!isDifferentUser && !force) {
-        final tasksMap = {for (final t in tasksToMigrate) t.id: t};
-        for (final localTask in _localDataSource.getTasks()) {
-          if (wasFreeTier || localTask.hasPendingWrites) {
-            final remoteTask = tasksMap[localTask.id];
-            if (remoteTask == null ||
-                !remoteTask.updatedAt.isAfter(localTask.updatedAt)) {
-              tasksMap[localTask.id] = localTask.copyWith(
-                hasPendingWrites: true,
-              );
-              dirtyIdsToPreserve.add(localTask.id);
-            }
-          }
-        }
-        tasksToMigrate
-          ..clear()
-          ..addAll(tasksMap.values);
-
-        final instancesMap = {for (final i in instancesToMigrate) i.id: i};
-        for (final localInst in _localDataSource.getInstances()) {
-          if (wasFreeTier || localInst.hasPendingWrites) {
-            final remoteInst = instancesMap[localInst.id];
-            if (remoteInst == null ||
-                !remoteInst.updatedAt.isAfter(localInst.updatedAt)) {
-              instancesMap[localInst.id] = localInst.copyWith(
-                hasPendingWrites: true,
-              );
-              dirtyIdsToPreserve.add(localInst.id);
-            }
-          }
-        }
-        instancesToMigrate
-          ..clear()
-          ..addAll(instancesMap.values);
-      }
-
-      if (!isDifferentUser && !force) {
-        final localRecipes = _localDataSource.getRecipes();
-        for (final localRecipe in localRecipes) {
-          final remoteRecipe = recipesToMigrate[localRecipe.id];
-          if (remoteRecipe == null ||
-              localRecipe.hasPendingWrites ||
-              localRecipe.updatedAt.isAfter(remoteRecipe.updatedAt)) {
-            recipesToMigrate[localRecipe.id] = localRecipe.copyWith(
-              hasPendingWrites: true,
-            );
-            dirtyIdsToPreserve.add(localRecipe.id);
-          }
-        }
+        _mergeLocalUnsynced<TaskSchedule>(
+          targetList: tasksToMigrate,
+          localItems: _localDataSource.getTasks(),
+          dirtyIdsToPreserve: dirtyIdsToPreserve,
+          wasFreeTier: wasFreeTier,
+          idOf: (t) => t.id,
+          updatedAtOf: (t) => t.updatedAt,
+          hasPendingWritesOf: (t) => t.hasPendingWrites,
+          markPending: (t) => t.copyWith(hasPendingWrites: true),
+        );
+        _mergeLocalUnsynced<TaskInstance>(
+          targetList: instancesToMigrate,
+          localItems: _localDataSource.getInstances(),
+          dirtyIdsToPreserve: dirtyIdsToPreserve,
+          wasFreeTier: wasFreeTier,
+          idOf: (i) => i.id,
+          updatedAtOf: (i) => i.updatedAt,
+          hasPendingWritesOf: (i) => i.hasPendingWrites,
+          markPending: (i) => i.copyWith(hasPendingWrites: true),
+        );
+        _mergeLocalUnsynced<Recipe>(
+          targetList: null,
+          targetMap: recipesToMigrate,
+          localItems: _localDataSource.getRecipes(),
+          dirtyIdsToPreserve: dirtyIdsToPreserve,
+          wasFreeTier: wasFreeTier,
+          idOf: (r) => r.id,
+          updatedAtOf: (r) => r.updatedAt,
+          hasPendingWritesOf: (r) => r.hasPendingWrites,
+          markPending: (r) => r.copyWith(hasPendingWrites: true),
+          preserveUnmodifiedLocal: true,
+        );
       }
 
       // Clean slate: clear any existing local tasks/instances and dirty queues
@@ -383,6 +318,69 @@ class InitialFirebaseMigrationService {
         },
       );
       rethrow;
+    }
+  }
+
+  Future<QuerySnapshot<Map<String, dynamic>>> _fetchRecentInstances(
+    CollectionReference<Map<String, dynamic>> colRef,
+    DateTime cutoffDate, {
+    String label = 'instances',
+  }) async {
+    try {
+      final snap = await colRef
+          .where('updatedAt', isGreaterThan: cutoffDate)
+          .safeGet(timeout: const Duration(seconds: 15));
+      if (snap.docs.isEmpty) {
+        final fallbackSnap = await colRef
+            .limit(300)
+            .safeGet(timeout: const Duration(seconds: 15));
+        if (fallbackSnap.docs.isNotEmpty) {
+          return fallbackSnap;
+        }
+      }
+      return snap;
+    } catch (e) {
+      _logger?.warning(
+        'sync',
+        'Failed to query $label with cutoffDate, falling back to limit(300)',
+        error: e,
+      );
+      return colRef.limit(300).safeGet(timeout: const Duration(seconds: 15));
+    }
+  }
+
+  void _mergeLocalUnsynced<T>({
+    required List<T>? targetList,
+    Map<String, T>? targetMap,
+    required Iterable<T> localItems,
+    required Set<String> dirtyIdsToPreserve,
+    required bool wasFreeTier,
+    required String Function(T) idOf,
+    required DateTime Function(T) updatedAtOf,
+    required bool Function(T) hasPendingWritesOf,
+    required T Function(T) markPending,
+    bool preserveUnmodifiedLocal = false,
+  }) {
+    final map = targetMap ?? {for (final item in targetList!) idOf(item): item};
+    for (final local in localItems) {
+      final id = idOf(local);
+      final remote = map[id];
+      final shouldPreserve = preserveUnmodifiedLocal
+          ? (remote == null ||
+                hasPendingWritesOf(local) ||
+                updatedAtOf(local).isAfter(updatedAtOf(remote)))
+          : ((wasFreeTier || hasPendingWritesOf(local)) &&
+                (remote == null ||
+                    !updatedAtOf(remote).isAfter(updatedAtOf(local))));
+      if (shouldPreserve) {
+        map[id] = markPending(local);
+        dirtyIdsToPreserve.add(id);
+      }
+    }
+    if (targetList != null) {
+      targetList
+        ..clear()
+        ..addAll(map.values);
     }
   }
 }

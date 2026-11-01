@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_clock.dart';
 import 'civil_day.dart';
+import 'relative_time.dart';
 import 'task_instance.dart';
 import 'task_schedule.dart';
 
@@ -34,29 +35,31 @@ class CalendarDayTask {
 
   Duration? get estimatedDuration => schedule?.estimatedDuration;
 
-  String? getTimeWindow(BuildContext context) {
+  ({RelativeTime start, RelativeTime due})? get relativeTimeWindow {
     if (instance != null) {
-      final startTod = TimeOfDay(
-        hour: instance!.startRelativeTime.hour,
-        minute: instance!.startRelativeTime.minute,
+      return (
+        start: instance!.startRelativeTime,
+        due: instance!.dueRelativeTime,
       );
-      final dueTod = TimeOfDay(
-        hour: instance!.dueRelativeTime.hour,
-        minute: instance!.dueRelativeTime.minute,
+    }
+    if (matchingRule != null) {
+      return (
+        start: matchingRule!.startRelativeTime,
+        due: matchingRule!.dueRelativeTime,
       );
-      return '${startTod.format(context)} – ${dueTod.format(context)}';
-    } else if (matchingRule != null) {
-      final startTod = TimeOfDay(
-        hour: matchingRule!.startRelativeTime.hour,
-        minute: matchingRule!.startRelativeTime.minute,
-      );
-      final dueTod = TimeOfDay(
-        hour: matchingRule!.dueRelativeTime.hour,
-        minute: matchingRule!.dueRelativeTime.minute,
-      );
-      return '${startTod.format(context)} – ${dueTod.format(context)}';
     }
     return null;
+  }
+
+  String? getTimeWindow(BuildContext context) {
+    final window = relativeTimeWindow;
+    if (window == null) return null;
+    final startTod = TimeOfDay(
+      hour: window.start.hour,
+      minute: window.start.minute,
+    );
+    final dueTod = TimeOfDay(hour: window.due.hour, minute: window.due.minute);
+    return '${startTod.format(context)} – ${dueTod.format(context)}';
   }
 }
 
