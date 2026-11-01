@@ -545,6 +545,18 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
     }
 
     final double baseDuration = ctx.durationMap[inst.scheduleId] ?? 0.0;
+    final bool isWithinPastWeek = !accountedDay.isAfter(today);
+    final CivilDay? completedDay = inst.completedAt != null
+        ? CivilDay.fromDateTime(inst.completedAt!.toLocal())
+        : null;
+    final bool isCompletedWithinPastWeek =
+        isWithinPastWeek ||
+        (completedDay != null &&
+            !completedDay.isBefore(startDay) &&
+            !completedDay.isAfter(today)) ||
+        (inst.completedAt == null &&
+            inst.familyCompletionMode == FamilyCompletionMode.individual &&
+            inst.status == TaskStatus.pending);
 
     if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
       final completedUserIds = inst.completedByUserIds;
@@ -565,30 +577,42 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
         }
         final memberAcc = memberAccByUser[m.userId]!;
         if (completedUserIds.contains(m.userId)) {
-          memberAcc.recordCompleted(inst, baseDuration);
+          if (isCompletedWithinPastWeek) {
+            memberAcc.recordCompleted(inst, baseDuration);
+          }
         } else if (inst.status == TaskStatus.failed ||
             (inst.status == TaskStatus.pending &&
                 inst.scheduledDate.isBefore(today))) {
-          memberAcc.missedCount++;
+          if (isWithinPastWeek) {
+            memberAcc.missedCount++;
+          }
         } else if (inst.status == TaskStatus.skipped) {
-          memberAcc.skippedCount++;
+          if (isWithinPastWeek) {
+            memberAcc.skippedCount++;
+          }
         }
       }
 
       if (inst.status == TaskStatus.completed) {
-        totalCompleted++;
         final taskCompletedHours = baseDuration * targetMembers;
-        totalHours += taskCompletedHours;
+        if (isCompletedWithinPastWeek) {
+          totalCompleted++;
+          totalHours += taskCompletedHours;
+        }
         acc.recordCompleted(
           inst,
           taskCompletedHours,
           includeSeriouslyInOverdue: false,
         );
       } else if (inst.status == TaskStatus.skipped) {
-        totalSkipped++;
+        if (isWithinPastWeek) {
+          totalSkipped++;
+        }
         acc.recordSkipped(inst, baseDuration * targetMembers);
       } else if (inst.status == TaskStatus.failed) {
-        totalMissed++;
+        if (isWithinPastWeek) {
+          totalMissed++;
+        }
         acc.recordMissed(inst, baseDuration * targetMembers);
       } else if (inst.status == TaskStatus.pending) {
         if (inst.scheduledDate.isBefore(today)) {
@@ -613,34 +637,37 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       }
     } else {
       if (inst.status == TaskStatus.completed) {
-        totalCompleted++;
-        totalHours += baseDuration;
+        if (isCompletedWithinPastWeek) {
+          totalCompleted++;
+          totalHours += baseDuration;
+          final userId = inst.completedByUserId ?? inst.assignedUserId;
+          if (userId != null) {
+            memberAccByUser[userId]?.recordCompleted(inst, baseDuration);
+          }
+        }
         acc.recordCompleted(
           inst,
           baseDuration,
           includeSeriouslyInOverdue: false,
         );
-
-        final userId = inst.completedByUserId ?? inst.assignedUserId;
-        if (userId != null) {
-          memberAccByUser[userId]?.recordCompleted(inst, baseDuration);
-        }
       } else if (inst.status == TaskStatus.skipped) {
-        totalSkipped++;
+        if (isWithinPastWeek) {
+          totalSkipped++;
+          final userId = inst.completedByUserId ?? inst.assignedUserId;
+          if (userId != null && memberAccByUser.containsKey(userId)) {
+            memberAccByUser[userId]!.skippedCount++;
+          }
+        }
         acc.recordSkipped(inst, baseDuration);
-
-        final userId = inst.completedByUserId ?? inst.assignedUserId;
-        if (userId != null && memberAccByUser.containsKey(userId)) {
-          memberAccByUser[userId]!.skippedCount++;
-        }
       } else if (inst.status == TaskStatus.failed) {
-        totalMissed++;
-        acc.recordMissed(inst, baseDuration);
-
-        final userId = inst.assignedUserId;
-        if (userId != null && memberAccByUser.containsKey(userId)) {
-          memberAccByUser[userId]!.missedCount++;
+        if (isWithinPastWeek) {
+          totalMissed++;
+          final userId = inst.assignedUserId;
+          if (userId != null && memberAccByUser.containsKey(userId)) {
+            memberAccByUser[userId]!.missedCount++;
+          }
         }
+        acc.recordMissed(inst, baseDuration);
       } else if (inst.status == TaskStatus.pending) {
         if (inst.scheduledDate.isBefore(today)) {
           totalMissed++;
