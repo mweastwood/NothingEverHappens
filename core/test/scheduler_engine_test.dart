@@ -1965,6 +1965,128 @@ void main() {
           );
         },
       );
+
+      test(
+        'FixedCalendarPolicy and projectUpcomingOccurrences do not treat capacity-skipped instances as resolved',
+        () {
+          const engine = SchedulerEngine();
+          final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
+          const today = CivilDay(year: 2026, month: 10, day: 10);
+          final fixedNow = DateTime.utc(2026, 10, 10, 12, 0);
+
+          final dailyRule = DailySchedule(
+            id: 'R-daily-cap',
+            scheduleId: 'S-daily-cap',
+            startDate: today,
+            interval: 1,
+          );
+          final dailyTask = TaskSchedule(
+            id: 'S-daily-cap',
+            title: 'Daily Cap Task',
+            description: '',
+            schedules: [dailyRule],
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(hours: 2),
+          );
+
+          final completedToday = TaskInstance(
+            id: 'I-daily-today',
+            scheduleId: dailyTask.id,
+            ruleId: dailyRule.id,
+            title: dailyTask.title,
+            description: '',
+            scheduledDate: today,
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: fixedNow,
+          );
+          final capacitySkippedTomorrow = TaskInstance(
+            id: 'I-daily-tomorrow',
+            scheduleId: dailyTask.id,
+            ruleId: dailyRule.id,
+            title: dailyTask.title,
+            description: '',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: TaskStatus.skipped,
+            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+            updatedAt: fixedNow,
+          );
+
+          // When tomorrow (Oct 11) is capacity-skipped and at capacity, FixedCalendarPolicy
+          // should count Oct 11 toward futureInstancesCount=1 and NOT spawn Oct 12
+          final action = engine.evaluate(
+            dailyTask,
+            [completedToday, capacitySkippedTomorrow],
+            fixedNow,
+            futureInstancesCount: 1,
+            userSettings: const UserSettings(hoursAvailable: 2.0),
+            dayPlannedHours: {today.addDays(1): 2.0},
+          );
+          expect(action.instancesToSpawn, isEmpty);
+
+          // And projectUpcomingOccurrences for CompletionRelativePolicy ignores capacity-skipped instances
+          // and respects lastSpawnedDate when resolved instances were purged
+          final crRule = DailySchedule(
+            id: 'R-cr-proj',
+            scheduleId: 'S-cr-proj',
+            startDate: const CivilDay(year: 2026, month: 6, day: 10),
+            interval: 5,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 5),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+          final crTask = TaskSchedule(
+            id: 'S-cr-proj',
+            title: 'CR Proj Task',
+            description: '',
+            schedules: [crRule],
+          );
+          final capSkippedCr = TaskInstance(
+            id: 'I-cr-cap',
+            scheduleId: crTask.id,
+            ruleId: crRule.id,
+            title: crTask.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
+            startRelativeTime: crRule.startRelativeTime,
+            dueRelativeTime: crRule.dueRelativeTime,
+            status: TaskStatus.skipped,
+            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+            updatedAt: evalNow,
+          );
+          final projected = engine.projectUpcomingOccurrences(
+            crTask,
+            crRule,
+            const CivilDay(year: 2026, month: 6, day: 10),
+            count: 2,
+            existingInstances: [capSkippedCr],
+          );
+          expect(
+            projected.first,
+            equals(const CivilDay(year: 2026, month: 6, day: 10)),
+          );
+
+          final crTaskWithLastSpawned = crTask.copyWith(
+            lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 10),
+          );
+          final projectedFromLastSpawned = engine.projectUpcomingOccurrences(
+            crTaskWithLastSpawned,
+            crRule,
+            const CivilDay(year: 2026, month: 6, day: 11),
+            count: 1,
+            existingInstances: const [],
+          );
+          expect(
+            projectedFromLastSpawned.first,
+            equals(const CivilDay(year: 2026, month: 6, day: 15)),
+          );
+        },
+      );
     });
   });
 }

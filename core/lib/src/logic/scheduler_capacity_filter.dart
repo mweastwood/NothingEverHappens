@@ -106,7 +106,9 @@ class SchedulerCapacityFilter {
           if (capacity - planned < taskDuration) {
             if (effectiveStatus == TaskStatus.pending) {
               if (isMarkedForUpdate) {
-                if (inst.status == TaskStatus.skipped) {
+                if (inst.status == TaskStatus.skipped &&
+                    inst.statusReason ==
+                        InstanceStatusReason.schedulerCapacityLimit.value) {
                   finalToUpdate.removeAt(updateIdx);
                   updateIndexById.remove(inst.id);
                   for (var i = updateIdx; i < finalToUpdate.length; i++) {

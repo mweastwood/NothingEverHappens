@@ -201,7 +201,12 @@ class SchedulerOccurrenceProjector {
         cursorTime = effectiveFirstDay.toDateTime();
       } else {
         final resolved = ruleInstances
-            .where((inst) => inst.status != TaskStatus.pending)
+            .where(
+              (inst) =>
+                  inst.status != TaskStatus.pending &&
+                  inst.statusReason !=
+                      InstanceStatusReason.schedulerCapacityLimit.value,
+            )
             .toList()
           ..sort(
             (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
@@ -215,6 +220,24 @@ class SchedulerOccurrenceProjector {
               ? rawResolvedTime.toUtc().add(utcOffset)
               : rawResolvedTime.toLocal();
           cursorTime = rule.nextCompletionRelativeDateTime(resolvedTime);
+          final nextDay = CivilDay.fromDateTime(cursorTime);
+          final effectiveNextDay =
+              nextDay.isBefore(fromDate) ? fromDate : nextDay;
+          result.add(effectiveNextDay);
+          cursorTime =
+              nextDay.isBefore(fromDate) ? fromDate.toDateTime() : cursorTime;
+        } else if (task.lastSpawnedDate != null &&
+            task.lastSpawnedDate!.compareTo(rule.scheduledDate) >= 0) {
+          final lastSpawned = task.lastSpawnedDate!;
+          final approxCompletedWallClock = DateTime.utc(
+            lastSpawned.year,
+            lastSpawned.month,
+            lastSpawned.day,
+            12,
+          );
+          cursorTime = rule.nextCompletionRelativeDateTime(
+            approxCompletedWallClock,
+          );
           final nextDay = CivilDay.fromDateTime(cursorTime);
           final effectiveNextDay =
               nextDay.isBefore(fromDate) ? fromDate : nextDay;
