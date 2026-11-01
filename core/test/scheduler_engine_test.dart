@@ -2087,6 +2087,81 @@ void main() {
           );
         },
       );
+
+      test(
+        'CompletionRelativePolicy early completion of future-scheduled instance and sub-day interval do not spawn on already-resolved dates',
+        () {
+          const engine = SchedulerEngine();
+          const today = CivilDay(year: 2026, month: 6, day: 19);
+          const tomorrow = CivilDay(year: 2026, month: 6, day: 20);
+          final tonight = DateTime.utc(2026, 6, 19, 21, 0);
+
+          final crDailyRule = DailySchedule(
+            id: 'R-cr-early',
+            scheduleId: 'S-cr-early',
+            startDate: today,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              hour: 20,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 1),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+          final crDailyTask = TaskSchedule(
+            id: 'S-cr-early',
+            title: 'Early Complete CR Task',
+            description: '',
+            schedules: [crDailyRule],
+          );
+
+          final completedTomorrowInst = TaskInstance(
+            id: 'I-tomorrow-early',
+            scheduleId: crDailyTask.id,
+            ruleId: crDailyRule.id,
+            title: crDailyTask.title,
+            description: '',
+            scheduledDate: tomorrow,
+            startRelativeTime: crDailyRule.startRelativeTime,
+            dueRelativeTime: crDailyRule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: tonight,
+            updatedAt: tonight,
+          );
+
+          final spawnedNext = engine.getNextOccurrenceToSpawn(
+            crDailyTask,
+            completedTomorrowInst,
+            tonight,
+            [completedTomorrowInst],
+            utcOffset: Duration.zero,
+          );
+          expect(spawnedNext, isNotNull);
+          expect(
+            spawnedNext!.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 6, day: 21)),
+          );
+
+          // And evaluate() does not delete spawnedNext or spawn a duplicate on tomorrow
+          final evalAction = engine.evaluate(
+            crDailyTask,
+            [completedTomorrowInst, spawnedNext],
+            tonight,
+            utcOffset: Duration.zero,
+          );
+          expect(evalAction.instancesToDelete, isEmpty);
+          expect(evalAction.instancesToSpawn, isEmpty);
+        },
+      );
     });
   });
 }

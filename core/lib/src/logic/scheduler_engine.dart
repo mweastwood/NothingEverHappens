@@ -529,17 +529,49 @@ class SchedulerEngine {
             maxSpawned = resolvedDay;
           }
         }
+        final effectiveReferenceTime =
+            resolvedDay.isBefore(latest.scheduledDate)
+                ? DateTime.utc(
+                    latest.scheduledDate.year,
+                    latest.scheduledDate.month,
+                    latest.scheduledDate.day,
+                    referenceTime.hour,
+                    referenceTime.minute,
+                    referenceTime.second,
+                  )
+                : referenceTime;
         final currentWallClock = context.toEarliestWallClock(now);
-        final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
+        final nextSpawnTime = s.nextCompletionRelativeDateTime(
+          effectiveReferenceTime,
+        );
         if (!currentWallClock.isBefore(nextSpawnTime)) {
           dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
         }
       }
 
-      if (dateToSpawn != null &&
-          dateToSpawn.isBefore(context.today) &&
-          canonicalByDate.containsKey(dateToSpawn)) {
-        dateToSpawn = context.today;
+      if (dateToSpawn != null && canonicalByDate.containsKey(dateToSpawn)) {
+        if (dateToSpawn.isBefore(context.today) &&
+            !canonicalByDate.containsKey(context.today)) {
+          dateToSpawn = context.today;
+        } else {
+          var candidate = dateToSpawn.isBefore(context.today)
+              ? context.today.addDays(1)
+              : dateToSpawn.addDays(1);
+          while (canonicalByDate.containsKey(candidate)) {
+            candidate = candidate.addDays(1);
+          }
+          final policy = s.schedulingPolicy as CompletionRelativePolicy;
+          final candidateTrigger = DateTime.utc(
+            candidate.year,
+            candidate.month,
+            candidate.day,
+            policy.targetHour,
+            policy.targetMinute,
+          );
+          final currentWallClock = context.toEarliestWallClock(now);
+          dateToSpawn =
+              !currentWallClock.isBefore(candidateTrigger) ? candidate : null;
+        }
       }
 
       if (dateToSpawn != null) {
