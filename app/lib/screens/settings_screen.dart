@@ -329,10 +329,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       setState(() {
                         _telemetryEnabled = val;
                       });
+                      final parsedHours = double.tryParse(
+                        _hoursController.text.trim(),
+                      );
+                      final validHours =
+                          (parsedHours != null &&
+                              parsedHours >= 0 &&
+                              parsedHours <= 24)
+                          ? parsedHours
+                          : settings.hoursAvailable;
                       final updated = settings.copyWith(
-                        hoursAvailable:
-                            double.tryParse(_hoursController.text.trim()) ??
-                            settings.hoursAvailable,
+                        hoursAvailable: validHours,
                         showLastSpawnedDate: _showLastSpawnedDate,
                         firstDayOfWeek: _firstDayOfWeek,
                         telemetryEnabled: val,
@@ -354,10 +361,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       setState(() {
                         _crashReportingEnabled = val;
                       });
+                      final parsedHours = double.tryParse(
+                        _hoursController.text.trim(),
+                      );
+                      final validHours =
+                          (parsedHours != null &&
+                              parsedHours >= 0 &&
+                              parsedHours <= 24)
+                          ? parsedHours
+                          : settings.hoursAvailable;
                       final updated = settings.copyWith(
-                        hoursAvailable:
-                            double.tryParse(_hoursController.text.trim()) ??
-                            settings.hoursAvailable,
+                        hoursAvailable: validHours,
                         showLastSpawnedDate: _showLastSpawnedDate,
                         firstDayOfWeek: _firstDayOfWeek,
                         telemetryEnabled: _telemetryEnabled,

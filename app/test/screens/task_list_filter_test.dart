@@ -19,6 +19,7 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/widgets/sort_bar.dart';
+import 'package:nothing_ever_happens/widgets/task_filter_bottom_sheet.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'task_list_screen_test.mocks.dart';
@@ -175,22 +176,38 @@ void main() {
       expect(find.text('Quarterly Review'), findsOneWidget);
       expect(find.text('Water the plants'), findsOneWidget);
 
-      // Label chips should be in the sort/filter bar
-      expect(find.text('Work'), findsWidgets);
-      expect(find.text('Home'), findsWidgets);
-      expect(find.text('Filter'), findsOneWidget);
+      // No label filter chips should be in the sort/filter bar initially
+      expect(find.widgetWithText(FilterChip, 'Work'), findsNothing);
+      expect(find.widgetWithText(FilterChip, 'Filter'), findsOneWidget);
 
-      // Tap on the 'Work' filter chip in the bar
-      final workChipFinder = find.widgetWithText(FilterChip, 'Work');
-      await tester.tap(workChipFinder, warnIfMissed: false);
+      // Open the filter sheet by tapping 'Filter'
+      await tester.tap(
+        find.widgetWithText(FilterChip, 'Filter'),
+        warnIfMissed: false,
+      );
       await tester.pumpAndSettle();
+
+      expect(find.byType(TaskFilterBottomSheet), findsOneWidget);
+
+      // Tap on the 'Work' filter chip inside the bottom sheet
+      final workChipInSheet = find.descendant(
+        of: find.byType(TaskFilterBottomSheet),
+        matching: find.widgetWithText(FilterChip, 'Work'),
+      );
+      await tester.tap(workChipInSheet);
+      await tester.pumpAndSettle();
+
+      // Close the filter sheet
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+
+      // Active 'Work' filter chip should now appear in SortBar alongside 'Filter (1)'
+      expect(find.widgetWithText(FilterChip, 'Work'), findsOneWidget);
+      expect(find.text('Filter (1)'), findsOneWidget);
 
       // Only 'Quarterly Review' should remain
       expect(find.text('Quarterly Review'), findsOneWidget);
       expect(find.text('Water the plants'), findsNothing);
-
-      // Active filter count on the button should show 'Filter (1)'
-      expect(find.text('Filter (1)'), findsOneWidget);
       expect(find.text('Clear filters'), findsNothing); // List not empty
 
       // Tap 'Clear' action chip in the bar
@@ -198,9 +215,10 @@ void main() {
       await tester.tap(find.text('Clear'), warnIfMissed: false);
       await tester.pumpAndSettle();
 
-      // Both tasks should be back
+      // Both tasks should be back and active label chip removed from SortBar
       expect(find.text('Quarterly Review'), findsOneWidget);
       expect(find.text('Water the plants'), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'Work'), findsNothing);
     });
 
     testWidgets(

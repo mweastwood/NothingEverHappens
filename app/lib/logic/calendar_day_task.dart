@@ -76,14 +76,22 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   final Map<String, TaskSchedule> scheduleMap = {
     for (final s in schedules) s.id: s,
   };
-  final Set<(String, CivilDay)> instanceScheduleDateKeys = {};
+  final Set<(String, String, CivilDay)> instanceRuleDateKeys = {};
+  final Set<(String, CivilDay)> instanceScheduleOnlyDateKeys = {};
   for (final inst in instances) {
     final scheduledDate = inst.scheduledDate;
     if (scheduledDate.year != monthDate.year ||
         scheduledDate.month != monthDate.month) {
       continue;
     }
-    instanceScheduleDateKeys.add((inst.scheduleId, scheduledDate));
+    final sched = scheduleMap[inst.scheduleId];
+    final hasKnownRule =
+        sched != null && sched.schedules.any((r) => r.id == inst.ruleId);
+    if (hasKnownRule) {
+      instanceRuleDateKeys.add((inst.scheduleId, inst.ruleId, scheduledDate));
+    } else {
+      instanceScheduleOnlyDateKeys.add((inst.scheduleId, scheduledDate));
+    }
 
     if (inst.status == TaskStatus.skipped || inst.status == TaskStatus.failed) {
       continue;
@@ -137,31 +145,33 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
 
     for (final item in recurringSchedules) {
       final sched = item.schedule;
-      if (instanceScheduleDateKeys.contains((sched.id, civilDay))) {
-        continue; // Already has concrete instance
+      if (instanceScheduleOnlyDateKeys.contains((sched.id, civilDay))) {
+        continue; // Already has concrete instance covering schedule on that day
       }
 
-      TaskScheduleRule? matchingRule;
+      int projectedCountForScheduleOnDay = 0;
       for (final rule in item.rules) {
-        if (rule.occursOn(civilDay)) {
-          matchingRule = rule;
-          break;
+        if (instanceRuleDateKeys.contains((sched.id, rule.id, civilDay))) {
+          continue; // Concrete instance already exists for this rule on this day
         }
-      }
+        if (rule.occursOn(civilDay)) {
+          final projectedId = projectedCountForScheduleOnDay == 0
+              ? 'projected_${sched.id}_$civilDay'
+              : 'projected_${sched.id}_${rule.id}_$civilDay';
+          projectedCountForScheduleOnDay++;
+          final task = CalendarDayTask(
+            id: projectedId,
+            title: sched.title,
+            description: sched.description,
+            priority: sched.priority,
+            status: TaskStatus.pending,
+            isInstance: false,
+            schedule: sched,
+            matchingRule: rule,
+          );
 
-      if (matchingRule != null) {
-        final task = CalendarDayTask(
-          id: 'projected_${sched.id}_$civilDay',
-          title: sched.title,
-          description: sched.description,
-          priority: sched.priority,
-          status: TaskStatus.pending,
-          isInstance: false,
-          schedule: sched,
-          matchingRule: matchingRule,
-        );
-
-        map.putIfAbsent(civilDay, () => []).add(task);
+          map.putIfAbsent(civilDay, () => []).add(task);
+        }
       }
     }
   }

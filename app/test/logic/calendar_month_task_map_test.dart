@@ -283,5 +283,83 @@ void main() {
         expect(map.isEmpty, isTrue);
       },
     );
+
+    test(
+      'projects multiple recurring rules on the same day and only suppresses rule with concrete instance',
+      () {
+        const targetDay = CivilDay(year: 2026, month: 3, day: 10);
+        final morningRule = DailySchedule(
+          id: 'R-morning',
+          scheduleId: 'S-multi',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+        );
+        final eveningRule = DailySchedule(
+          id: 'R-evening',
+          scheduleId: 'S-multi',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 20,
+            minute: 0,
+          ),
+        );
+        final multiRuleSchedule = TaskSchedule(
+          id: 'S-multi',
+          title: 'Twice Daily Medication',
+          description: '',
+          schedules: [morningRule, eveningRule],
+        );
+
+        final morningInstance = TaskInstance(
+          id: 'I-morning-10',
+          scheduleId: 'S-multi',
+          ruleId: 'R-morning',
+          title: 'Twice Daily Medication',
+          description: '',
+          scheduledDate: targetDay,
+          startRelativeTime: morningRule.startRelativeTime,
+          dueRelativeTime: morningRule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [morningInstance],
+          [multiRuleSchedule],
+          today: today,
+        );
+
+        // On March 10, morningRule has a concrete instance and eveningRule is projected
+        expect(map[targetDay], hasLength(2));
+        expect(map[targetDay]!.any((t) => t.id == 'I-morning-10'), isTrue);
+        expect(
+          map[targetDay]!.any(
+            (t) => !t.isInstance && t.matchingRule?.id == 'R-evening',
+          ),
+          isTrue,
+        );
+
+        // On March 11, both morningRule and eveningRule are projected
+        const nextDay = CivilDay(year: 2026, month: 3, day: 11);
+        expect(map[nextDay], hasLength(2));
+      },
+    );
   });
 }

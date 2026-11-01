@@ -11,6 +11,7 @@ import '../test_helper.dart';
 import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -1703,7 +1704,15 @@ void main() {
       expect(find.byKey(const Key('capacity_prompt_card')), findsOneWidget);
       expect(find.text('Adjust your weekly capacity'), findsOneWidget);
 
-      // 2. Mock capacity confirmation
+      // 2. Verify tapping capacity prompt card navigates to DashboardScreen
+      await tester.tap(find.byKey(const Key('capacity_prompt_card')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DashboardScreen), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      // 3. Mock capacity confirmation
       settingsSubject.add(
         const UserSettings(
           hoursAvailable: 8.0,
@@ -1712,7 +1721,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 3. Verify capacity prompt card disappears
+      // 4. Verify capacity prompt card disappears
       expect(find.byKey(const Key('capacity_prompt_card')), findsNothing);
 
       AppClock.reset();

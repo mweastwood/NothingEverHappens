@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
+import '../logic/app_route_manager.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/task_widget.dart';
 import 'home_screen.dart';
@@ -508,28 +509,32 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       },
                     ),
                   ),
-                for (final label in labelsMap.values)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: FilterChip(
-                      avatar: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: LabelPalette.getColor(label.colorKey, context),
-                          shape: BoxShape.circle,
+                for (final labelId in filterState.selectedLabelIds)
+                  if (labelsMap[labelId] case final label?)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        avatar: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: LabelPalette.getColor(
+                              label.colorKey,
+                              context,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
                         ),
+                        label: Text(label.name),
+                        selected: true,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) {
+                          ref.read(taskFilterProvider.notifier).state =
+                              filterState.toggleLabel(label.id);
+                        },
                       ),
-                      label: Text(label.name),
-                      selected: filterState.selectedLabelIds.contains(label.id),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      onSelected: (_) {
-                        ref.read(taskFilterProvider.notifier).state =
-                            filterState.toggleLabel(label.id);
-                      },
                     ),
-                  ),
               ],
             ),
             slivers: [
@@ -547,8 +552,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         priority: SystemTaskPriority.high,
                         category: SystemTaskCategory.capacity,
                         onTap: () {
-                          ref.read(homeTabIndexProvider.notifier).state =
-                              2; // Switch to Dashboard Tab
+                          AppRouteManager().openDashboard(
+                            context: context,
+                            currentIndex: ref.read(homeTabIndexProvider),
+                          );
                         },
                       ),
                       variant: SystemTaskWidgetVariant.banner,
