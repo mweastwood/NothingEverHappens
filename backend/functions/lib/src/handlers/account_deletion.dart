@@ -52,21 +52,55 @@ Future<AccountDeletionResult> deleteUserAccountData(
   final email = userEmail ?? (userData?['email'] as String?);
 
   // 2. Family membership cleanup
+  var familyWasDeleted = false;
   if (familyId != null && familyId.trim().isNotEmpty) {
     final familyRef = db.collection('families').doc(familyId);
     final familyDoc = await familyRef.get();
     if (familyDoc.exists) {
       final familyData = familyDoc.data() ?? {};
       final members = (familyData['members'] as Map?) ?? {};
-      final remainingMemberIds = members.keys
-          .where((mId) => mId != userId)
-          .toList();
+      final remainingMemberIds =
+          members.keys.where((mId) => mId != userId).toList();
 
       if (remainingMemberIds.isEmpty) {
         // Sole member: recursively delete the family document and all subcollections
         await db.recursiveDelete(familyRef);
+        familyWasDeleted = true;
       } else {
-        // Multi-member family: remove user from members map and promote a successor parent if needed
+        // Multi-member family: unassign tasks and instances assigned to the departing user
+        final assignedResults = await Future.wait([
+          familyRef
+              .collection('tasks')
+              .where('assignedUserId', '==', userId)
+              .get(),
+          familyRef
+              .collection('instances')
+              .where('assignedUserId', '==', userId)
+              .get(),
+        ]);
+        final assignedDocs = [
+          ...assignedResults[0].docs,
+          ...assignedResults[1].docs,
+        ];
+        if (assignedDocs.isNotEmpty) {
+          final nowUtc = DateTime.now().toUtc();
+          const chunkSize = 499;
+          for (var i = 0; i < assignedDocs.length; i += chunkSize) {
+            final batch = db.batch();
+            final end = (i + chunkSize < assignedDocs.length)
+                ? i + chunkSize
+                : assignedDocs.length;
+            for (var j = i; j < end; j++) {
+              batch.update(assignedDocs[j].ref, {
+                'assignedUserId': null,
+                'updatedAt': nowUtc,
+              });
+            }
+            await batch.commit();
+          }
+        }
+
+        // Remove user from members map and promote a successor parent if needed
         final updates = <String, dynamic>{
           'members.$userId': FieldValue.delete(),
         };
@@ -102,20 +136,39 @@ Future<AccountDeletionResult> deleteUserAccountData(
     final toSnap = results[0];
     final fromSnap = results[1];
 
-    final batch = db.batch();
-    var count = 0;
+    final docsToDelete = <DocumentSnapshot>[];
     final seenIds = <String>{};
 
-    for (final doc in [...toSnap.docs, ...fromSnap.docs]) {
-      if (!seenIds.contains(doc.id)) {
-        seenIds.add(doc.id);
-        batch.delete(doc.ref);
-        count++;
+    for (final doc in toSnap.docs) {
+      if (seenIds.add(doc.id)) {
+        docsToDelete.add(doc);
+      }
+    }
+    for (final doc in fromSnap.docs) {
+      final invFamilyId = doc.data()?['familyId'] as String?;
+      // Only delete outgoing family invites if the family itself was deleted or does not match an active remaining family
+      if (familyWasDeleted ||
+          familyId == null ||
+          familyId.trim().isEmpty ||
+          invFamilyId != familyId) {
+        if (seenIds.add(doc.id)) {
+          docsToDelete.add(doc);
+        }
       }
     }
 
-    if (count > 0) {
-      await batch.commit();
+    if (docsToDelete.isNotEmpty) {
+      const chunkSize = 499;
+      for (var i = 0; i < docsToDelete.length; i += chunkSize) {
+        final batch = db.batch();
+        final end = (i + chunkSize < docsToDelete.length)
+            ? i + chunkSize
+            : docsToDelete.length;
+        for (var j = i; j < end; j++) {
+          batch.delete(docsToDelete[j].ref);
+        }
+        await batch.commit();
+      }
     }
   }
 

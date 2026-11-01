@@ -10,9 +10,9 @@ void main() {
     test('authenticates a valid Bearer ID token', () async {
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-        uid: 'user_abc_123',
-        email: 'tester@example.com',
-      );
+            uid: 'user_abc_123',
+            email: 'tester@example.com',
+          );
 
       final headers = {'authorization': 'Bearer valid_id_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -25,9 +25,9 @@ void main() {
     test('handles case-insensitive Authorization header', () async {
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-        uid: 'user_abc_123',
-        email: 'tester@example.com',
-      );
+            uid: 'user_abc_123',
+            email: 'tester@example.com',
+          );
 
       final headers = {'Authorization': 'Bearer valid_id_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -55,8 +55,8 @@ void main() {
 
     test('rejects invalid or expired token with 401', () async {
       final mockAuth = MockAuthService();
-      mockAuth.onVerifyIdToken = (token) async =>
-          throw Exception('Token expired');
+      mockAuth.onVerifyIdToken =
+          (token) async => throw Exception('Token expired');
 
       final headers = {'authorization': 'Bearer expired_token'};
       final result = await authenticateUserRequest(headers, auth: mockAuth);
@@ -68,7 +68,9 @@ void main() {
   });
 
   group('deleteUserAccountData', () {
-    test('deletes sole family member, purging family, invites, user data, and auth profile', () async {
+    test(
+        'deletes sole family member, purging family, invites, user data, and auth profile',
+        () async {
       final mockDb = MockFirestoreDatabase();
       final userRef = mockDb.collection('users').doc('user_sole');
       userRef.docData = {
@@ -157,7 +159,9 @@ void main() {
       },
     );
 
-    test('promotes remaining member to parent when sole parent in multi-member family deletes account', () async {
+    test(
+        'promotes remaining member to parent when sole parent in multi-member family deletes account',
+        () async {
       final mockDb = MockFirestoreDatabase();
       final userRef = mockDb.collection('users').doc('user_sole_parent');
       userRef.docData = {
@@ -203,6 +207,79 @@ void main() {
       expect(childUserRef.updateCalls.length, equals(1));
       expect(childUserRef.updateCalls.first['familyRole'], equals('parent'));
     });
+
+    test(
+      'unassigns family tasks and instances assigned to deleted user and preserves active family invites',
+      () async {
+        final mockDb = MockFirestoreDatabase();
+        final userRef = mockDb.collection('users').doc('user_departing');
+        userRef.docData = {
+          'familyId': 'fam_shared',
+          'email': 'departing@example.com',
+        };
+
+        final familyRef = mockDb.collection('families').doc('fam_shared');
+        familyRef.docData = {
+          'name': 'Shared Family',
+          'members': {
+            'user_departing': {'role': 'parent'},
+            'user_remaining': {'role': 'parent'},
+          },
+        };
+
+        final taskAssignedToDeparting =
+            familyRef.collection('tasks').doc('task_1');
+        taskAssignedToDeparting.docData = {
+          'id': 'task_1',
+          'assignedUserId': 'user_departing',
+        };
+        final taskAssignedToRemaining =
+            familyRef.collection('tasks').doc('task_2');
+        taskAssignedToRemaining.docData = {
+          'id': 'task_2',
+          'assignedUserId': 'user_remaining',
+        };
+        final instAssignedToDeparting =
+            familyRef.collection('instances').doc('inst_1');
+        instAssignedToDeparting.docData = {
+          'id': 'inst_1',
+          'assignedUserId': 'user_departing',
+        };
+
+        final activeFamilyInvite =
+            mockDb.collection('invites').doc('inv_active_family');
+        activeFamilyInvite.docData = {
+          'familyId': 'fam_shared',
+          'fromEmail': 'departing@example.com',
+          'toEmail': 'guest@example.com',
+        };
+        final incomingInvite = mockDb.collection('invites').doc('inv_incoming');
+        incomingInvite.docData = {
+          'familyId': 'fam_other',
+          'fromEmail': 'other@example.com',
+          'toEmail': 'departing@example.com',
+        };
+
+        final mockAuth = MockAuthService();
+
+        final result = await deleteUserAccountData(
+          mockDb,
+          mockAuth,
+          'user_departing',
+          userEmail: 'departing@example.com',
+        );
+
+        expect(result.success, isTrue);
+        expect(taskAssignedToDeparting.docData?['assignedUserId'], isNull);
+        expect(
+          taskAssignedToRemaining.docData?['assignedUserId'],
+          equals('user_remaining'),
+        );
+        expect(instAssignedToDeparting.docData?['assignedUserId'], isNull);
+        expect(activeFamilyInvite.isExisting, isTrue);
+        expect(incomingInvite.isExisting, isFalse);
+      },
+    );
 
     test('handles user without family association gracefully', () async {
       final mockDb = MockFirestoreDatabase();
@@ -275,9 +352,9 @@ void main() {
       final mockDb = MockFirestoreDatabase();
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-        uid: 'user_delete_me',
-        email: 'delete_me@example.com',
-      );
+            uid: 'user_delete_me',
+            email: 'delete_me@example.com',
+          );
 
       final req = TestHttpRequest(
         method: 'POST',
@@ -296,9 +373,9 @@ void main() {
       final mockDb = MockFirestoreDatabase();
       final mockAuth = MockAuthService();
       mockAuth.onVerifyIdToken = (token) async => const DecodedIdToken(
-        uid: 'user_delete_me',
-        email: 'delete_me@example.com',
-      );
+            uid: 'user_delete_me',
+            email: 'delete_me@example.com',
+          );
 
       final req = TestHttpRequest(
         method: 'DELETE',
