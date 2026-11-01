@@ -219,7 +219,10 @@ class TaskInstance {
     final lastModifiedByAppVersion =
         data['lastModifiedByAppVersion'] as String?;
     final lastModifiedByPlatform = data['lastModifiedByPlatform'] as String?;
-    final statusReason = data['statusReason'] as String?;
+    final statusReason = (data['statusReason'] as String?) ??
+        (statusRaw == 'dismissed'
+            ? InstanceStatusReason.userDismissed.value
+            : null);
 
     final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
     final labelIds = labelIdsRaw.map((e) => e.toString()).toList();

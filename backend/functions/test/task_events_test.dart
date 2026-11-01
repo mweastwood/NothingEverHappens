@@ -286,7 +286,8 @@ void main() {
       expect(result.instanceId, equals('inst_existing_123'));
       expect(result.actionApplied, equals('dismissed'));
       final updateData = existingDoc.updateCalls.first;
-      expect(updateData['status'], equals('dismissed'));
+      expect(updateData['status'], equals('skipped'));
+      expect(updateData['statusReason'], equals('user_dismissed'));
     });
 
     test('creates a new TaskInstance (JIT) when no existing instance matches',
@@ -309,6 +310,7 @@ void main() {
       expect(result.success, isTrue);
       expect(result.createdNewInstance, isTrue);
       expect(result.instanceId, isNotNull);
+      expect(result.instanceId, startsWith('I-'));
 
       final newDoc = instancesCol.documents[result.instanceId];
       expect(newDoc, isNotNull);
@@ -317,6 +319,7 @@ void main() {
       expect(setData['scheduledDate'],
           equals(const CivilDay(year: 2026, month: 8, day: 30).toJson()));
       expect(setData['status'], equals('completed'));
+      expect(setData['statusReason'], equals('user_completed'));
       expect(setData['completedByUserIds'], equals(['user_123']));
       expect(
           setData['integrationBinding']['providerId'], equals('twelve_stars'));

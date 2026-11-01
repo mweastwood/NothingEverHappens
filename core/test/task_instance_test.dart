@@ -440,5 +440,22 @@ void main() {
       }, id: 'I-legacy-1');
       expect(missingBoth.updatedAt, equals(epoch));
     });
+
+    test(
+        'maps legacy dismissed status without statusReason to user_dismissed so isRevivableByCapacity is false',
+        () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Dismissed External Instance',
+        'status': 'dismissed',
+      }, id: 'I-ext-1');
+      expect(inst.status, equals(TaskStatus.skipped));
+      expect(
+        inst.statusReason,
+        equals(InstanceStatusReason.userDismissed.value),
+      );
+      expect(inst.isRevivableByCapacity, isFalse);
+    });
   });
 }
