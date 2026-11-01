@@ -50,6 +50,9 @@ class TaskInstance {
   /// Optional label IDs associated with this task instance.
   final List<String> labelIds;
 
+  /// Optional external integration binding metadata preserved across sync/re-evaluation.
+  final Map<String, dynamic>? integrationBinding;
+
   TaskInstance({
     String? id,
     required this.scheduleId,
@@ -78,6 +81,7 @@ class TaskInstance {
     this.isFromCache = false,
     DateTime? updatedAt,
     this.labelIds = const [],
+    this.integrationBinding,
   })  : id = id ?? TaskInstance.generateId(),
         title = title.trim(),
         description = description.trim(),
@@ -226,6 +230,10 @@ class TaskInstance {
 
     final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
     final labelIds = labelIdsRaw.map((e) => e.toString()).toList();
+    final integrationBindingRaw = data['integrationBinding'];
+    final integrationBinding = integrationBindingRaw is Map
+        ? Map<String, dynamic>.from(integrationBindingRaw)
+        : null;
 
     return TaskInstance(
       id: id ?? data['id'] as String?,
@@ -255,6 +263,7 @@ class TaskInstance {
       isFromCache: isFromCache,
       updatedAt: updatedAt,
       labelIds: labelIds,
+      integrationBinding: integrationBinding,
     );
   }
 
@@ -306,6 +315,7 @@ class TaskInstance {
       'status': status.toJson(),
       'updatedAt': updatedAt,
       'labelIds': labelIds,
+      if (integrationBinding != null) 'integrationBinding': integrationBinding,
     };
   }
 
@@ -348,6 +358,8 @@ class TaskInstance {
     DateTime? updatedAt,
     List<String>? labelIds,
     bool clearLabelIds = false,
+    Map<String, dynamic>? integrationBinding,
+    bool clearIntegrationBinding = false,
   }) {
     return TaskInstance(
       id: id,
@@ -393,6 +405,9 @@ class TaskInstance {
       isFromCache: isFromCache ?? this.isFromCache,
       updatedAt: updatedAt ?? this.updatedAt,
       labelIds: clearLabelIds ? const [] : (labelIds ?? this.labelIds),
+      integrationBinding: clearIntegrationBinding
+          ? null
+          : (integrationBinding ?? this.integrationBinding),
     );
   }
 }

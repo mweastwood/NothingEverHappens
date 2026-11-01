@@ -1266,5 +1266,36 @@ void main() {
       expect(instancesCol.documents[orphanPending.id]!.isExisting, isFalse);
       expect(instancesCol.documents[orphanCompleted.id]!.isExisting, isTrue);
     });
+
+    test(
+        'processFamily persists callerTimeZoneOffsetMinutes even when family has zero family tasks',
+        () async {
+      final service = FamilySchedulerService(db);
+      final familyDoc = db.collection('families').doc('fam_empty_tasks');
+      await familyDoc.set({
+        'name': 'Empty Tasks Family',
+        'members': {
+          'member_1': {
+            'displayName': 'Member 1',
+            'role': 'parent',
+          },
+        },
+      });
+
+      final summary = await service.processFamily(
+        'fam_empty_tasks',
+        now: DateTime.utc(2026, 9, 10, 8, 0),
+        callerUserId: 'member_1',
+        callerTimeZoneOffsetMinutes: -300,
+      );
+
+      expect(summary.tasksEvaluated, equals(0));
+      expect(
+        familyDoc.updateCalls,
+        contains(
+          containsPair('members.member_1.timeZoneOffsetMinutes', -300),
+        ),
+      );
+    });
   });
 }

@@ -949,6 +949,8 @@ class TaskSyncService {
       'lastModifiedByUserId': inst.lastModifiedByUserId,
       'lastModifiedByAppVersion': inst.lastModifiedByAppVersion,
       'lastModifiedByPlatform': inst.lastModifiedByPlatform,
+      if (inst.integrationBinding != null)
+        'integrationBinding': inst.integrationBinding,
     };
     if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore

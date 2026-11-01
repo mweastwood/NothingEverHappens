@@ -265,8 +265,15 @@ class FamilySchedulerService {
         }
       }
 
+      final parsedCallerOffset =
+          parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
+      final hasCallerTimezoneToSync = parsedCallerOffset != null &&
+          callerUserId != null &&
+          callerUserId.isNotEmpty;
+
       if (familyTasks.isEmpty &&
-          !instances.any((i) => i.status == TaskStatus.pending)) {
+          !instances.any((i) => i.status == TaskStatus.pending) &&
+          !hasCallerTimezoneToSync) {
         return FamilyScheduleSummary(
           familyId: familyId,
           tasksEvaluated: 0,
@@ -278,7 +285,7 @@ class FamilySchedulerService {
       final backfilledMemberTimeZones = <String, String>{};
       Map<String, dynamic>? effectiveFamilyData = familyData;
 
-      if (familyTasks.isNotEmpty) {
+      if (familyTasks.isNotEmpty || hasCallerTimezoneToSync) {
         if (effectiveFamilyData == null) {
           try {
             final familyDoc = await familyRef.get();
@@ -289,7 +296,9 @@ class FamilySchedulerService {
             // Continue if family document metadata is unavailable
           }
         }
+      }
 
+      if (familyTasks.isNotEmpty) {
         memberOffsets.addAll(
           extractMemberTimeZoneOffsets(
             effectiveFamilyData,
@@ -351,8 +360,6 @@ class FamilySchedulerService {
       }
 
       final familyMetadataUpdates = <String, dynamic>{};
-      final parsedCallerOffset =
-          parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
       if (parsedCallerOffset != null &&
           callerUserId != null &&
           callerUserId.isNotEmpty &&

@@ -52,6 +52,20 @@ TaskEventValidation validateTaskEvent(dynamic payload) {
     );
   }
 
+  final rawTimestamp = p['timestamp'];
+  String resolvedTimestampIso;
+  if (rawTimestamp == null) {
+    resolvedTimestampIso = DateTime.now().toUtc().toIso8601String();
+  } else if (rawTimestamp is String &&
+      DateTime.tryParse(rawTimestamp) != null) {
+    resolvedTimestampIso = rawTimestamp;
+  } else {
+    return const TaskEventValidation(
+      valid: false,
+      error: "Invalid 'timestamp' field. Must be a valid ISO-8601 string.",
+    );
+  }
+
   return TaskEventValidation(
     valid: true,
     event: ExternalTaskEvent(
@@ -61,9 +75,7 @@ TaskEventValidation validateTaskEvent(dynamic payload) {
       externalId: p['externalId'] as String,
       date: dateStr,
       action: action,
-      timestamp: p['timestamp'] is String
-          ? p['timestamp'] as String
-          : DateTime.now().toUtc().toIso8601String(),
+      timestamp: resolvedTimestampIso,
       metadata: p['metadata'] is Map
           ? Map<String, dynamic>.from(p['metadata'] as Map)
           : null,
@@ -135,22 +147,26 @@ Future<TaskEventResult> processExternalTaskEvent(
       .limit(1)
       .get();
 
-  final nowUtc = now ?? DateTime.now().toUtc();
-  final nowIso = nowUtc.toIso8601String();
+  final nowUtc = (now ?? DateTime.now()).toUtc();
+  final eventTimeUtc = event.timestamp != null
+      ? (DateTime.tryParse(event.timestamp!)?.toUtc() ?? nowUtc)
+      : nowUtc;
 
   var targetStatus = 'pending';
   String? statusReason;
-  String? completedAt;
+  DateTime? completedAt;
   String? completedByUserId;
 
   if (event.action == 'completed') {
     targetStatus = 'completed';
     statusReason = 'user_completed';
-    completedAt = event.timestamp ?? nowIso;
+    completedAt = eventTimeUtc;
     completedByUserId = event.userId;
   } else if (event.action == 'dismissed') {
     targetStatus = 'skipped';
     statusReason = 'user_dismissed';
+    completedAt = eventTimeUtc;
+    completedByUserId = event.userId;
   } else if (event.action == 'uncompleted') {
     targetStatus = 'pending';
     statusReason = null;
@@ -174,13 +190,31 @@ Future<TaskEventResult> processExternalTaskEvent(
       updatedCompletedByUserIds.removeWhere((id) => id == event.userId);
     }
 
+    var effectiveStatus = targetStatus;
+    var effectiveStatusReason = statusReason;
+    dynamic effectiveCompletedAt = completedAt;
+    var effectiveCompletedByUserId = completedByUserId;
+
+    if (event.action == 'uncompleted' &&
+        existingData['familyCompletionMode'] == 'individual' &&
+        updatedCompletedByUserIds.isNotEmpty) {
+      effectiveStatus = (existingData['status'] as String?) ?? 'completed';
+      effectiveStatusReason = existingData['statusReason'] as String?;
+      effectiveCompletedAt = existingData['completedAt'];
+      final prevCompletedBy = existingData['completedByUserId'] as String?;
+      effectiveCompletedByUserId =
+          (prevCompletedBy != null && prevCompletedBy != event.userId)
+              ? prevCompletedBy
+              : updatedCompletedByUserIds.last;
+    }
+
     await doc.ref.update({
-      'status': targetStatus,
-      'statusReason': statusReason,
-      'completedAt': completedAt,
-      'completedByUserId': completedByUserId,
+      'status': effectiveStatus,
+      'statusReason': effectiveStatusReason,
+      'completedAt': effectiveCompletedAt,
+      'completedByUserId': effectiveCompletedByUserId,
       'completedByUserIds': updatedCompletedByUserIds,
-      'updatedAt': nowIso,
+      'updatedAt': nowUtc,
       'lastModifiedByUserId': event.userId,
     });
 
@@ -234,16 +268,17 @@ Future<TaskEventResult> processExternalTaskEvent(
     if (statusReason != null) 'statusReason': statusReason,
     'completedAt': completedAt,
     'completedByUserId': completedByUserId,
-    'completedByUserIds':
-        completedByUserId != null ? [completedByUserId] : <String>[],
+    'completedByUserIds': event.action == 'completed' && completedByUserId != null
+        ? [completedByUserId]
+        : <String>[],
     'integrationBinding': {
       'providerId': event.providerId,
       'entityType': event.entityType,
       'externalId': event.externalId,
       'bidirectional': true,
     },
-    'updatedAt': nowIso,
-    'createdAt': nowIso,
+    'updatedAt': nowUtc,
+    'createdAt': nowUtc,
     'lastModifiedByUserId': event.userId,
   };
 
