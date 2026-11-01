@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
+import 'package:nothing_ever_happens/logic/task_attribution_calculator.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -176,39 +177,17 @@ class MissedPolicyRunner {
       if (inst.status != TaskStatus.skipped &&
           inst.status != TaskStatus.failed) {
         final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
-        if (t != null && t.estimatedDuration != null) {
+        if (t != null &&
+            t.estimatedDuration != null &&
+            (t.isFamily || inst.status != TaskStatus.pending) &&
+            TaskAttributionCalculator.isInstanceAttributableToUserForCapacity(
+              instance: inst,
+              task: t,
+              userId: _userId,
+            )) {
           final hours = t.estimatedDuration!.inMinutes / 60.0;
-          if (t.isFamily) {
-            final assignedUser = inst.assignedUserId ?? t.assignedUserId;
-            if (assignedUser != null && assignedUser.isNotEmpty) {
-              if (assignedUser == _userId) {
-                dayPlannedHours[inst.scheduledDate] =
-                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-              }
-            } else if (inst.familyCompletionMode ==
-                    FamilyCompletionMode.anyone &&
-                inst.status == TaskStatus.completed) {
-              final completedByCurrentUser =
-                  _userId.isEmpty ||
-                  inst.completedByUserId == _userId ||
-                  inst.completedByUserIds.contains(_userId);
-              if (completedByCurrentUser) {
-                dayPlannedHours[inst.scheduledDate] =
-                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-              }
-            } else {
-              dayPlannedHours[inst.scheduledDate] =
-                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-            }
-          } else if (inst.status != TaskStatus.pending) {
-            final assignedUser = inst.assignedUserId ?? t.assignedUserId;
-            if (assignedUser == null ||
-                assignedUser.isEmpty ||
-                assignedUser == _userId) {
-              dayPlannedHours[inst.scheduledDate] =
-                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-            }
-          }
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
         }
       }
     }
@@ -355,15 +334,15 @@ class MissedPolicyRunner {
         (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
       );
       for (final inst in activeInstances) {
-        if (task.estimatedDuration != null) {
-          final assignedUser = inst.assignedUserId ?? task.assignedUserId;
-          if (assignedUser == null ||
-              assignedUser.isEmpty ||
-              assignedUser == _userId) {
-            final hours = task.estimatedDuration!.inMinutes / 60.0;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-          }
+        if (task.estimatedDuration != null &&
+            TaskAttributionCalculator.isInstanceAttributableToUserForCapacity(
+              instance: inst,
+              task: task,
+              userId: _userId,
+            )) {
+          final hours = task.estimatedDuration!.inMinutes / 60.0;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
         }
       }
 
