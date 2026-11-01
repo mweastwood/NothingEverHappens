@@ -638,7 +638,7 @@ void main() {
   );
 
   test(
-    'resetLocalDataAndResync clears stale local data and re-migrates from cloud',
+    'resetLocalDataAndResync clears stale local data and re-migrates from cloud for premium users',
     () async {
       // 1. Populate Firestore with cloud task
       await firestore
@@ -666,8 +666,18 @@ void main() {
       expect(localDataSource.getTasks().any((t) => t.id == 'S-stale'), isTrue);
       expect(localDataSource.getDirtyTaskIds(), contains('S-stale'));
 
+      final premiumRepo = UnifiedTaskRepository(
+        localDataSource: localDataSource,
+        syncService: syncService,
+        firestore: firestore,
+        userId: 'user1',
+        isActivePremium: true,
+        cloudFamilySchedulerClient: fakeCloudScheduler,
+      );
+      addTearDown(premiumRepo.dispose);
+
       // 3. Trigger reset & resync
-      await repository.resetLocalDataAndResync();
+      await premiumRepo.resetLocalDataAndResync();
 
       // 4. Verify local DB now has remote task and no stale/dirty artifacts
       final tasks = localDataSource.getTasks();
@@ -675,6 +685,26 @@ void main() {
       expect(tasks.any((t) => t.id == 'S-remote'), isTrue);
       expect(localDataSource.getDirtyTaskIds().isEmpty, isTrue);
       expect(localDataSource.isMigrationCompleted(), isTrue);
+    },
+  );
+
+  test(
+    'resetLocalDataAndResync does not wipe local data for free-tier users',
+    () async {
+      final localTask = TaskSchedule(
+        id: 'S-free-local',
+        title: 'Free Tier Local Task',
+        description: 'Must not be deleted',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await localDataSource.saveTask(localTask);
+
+      // repository in setUp has isActivePremium: false
+      await repository.resetLocalDataAndResync();
+
+      final tasks = localDataSource.getTasks();
+      expect(tasks.any((t) => t.id == 'S-free-local'), isTrue);
     },
   );
 
@@ -771,6 +801,7 @@ void main() {
         syncService: syncServiceUser2,
         firestore: firestore,
         userId: 'user2',
+        isActivePremium: true,
       );
       addTearDown(repoUser2.dispose);
 

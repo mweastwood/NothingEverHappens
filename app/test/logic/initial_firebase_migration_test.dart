@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -538,6 +539,132 @@ void main() {
       );
       expect(legacyFamilyInst.isFamily, true);
       expect(legacyFamilyInst.title, 'Legacy Family Instance');
+    },
+  );
+
+  test(
+    'Free-tier users (isActivePremium: false) do not have their local tasks/instances/recipes wiped by checkAndMigrate',
+    () async {
+      final localTask = TaskSchedule(
+        id: 'S-free-1',
+        title: 'Free User Local Task',
+        description: 'Local only',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final localInstance = TaskInstance(
+        id: 'I-free-1',
+        scheduleId: 'S-free-1',
+        ruleId: 'R-1',
+        title: 'Free User Local Instance',
+        description: 'Local only',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        updatedAt: DateTime.now(),
+      );
+      final localRecipe = Recipe(
+        id: 'R-free-1',
+        title: 'Free User Local Recipe',
+      );
+
+      await localDataSource.saveTask(localTask);
+      await localDataSource.saveInstance(localInstance);
+      await localDataSource.saveRecipe(localRecipe);
+
+      final service = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: false,
+      );
+
+      await service.checkAndMigrate();
+
+      expect(localDataSource.getTasks().map((t) => t.id), contains('S-free-1'));
+      expect(
+        localDataSource.getInstances().map((i) => i.id),
+        contains('I-free-1'),
+      );
+      expect(
+        localDataSource.getRecipes().map((r) => r.id),
+        contains('R-free-1'),
+      );
+      expect(localDataSource.isMigrationCompleted(), isFalse);
+    },
+  );
+
+  test(
+    'Premium migration fetches and restores personal and family recipes and preserves local unsynced recipes',
+    () async {
+      final now = DateTime(2026, 8, 15, 12, 0);
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      // Remote personal recipe
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('recipes')
+          .doc('R-personal-remote')
+          .set({
+            'title': 'Remote Personal Recipe',
+            'description': 'From user recipes collection',
+            'servings': 2,
+            'isFamily': false,
+            'createdAt': Timestamp.fromDate(now),
+            'updatedAt': Timestamp.fromDate(now),
+          });
+
+      // Remote family recipe
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('recipes')
+          .doc('R-family-remote')
+          .set({
+            'title': 'Remote Family Recipe',
+            'description': 'From family recipes collection',
+            'servings': 6,
+            'isFamily': true,
+            'createdAt': Timestamp.fromDate(now),
+            'updatedAt': Timestamp.fromDate(now),
+          });
+
+      // Local unsynced recipe not on remote
+      final localUnsyncedRecipe = Recipe(
+        id: 'R-local-unsynced',
+        title: 'Local Unsynced Recipe',
+        hasPendingWrites: true,
+        updatedAt: now,
+      );
+      await localDataSource.saveRecipe(localUnsyncedRecipe);
+
+      final service = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+
+      await service.migrateIfNeeded();
+
+      expect(localDataSource.isMigrationCompleted(), isTrue);
+      final recipes = localDataSource.getRecipes();
+      final recipeIds = recipes.map((r) => r.id).toSet();
+      expect(
+        recipeIds,
+        containsAll([
+          'R-personal-remote',
+          'R-family-remote',
+          'R-local-unsynced',
+        ]),
+      );
+
+      final famRecipe = recipes.firstWhere((r) => r.id == 'R-family-remote');
+      expect(famRecipe.isFamily, isTrue);
+      expect(famRecipe.title, 'Remote Family Recipe');
     },
   );
 }

@@ -30,6 +30,7 @@ class UnifiedTaskRepository implements TaskRepository {
   final TaskScheduleReconciler _scheduleReconciler;
   late final MissedPolicyRunner _missedPolicyRunner;
   final CloudFamilySchedulerClient? cloudFamilySchedulerClient;
+  final bool _isActivePremium;
 
   @override
   final String userId;
@@ -58,10 +59,12 @@ class UnifiedTaskRepository implements TaskRepository {
     this.cloudFamilySchedulerClient,
     TelemetryService? telemetryService,
     FamilyIdFetcher? familyIdFetcher,
+    bool? isActivePremium,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
        _rawFirestore = firestore,
        _telemetryService = telemetryService,
+       _isActivePremium = isActivePremium ?? syncService.isActivePremium,
        _scheduleReconciler = TaskScheduleReconciler(
          localDataSource: localDataSource,
          userId: userId,
@@ -111,6 +114,7 @@ class UnifiedTaskRepository implements TaskRepository {
         firestore: _rawFirestore,
         localDataSource: _localDataSource,
         userId: userId,
+        isActivePremium: _isActivePremium,
         logger: logger,
       );
       _initializationFuture = migrationService
@@ -140,10 +144,14 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> resetLocalDataAndResync() async {
+    if (!_isActivePremium || userId.isEmpty) {
+      return;
+    }
     final migrationService = InitialFirebaseMigrationService(
       firestore: _rawFirestore,
       localDataSource: _localDataSource,
       userId: userId,
+      isActivePremium: _isActivePremium,
       logger: logger,
     );
     await migrationService.migrateIfNeeded(force: true);

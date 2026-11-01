@@ -72,6 +72,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     syncService: syncService,
     firestore: firestore,
     userId: user.uid,
+    isActivePremium: syncService.isActivePremium,
     notificationService: ref.watch(notificationServiceProvider),
     errorHandler: ref.read(errorHandlerProvider),
     logger: ref.watch(appLoggerProvider),
