@@ -413,6 +413,50 @@ void main() {
             pendingInstances.single.scheduledDate,
             const CivilDay(year: 2026, month: 6, day: 15),
           );
+
+          // Verify overdue OneOffSchedule (on yesterday 2026-06-14) also re-spawns when edited/undone
+          final overdueEditMod = storedBeforeEdit.edit(
+            newTitle: storedBeforeEdit.title,
+            newDescription: storedBeforeEdit.description,
+            newSchedules: [
+              OneOffSchedule(
+                id: 'R-undo-1',
+                date: const CivilDay(year: 2026, month: 6, day: 14),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  hour: 9,
+                  minute: 0,
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  hour: 17,
+                  minute: 0,
+                ),
+              ),
+            ],
+            newEstimatedDuration: const Duration(minutes: 45),
+            newMissedPolicy: storedBeforeEdit.missedPolicy,
+            newIsMaster: storedBeforeEdit.isMaster,
+            newLastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 15),
+            newIsFamily: storedBeforeEdit.isFamily,
+            newPriority: storedBeforeEdit.priority,
+            newSkipIfNoCapacity: true,
+          );
+          await repository.updateTaskSchedule(overdueEditMod);
+
+          pendingInstances = localDataSource
+              .getInstances()
+              .where(
+                (i) =>
+                    i.scheduleId == 'S-undo-1' &&
+                    i.status == TaskStatus.pending,
+              )
+              .toList();
+          expect(pendingInstances, hasLength(1));
+          expect(
+            pendingInstances.single.scheduledDate,
+            const CivilDay(year: 2026, month: 6, day: 14),
+          );
         } finally {
           AppClock.reset();
           repository.dispose();

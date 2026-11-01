@@ -81,6 +81,23 @@ class UndoEditTaskScheduleAction extends UndoableAction {
         if (previousSchedule.labelIds.toString() !=
             currentSchedule.labelIds.toString())
           'labelIds': previousSchedule.labelIds,
+        if (previousSchedule.estimatedDuration !=
+            currentSchedule.estimatedDuration)
+          'estimatedDuration': previousSchedule.estimatedDuration?.inMinutes,
+        if (previousSchedule.skipIfNoCapacity !=
+            currentSchedule.skipIfNoCapacity)
+          'skipIfNoCapacity': previousSchedule.skipIfNoCapacity,
+        if (previousSchedule.workflowType != currentSchedule.workflowType)
+          'workflowType': previousSchedule.workflowType,
+        if (previousSchedule.mealWorkflowConfig?.toJson().toString() !=
+            currentSchedule.mealWorkflowConfig?.toJson().toString())
+          'mealWorkflowConfig': previousSchedule.mealWorkflowConfig?.toJson(),
+        if (previousSchedule.cycleId != currentSchedule.cycleId)
+          'cycleId': previousSchedule.cycleId,
+        if (previousSchedule.preferredBy != currentSchedule.preferredBy)
+          'preferredBy': previousSchedule.preferredBy,
+        if (previousSchedule.appLaunchUrl != currentSchedule.appLaunchUrl)
+          'appLaunchUrl': previousSchedule.appLaunchUrl,
       },
     );
     await repo.updateTaskSchedule(modification);

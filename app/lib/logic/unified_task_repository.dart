@@ -201,11 +201,22 @@ class UnifiedTaskRepository implements TaskRepository {
     final changes = modification.changes;
     final schedulesChanged = changes.containsKey('schedules');
     final yesterday = CivilDay.fromDateTime(AppClock.now).addDays(-1);
+    final allOneOff =
+        modification.newTask.schedules.isNotEmpty &&
+        modification.newTask.schedules.every((s) => s is OneOffSchedule);
+    final currentLastSpawned = modification.newTask.lastSpawnedDate;
+    final bool shouldClearLastSpawned =
+        schedulesChanged && (allOneOff || currentLastSpawned == null);
+    final CivilDay? adjustedLastSpawned = schedulesChanged && !allOneOff
+        ? (currentLastSpawned != null &&
+                  currentLastSpawned.compareTo(yesterday) > 0
+              ? yesterday
+              : currentLastSpawned)
+        : currentLastSpawned;
 
     final t = modification.newTask.copyWith(
-      lastSpawnedDate: schedulesChanged
-          ? yesterday
-          : modification.newTask.lastSpawnedDate,
+      lastSpawnedDate: adjustedLastSpawned,
+      clearLastSpawnedDate: shouldClearLastSpawned,
       updatedAt: DateTime.now().toUtc(),
       hasPendingWrites: true,
     );
@@ -270,12 +281,13 @@ class UnifiedTaskRepository implements TaskRepository {
     TaskSchedule task,
     List<TaskInstance> pendingInstances,
   ) async {
-    final t = task.copyWith(hasPendingWrites: true);
+    final nowUtc = AppClock.now.toUtc();
+    final t = task.copyWith(hasPendingWrites: true, updatedAt: nowUtc);
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(task.id);
     for (final inst in pendingInstances) {
       await _localDataSource.saveInstance(
-        inst.copyWith(hasPendingWrites: true),
+        inst.copyWith(hasPendingWrites: true, updatedAt: nowUtc),
       );
       await _localDataSource.markDirty(inst.id);
     }
