@@ -296,7 +296,8 @@ class UnifiedTaskRepository implements TaskRepository {
       final updatedUserIds = {...instance.completedByUserIds, userId}.toList();
 
       bool allCompleted = false;
-      if (instance.assignedUserId != null) {
+      if (instance.assignedUserId != null &&
+          instance.assignedUserId!.isNotEmpty) {
         allCompleted = updatedUserIds.contains(instance.assignedUserId);
       } else {
         final familyId = await getFamilyId();
@@ -308,21 +309,13 @@ class UnifiedTaskRepository implements TaskRepository {
                 .get();
             if (familyDoc.exists && familyDoc.data() != null) {
               final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
-              if (family.members.isNotEmpty) {
-                allCompleted = family.members.keys.every(
-                  (memberId) => updatedUserIds.contains(memberId),
-                );
-              } else {
-                allCompleted = true;
-              }
-            } else {
-              allCompleted = true;
+              allCompleted =
+                  family.members.isNotEmpty &&
+                  family.members.keys.every(
+                    (memberId) => updatedUserIds.contains(memberId),
+                  );
             }
-          } catch (_) {
-            allCompleted = true;
-          }
-        } else {
-          allCompleted = true;
+          } catch (_) {}
         }
       }
 
