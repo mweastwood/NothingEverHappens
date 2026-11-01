@@ -77,8 +77,31 @@ class SchedulerOccurrenceProjector {
 
       final wallClockNow =
           utcOffset != null ? now.toUtc().add(utcOffset) : now.toLocal();
-      final nextSpawnTime = rule.nextCompletionRelativeDateTime(wallClockNow);
-      final nextDate = CivilDay.fromDateTime(nextSpawnTime);
+      final effectiveBaseTime = CivilDay.fromDateTime(wallClockNow).isBefore(
+        completedInstance.scheduledDate,
+      )
+          ? DateTime.utc(
+              completedInstance.scheduledDate.year,
+              completedInstance.scheduledDate.month,
+              completedInstance.scheduledDate.day,
+              wallClockNow.hour,
+              wallClockNow.minute,
+              wallClockNow.second,
+            )
+          : wallClockNow;
+      final nextSpawnTime = rule.nextCompletionRelativeDateTime(
+        effectiveBaseTime,
+      );
+      var nextDate = CivilDay.fromDateTime(nextSpawnTime);
+      while (nextDate == completedInstance.scheduledDate ||
+          taskInstances.any(
+            (inst) =>
+                isInstanceForRule(inst, rule, task) &&
+                inst.scheduledDate == nextDate &&
+                inst.status != TaskStatus.pending,
+          )) {
+        nextDate = nextDate.addDays(1);
+      }
       return createInstanceForRule(
         task: task,
         rule: rule,
