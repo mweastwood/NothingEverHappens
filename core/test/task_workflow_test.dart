@@ -678,5 +678,99 @@ void main() {
         );
       },
     );
+
+    test(
+      'fixed-calendar missed policy skips pending shoppingList and prepDinner stages even when selectMeal is completed, and getNextOccurrenceToSpawn/Delete respect pending sibling stages',
+      () {
+        final schedule = TaskSchedule(
+          id: 'S-meal-missed',
+          title: 'Daily Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(),
+          schedules: [
+            DailySchedule(
+              id: 'R-daily-missed',
+              startDate: today,
+              interval: 1,
+              startRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+              dueRelativeTime:
+                  const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+            ),
+          ],
+        );
+
+        final selectInst = buildStageInstance(
+          id: 'I-select-1',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily-missed',
+          date: today,
+          stage: WorkflowStage.selectMeal,
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 10, 5),
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+        final shopInst = buildStageInstance(
+          id: 'I-shop-1',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily-missed',
+          date: today,
+          stage: WorkflowStage.shoppingList,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+        final prepInst = buildStageInstance(
+          id: 'I-prep-1',
+          scheduleId: schedule.id,
+          ruleId: 'R-daily-missed',
+          date: today,
+          stage: WorkflowStage.prepDinner,
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 8, 16, 10, 5),
+        );
+
+        // Completing shop while prep is still pending should not spawn next occurrence or delete prep on undo
+        final completedShop = shopInst.copyWith(
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 8, 16, 15, 0),
+        );
+        expect(
+          engine.getNextOccurrenceToSpawn(
+            schedule,
+            completedShop,
+            DateTime.utc(2026, 8, 16, 15, 0),
+            [selectInst, completedShop, prepInst],
+          ),
+          isNull,
+        );
+        expect(
+          engine.getNextOccurrenceIdToDelete(
+            schedule,
+            completedShop,
+            DateTime.utc(2026, 8, 16, 15, 0),
+            [selectInst, completedShop, prepInst],
+          ),
+          isNull,
+        );
+
+        // Next day after both shop and prep due times have expired: autoDismiss skips both shop and prep
+        final nextDayNow = DateTime.utc(2026, 8, 17, 11, 0);
+        final action = engine.evaluate(
+          schedule,
+          [selectInst, shopInst, prepInst],
+          nextDayNow,
+          utcOffset: Duration.zero,
+        );
+        final updatedIds = action.instancesToUpdate
+            .where((i) => i.status == TaskStatus.skipped)
+            .map((i) => i.id)
+            .toSet();
+        expect(updatedIds, containsAll(['I-shop-1', 'I-prep-1']));
+      },
+    );
   });
 }

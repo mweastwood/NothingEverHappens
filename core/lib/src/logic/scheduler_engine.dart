@@ -322,7 +322,27 @@ class SchedulerEngine {
             stageCanonicals.add(stageInsts.first);
           }
         }
-        canonicalByDate[entry.key] = _selectCanonicalInstance(stageCanonicals);
+        if (stageCanonicals.length > 1) {
+          final pendingStages = stageCanonicals
+              .where((inst) => inst.status == TaskStatus.pending)
+              .toList();
+          if (pendingStages.isNotEmpty) {
+            pendingStages.sort((a, b) {
+              final stageA = a.workflowPayload?.stage.index ?? 0;
+              final stageB = b.workflowPayload?.stage.index ?? 0;
+              return stageA.compareTo(stageB);
+            });
+            canonicalByDate[entry.key] = pendingStages.first;
+          } else {
+            canonicalByDate[entry.key] = _selectCanonicalInstance(
+              stageCanonicals,
+            );
+          }
+        } else {
+          canonicalByDate[entry.key] = _selectCanonicalInstance(
+            stageCanonicals,
+          );
+        }
       } else {
         canonicalByDate[entry.key] = insts.first;
       }
@@ -418,13 +438,18 @@ class SchedulerEngine {
 
     if (pendingForSchedule.isNotEmpty &&
         s.missedOccurrencePolicy.policy == MissedPolicy.autoDismiss) {
-      final activePending = pendingForSchedule.first;
-      final isExpired = s.missedOccurrencePolicy.isInstanceExpired(
-        activePending,
-        now,
-        utcOffset: context.latestUtcOffset,
-      );
-      if (isExpired) {
+      final expiredPending = <TaskInstance>[];
+      for (final activePending in pendingForSchedule) {
+        final isExpired = s.missedOccurrencePolicy.isInstanceExpired(
+          activePending,
+          now,
+          utcOffset: context.latestUtcOffset,
+        );
+        if (isExpired) {
+          expiredPending.add(activePending);
+        }
+      }
+      for (final activePending in expiredPending) {
         final skippedInst = activePending.copyWith(
           status: TaskStatus.skipped,
           statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
@@ -446,7 +471,7 @@ class SchedulerEngine {
         if (dedupIdx >= 0) {
           deduplicatedRuleInstances[dedupIdx] = skippedInst;
         }
-        pendingForSchedule.removeAt(0);
+        pendingForSchedule.removeWhere((x) => x.id == skippedInst.id);
       }
     }
 
@@ -742,6 +767,36 @@ class SchedulerEngine {
       if (orig != null) {
         if (orig.status != inst.status) {
           toUpdate.add(inst);
+          if (inst.status == TaskStatus.skipped) {
+            final pendingSiblings = ruleInstances.where(
+              (x) =>
+                  x.id != inst.id &&
+                  !toDelete.contains(x.id) &&
+                  x.scheduledDate == date &&
+                  x.status == TaskStatus.pending,
+            );
+            for (final sibling in pendingSiblings) {
+              final shouldSkipSibling =
+                  s.missedOccurrencePolicy.policy != MissedPolicy.autoDismiss ||
+                      s.missedOccurrencePolicy.isInstanceExpired(
+                        sibling,
+                        context.now,
+                        utcOffset: context.latestUtcOffset,
+                      );
+              if (shouldSkipSibling) {
+                toUpdate.add(
+                  sibling.copyWith(
+                    status: TaskStatus.skipped,
+                    statusReason: inst.statusReason,
+                    lastModifiedByAppVersion: appVersion,
+                    lastModifiedByPlatform: platform,
+                    lastModifiedByUserId: context.userId,
+                    updatedAt: context.now.toUtc(),
+                  ),
+                );
+              }
+            }
+          }
         }
       } else {
         final isSkipOrOlderNewer =

@@ -644,6 +644,26 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await _localDataSource.saveInstance(pendingInstance);
     await _localDataSource.markDirty(pendingInstance.id);
+    if (resolvedInstance.workflowPayload?.stage == WorkflowStage.selectMeal) {
+      final groupId = resolvedInstance.workflowPayload?.workflowGroupId;
+      final siblingStages = _localDataSource
+          .getInstances()
+          .where(
+            (i) =>
+                i.scheduleId == resolvedInstance.scheduleId &&
+                i.id != resolvedInstance.id &&
+                i.scheduledDate == resolvedInstance.scheduledDate &&
+                i.workflowPayload != null &&
+                i.workflowPayload!.stage != WorkflowStage.selectMeal &&
+                (groupId == null ||
+                    i.workflowPayload!.workflowGroupId == groupId),
+          )
+          .toList();
+      for (final sibling in siblingStages) {
+        await _localDataSource.deleteInstance(sibling.id);
+        await _localDataSource.markDirty(sibling.id);
+      }
+    }
     logger?.info(
       'task',
       'Task instance status undone: ${resolvedInstance.id}',

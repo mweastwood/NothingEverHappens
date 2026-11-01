@@ -57,6 +57,15 @@ class SchedulerOccurrenceProjector {
     final rule = task.schedules[ruleIndex];
     if (rule is OneOffSchedule) return null;
 
+    final hasPendingSiblingStageOnSameDate = taskInstances.any(
+      (inst) =>
+          isInstanceForRule(inst, rule, task) &&
+          inst.id != completedInstance.id &&
+          inst.scheduledDate == completedInstance.scheduledDate &&
+          inst.status == TaskStatus.pending,
+    );
+    if (hasPendingSiblingStageOnSameDate) return null;
+
     if (rule.schedulingPolicy is CompletionRelativePolicy) {
       final hasPendingForRule = taskInstances.any(
         (inst) =>
@@ -127,6 +136,15 @@ class SchedulerOccurrenceProjector {
     final rule = task.schedules[ruleIndex];
     if (rule is OneOffSchedule) return null;
 
+    final hasPendingSiblingStageOnSameDate = taskInstances.any(
+      (inst) =>
+          isInstanceForRule(inst, rule, task) &&
+          inst.id != completedInstance.id &&
+          inst.scheduledDate == completedInstance.scheduledDate &&
+          inst.status == TaskStatus.pending,
+    );
+    if (hasPendingSiblingStageOnSameDate) return null;
+
     final isCompletionRelative =
         rule.schedulingPolicy is CompletionRelativePolicy;
     final ruleInstances = taskInstances
@@ -135,6 +153,7 @@ class SchedulerOccurrenceProjector {
               isInstanceForRule(inst, rule, task) &&
               inst.id != completedInstance.id &&
               inst.status == TaskStatus.pending &&
+              inst.scheduledDate != completedInstance.scheduledDate &&
               (isCompletionRelative ||
                   inst.scheduledDate.isAfter(completedInstance.scheduledDate)),
         )
