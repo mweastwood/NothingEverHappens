@@ -532,5 +532,141 @@ void main() {
         );
       },
     );
+
+    test(
+      'persists reconciled saves, deletes, and dirty IDs in single batch calls and prunes duplicate workflow siblings without schedule edit',
+      () async {
+        final trackingDs = _BatchTrackingHiveLocalDataSource();
+        await trackingDs.init();
+        final batchReconciler = TaskScheduleReconciler(
+          localDataSource: trackingDs,
+          userId: 'user-1',
+        );
+
+        const date = CivilDay(year: 2026, month: 9, day: 16);
+        final rule = DailySchedule(
+          id: 'R-1',
+          scheduleId: 'S-batch',
+          startDate: date,
+          interval: 1,
+        );
+        final mealTask = TaskSchedule(
+          id: 'S-batch',
+          title: 'Dinner',
+          description: 'Cook dinner',
+          workflowType: 'mealWorkflow',
+          isFamily: false,
+          schedules: [rule],
+        );
+        final revertedStandardFamilyTask = mealTask.copyWith(
+          clearWorkflowType: true,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+        );
+
+        final shopStage = TaskInstance(
+          id: 'I-shop',
+          scheduleId: 'S-batch',
+          ruleId: 'R-1',
+          title: 'Shop: Soup',
+          description: 'Buy veggies',
+          scheduledDate: date,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            workflowGroupId: 'S-batch_2026-9-16',
+            stage: WorkflowStage.shoppingList,
+          ),
+        );
+        final prepStage = TaskInstance(
+          id: 'I-prep',
+          scheduleId: 'S-batch',
+          ruleId: 'R-1',
+          title: 'Cook: Soup',
+          description: 'Simmer soup',
+          scheduledDate: date,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            workflowGroupId: 'S-batch_2026-9-16',
+            stage: WorkflowStage.prepDinner,
+          ),
+        );
+        final completedYesterday = TaskInstance(
+          id: 'I-completed',
+          scheduleId: 'S-batch',
+          ruleId: 'R-1',
+          title: 'Dinner',
+          description: 'Cook dinner',
+          scheduledDate: date.addDays(-1),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.completed,
+          isFamily: false,
+        );
+
+        await trackingDs.saveInstances([
+          shopStage,
+          prepStage,
+          completedYesterday,
+        ]);
+        trackingDs.resetCounts();
+
+        await batchReconciler.reconcileInstancesOnUpdate(
+          oldTask: mealTask,
+          updatedTask: revertedStandardFamilyTask,
+          changes: {'workflowType': null, 'isFamily': true},
+        );
+
+        expect(trackingDs.deleteInstancesCallCount, 1);
+        expect(trackingDs.saveInstancesCallCount, 1);
+        expect(trackingDs.markDirtyBatchCallCount, 1);
+
+        final remainingPending = trackingDs
+            .getInstances()
+            .where((i) => i.status == TaskStatus.pending)
+            .toList();
+        expect(remainingPending, hasLength(1));
+        expect(remainingPending.single.workflowPayload, isNull);
+        expect(remainingPending.single.isFamily, isTrue);
+
+        final dirtyIds = trackingDs.getDirtyTaskIds();
+        expect(dirtyIds, containsAll(['I-shop', 'I-prep', 'I-completed']));
+      },
+    );
   });
+}
+
+class _BatchTrackingHiveLocalDataSource extends HiveLocalDataSource {
+  int saveInstancesCallCount = 0;
+  int deleteInstancesCallCount = 0;
+  int markDirtyBatchCallCount = 0;
+
+  void resetCounts() {
+    saveInstancesCallCount = 0;
+    deleteInstancesCallCount = 0;
+    markDirtyBatchCallCount = 0;
+  }
+
+  @override
+  Future<void> saveInstances(List<TaskInstance> instances) async {
+    saveInstancesCallCount++;
+    await super.saveInstances(instances);
+  }
+
+  @override
+  Future<void> deleteInstances(List<String> ids) async {
+    deleteInstancesCallCount++;
+    await super.deleteInstances(ids);
+  }
+
+  @override
+  Future<void> markDirtyBatch(List<String> ids) async {
+    markDirtyBatchCallCount++;
+    await super.markDirtyBatch(ids);
+  }
 }

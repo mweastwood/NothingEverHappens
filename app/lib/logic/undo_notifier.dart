@@ -1,7 +1,11 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/legacy.dart';
+
 import 'task_repository.dart';
 import 'task_instance.dart';
 import 'task_schedule.dart';
+
+const _deepEquals = DeepCollectionEquality();
 
 sealed class UndoableAction {
   final String message;
@@ -58,8 +62,10 @@ class UndoEditTaskScheduleAction extends UndoableAction {
     final currSchedulesJson = currentSchedule.schedules
         .map((s) => s.toJson())
         .toList();
-    final schedulesChanged =
-        prevSchedulesJson.toString() != currSchedulesJson.toString();
+    final schedulesChanged = !_deepEquals.equals(
+      prevSchedulesJson,
+      currSchedulesJson,
+    );
 
     final modification = (
       newTask: previousSchedule,
@@ -78,8 +84,10 @@ class UndoEditTaskScheduleAction extends UndoableAction {
           'familyCompletionMode': previousSchedule.familyCompletionMode.name,
         if (previousSchedule.assignedUserId != currentSchedule.assignedUserId)
           'assignedUserId': previousSchedule.assignedUserId,
-        if (previousSchedule.labelIds.toString() !=
-            currentSchedule.labelIds.toString())
+        if (!_deepEquals.equals(
+          previousSchedule.labelIds,
+          currentSchedule.labelIds,
+        ))
           'labelIds': previousSchedule.labelIds,
         if (previousSchedule.estimatedDuration !=
             currentSchedule.estimatedDuration)
@@ -89,8 +97,10 @@ class UndoEditTaskScheduleAction extends UndoableAction {
           'skipIfNoCapacity': previousSchedule.skipIfNoCapacity,
         if (previousSchedule.workflowType != currentSchedule.workflowType)
           'workflowType': previousSchedule.workflowType,
-        if (previousSchedule.mealWorkflowConfig?.toJson().toString() !=
-            currentSchedule.mealWorkflowConfig?.toJson().toString())
+        if (!_deepEquals.equals(
+          previousSchedule.mealWorkflowConfig?.toJson(),
+          currentSchedule.mealWorkflowConfig?.toJson(),
+        ))
           'mealWorkflowConfig': previousSchedule.mealWorkflowConfig?.toJson(),
         if (previousSchedule.cycleId != currentSchedule.cycleId)
           'cycleId': previousSchedule.cycleId,

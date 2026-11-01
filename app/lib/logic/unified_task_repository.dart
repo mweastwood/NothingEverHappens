@@ -12,8 +12,6 @@ import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
-import 'package:nothing_ever_happens/logic/family.dart';
-import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
@@ -327,58 +325,17 @@ class UnifiedTaskRepository implements TaskRepository {
           instance.assignedUserId!.isNotEmpty) {
         allCompleted = updatedUserIds.contains(instance.assignedUserId);
       } else {
-        final familyId = await getFamilyId();
-        if (familyId != null && familyId.isNotEmpty && _rawFirestore != null) {
-          try {
-            final familyDoc = await _rawFirestore
-                .collection(FirestorePaths.families)
-                .doc(familyId)
-                .get();
-            if (familyDoc.exists && familyDoc.data() != null) {
-              final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
-              allCompleted =
-                  family.members.isNotEmpty &&
-                  family.members.keys.every(
-                    (memberId) => updatedUserIds.contains(memberId),
-                  );
-            }
-          } catch (_) {}
+        final family = await _familyIdFetcher.getFamily();
+        if (family != null) {
+          allCompleted =
+              family.members.isNotEmpty &&
+              family.members.keys.every(
+                (memberId) => updatedUserIds.contains(memberId),
+              );
         }
       }
 
-      if (allCompleted) {
-        final completedInstance = instance.copyWith(
-          isFamily: isFamily,
-          familyCompletionMode: familyCompletionMode,
-          status: TaskStatus.completed,
-          completedByUserId: userId,
-          completedAt: AppClock.now,
-          completedByUserIds: updatedUserIds,
-          statusReason: InstanceStatusReason.userCompleted.value,
-          lastModifiedByUserId: userId,
-          lastModifiedByAppVersion: AppVersion.display,
-          lastModifiedByPlatform: AppVersion.platform,
-          hasPendingWrites: true,
-          updatedAt: DateTime.now().toUtc(),
-        );
-        await _localDataSource.saveInstance(completedInstance);
-        await _localDataSource.markDirty(completedInstance.id);
-        final totalCompleted = await _localDataSource
-            .incrementTasksCompletedCount();
-        await _telemetryService?.logTaskCompleted(
-          taskId: id,
-          scheduleId: instance.scheduleId,
-          totalCompletedCount: totalCompleted,
-        );
-        logger?.info(
-          'task',
-          'Task instance completed: $id',
-          data: {'instanceId': id, 'scheduleId': instance.scheduleId},
-        );
-
-        await _triggerCloudFamilyScheduleIfApplicable(isFamily);
-        return completedInstance;
-      } else {
+      if (!allCompleted) {
         final partialInstance = instance.copyWith(
           isFamily: isFamily,
           familyCompletionMode: familyCompletionMode,
@@ -400,14 +357,38 @@ class UnifiedTaskRepository implements TaskRepository {
         _syncService.sync();
         return partialInstance;
       }
+
+      return _persistCompletedInstance(
+        instance: instance,
+        task: task,
+        isFamily: isFamily,
+        familyCompletionMode: familyCompletionMode,
+        completedByUserIds: updatedUserIds,
+      );
     }
 
+    return _persistCompletedInstance(
+      instance: instance,
+      task: task,
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
+    );
+  }
+
+  Future<TaskInstance> _persistCompletedInstance({
+    required TaskInstance instance,
+    required TaskSchedule? task,
+    required bool isFamily,
+    required FamilyCompletionMode familyCompletionMode,
+    List<String>? completedByUserIds,
+  }) async {
     final completedInstance = instance.copyWith(
       isFamily: isFamily,
       familyCompletionMode: familyCompletionMode,
       status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
+      completedByUserIds: completedByUserIds,
       statusReason: InstanceStatusReason.userCompleted.value,
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
@@ -420,14 +401,14 @@ class UnifiedTaskRepository implements TaskRepository {
     final totalCompleted = await _localDataSource
         .incrementTasksCompletedCount();
     await _telemetryService?.logTaskCompleted(
-      taskId: id,
+      taskId: instance.id,
       scheduleId: instance.scheduleId,
       totalCompletedCount: totalCompleted,
     );
     logger?.info(
       'task',
-      'Task instance completed: $id',
-      data: {'instanceId': id, 'scheduleId': instance.scheduleId},
+      'Task instance completed: ${instance.id}',
+      data: {'instanceId': instance.id, 'scheduleId': instance.scheduleId},
     );
 
     if (!isFamily && task != null) {
@@ -607,42 +588,14 @@ class UnifiedTaskRepository implements TaskRepository {
     final isFamilyTask = task?.isFamily ?? resolvedInstance.isFamily;
     final familyCompletionMode =
         task?.familyCompletionMode ?? resolvedInstance.familyCompletionMode;
+    final isIndividualFamily =
+        isFamilyTask && familyCompletionMode == FamilyCompletionMode.individual;
 
-    if (isFamilyTask &&
-        familyCompletionMode == FamilyCompletionMode.individual) {
-      final updatedUserIds = resolvedInstance.completedByUserIds
-          .where((uid) => uid != userId)
-          .toList();
-      final pendingInstance = resolvedInstance.copyWith(
-        isFamily: isFamilyTask,
-        familyCompletionMode: familyCompletionMode,
-        status: TaskStatus.pending,
-        clearCompletedByUserId: true,
-        clearCompletedAt: true,
-        clearStatusReason: true,
-        completedByUserIds: updatedUserIds,
-        lastModifiedByUserId: userId,
-        lastModifiedByAppVersion: AppVersion.display,
-        lastModifiedByPlatform: AppVersion.platform,
-        hasPendingWrites: true,
-        updatedAt: DateTime.now().toUtc(),
-      );
-      await _localDataSource.saveInstance(pendingInstance);
-      await _localDataSource.markDirty(pendingInstance.id);
-      if (updatedUserIds.isEmpty) {
-        await _deleteSpawnedMealWorkflowSiblings(resolvedInstance);
-      }
-      logger?.info(
-        'task',
-        'Task instance individual completion undone: ${resolvedInstance.id}',
-        data: {
-          'instanceId': resolvedInstance.id,
-          'scheduleId': resolvedInstance.scheduleId,
-        },
-      );
-      await _triggerCloudFamilyScheduleIfApplicable(isFamilyTask);
-      return;
-    }
+    final updatedUserIds = isIndividualFamily
+        ? resolvedInstance.completedByUserIds
+              .where((uid) => uid != userId)
+              .toList()
+        : null;
 
     final pendingInstance = resolvedInstance.copyWith(
       isFamily: isFamilyTask,
@@ -651,6 +604,7 @@ class UnifiedTaskRepository implements TaskRepository {
       clearCompletedByUserId: true,
       clearCompletedAt: true,
       clearStatusReason: true,
+      completedByUserIds: updatedUserIds,
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
@@ -659,10 +613,14 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await _localDataSource.saveInstance(pendingInstance);
     await _localDataSource.markDirty(pendingInstance.id);
-    await _deleteSpawnedMealWorkflowSiblings(resolvedInstance);
+    if (!isIndividualFamily || updatedUserIds!.isEmpty) {
+      await _deleteSpawnedMealWorkflowSiblings(resolvedInstance);
+    }
     logger?.info(
       'task',
-      'Task instance status undone: ${resolvedInstance.id}',
+      isIndividualFamily
+          ? 'Task instance individual completion undone: ${resolvedInstance.id}'
+          : 'Task instance status undone: ${resolvedInstance.id}',
       data: {
         'instanceId': resolvedInstance.id,
         'scheduleId': resolvedInstance.scheduleId,

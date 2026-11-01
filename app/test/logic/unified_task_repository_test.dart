@@ -17,6 +17,7 @@ import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -3919,6 +3920,85 @@ void main() {
         expect(famRemaining.first.status, equals(TaskStatus.pending));
       },
     );
+
+    test(
+      'completeTaskInstance for unassigned individual family task uses FamilyIdFetcher.getFamily() and marks completed when all members finish',
+      () async {
+        const familyId = 'fam-indiv-all-done';
+        await firestore.collection('users').doc('user1').set({
+          'familyId': familyId,
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc(familyId).set({
+          'name': 'Vitamin Family',
+          'creatorId': 'user1',
+          'members': {
+            'user1': {'role': 'parent', 'displayName': 'User 1'},
+            'user2': {'role': 'child', 'displayName': 'User 2'},
+          },
+        });
+
+        int getFamilyCalls = 0;
+        final trackingFetcher = _TrackingFamilyIdFetcher(
+          firestore: firestore,
+          userId: 'user1',
+          onGetFamily: () => getFamilyCalls++,
+        );
+
+        int telemetryLoggedCount = 0;
+        final telemetry = _TestTelemetryService(
+          onTaskCompleted: ({taskId, scheduleId, totalCompletedCount}) async {
+            telemetryLoggedCount++;
+          },
+        );
+
+        final customRepo = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: syncService,
+          firestore: firestore,
+          userId: 'user1',
+          familyIdFetcher: trackingFetcher,
+          telemetryService: telemetry,
+          cloudFamilySchedulerClient: fakeCloudScheduler,
+        );
+        addTearDown(customRepo.dispose);
+
+        final task = TaskSchedule(
+          id: 'S-indiv-all',
+          title: 'Daily Vitamin',
+          description: 'Everyone takes their vitamin',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [],
+        );
+        final instance = TaskInstance(
+          id: 'I-indiv-all-1',
+          scheduleId: task.id,
+          ruleId: 'R-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: const ['user2'],
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(task);
+        await localDataSource.saveInstance(instance);
+
+        final completed = await customRepo.completeTaskInstance(instance.id);
+        expect(getFamilyCalls, 1);
+        expect(completed, isNotNull);
+        expect(completed!.status, TaskStatus.completed);
+        expect(completed.completedByUserId, 'user1');
+        expect(completed.completedByUserIds, containsAll(['user1', 'user2']));
+        expect(telemetryLoggedCount, 1);
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+      },
+    );
   });
 }
 
@@ -4052,5 +4132,21 @@ class _FakeCloudFamilySchedulerClient extends Fake
       await onTrigger!(familyId);
     }
     return true;
+  }
+}
+
+class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
+  final VoidCallback? onGetFamily;
+
+  _TrackingFamilyIdFetcher({
+    required super.firestore,
+    required super.userId,
+    this.onGetFamily,
+  });
+
+  @override
+  Future<Family?> getFamily() async {
+    onGetFamily?.call();
+    return super.getFamily();
   }
 }

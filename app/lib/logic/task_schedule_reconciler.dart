@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -5,6 +6,8 @@ import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
+
+const _deepEquals = DeepCollectionEquality();
 
 /// Reconciles local [TaskInstance] records when a [TaskSchedule] is modified.
 class TaskScheduleReconciler {
@@ -31,9 +34,12 @@ class TaskScheduleReconciler {
         allTaskInstances.where((i) => i.status == TaskStatus.pending).toList()
           ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
+    final instancesToSave = <TaskInstance>[];
+    final instanceIdsToDelete = <String>[];
+    final seenDatesByRule = <String, Set<CivilDay>>{};
+
     if (schedulesChanged) {
       final preservedCompletionRelativeRules = <String>{};
-      final seenDatesByRule = <String, Set<CivilDay>>{};
       for (final inst in instances) {
         final newRule = updatedTask.schedules
             .where((s) => s.id == inst.ruleId)
@@ -83,56 +89,48 @@ class TaskScheduleReconciler {
             }
           }
           final effectiveDate = updatedScheduledDate ?? inst.scheduledDate;
-          if (updatedTask.workflowType != 'mealWorkflow' &&
-              inst.workflowPayload != null) {
-            final seenDates = seenDatesByRule.putIfAbsent(
-              inst.ruleId,
-              () => <CivilDay>{},
-            );
-            if (!seenDates.add(effectiveDate)) {
-              await _localDataSource.deleteInstance(inst.id);
-              await _localDataSource.markDirty(inst.id);
-              continue;
-            }
-          }
-          final updatedInst = buildUpdatedPendingInstance(
+          if (_shouldPruneDuplicateWorkflowSibling(
+            updatedTask: updatedTask,
             inst: inst,
-            task: updatedTask,
-            rule: newRule,
-            newScheduledDate: updatedScheduledDate,
+            effectiveDate: effectiveDate,
+            seenDatesByRule: seenDatesByRule,
+          )) {
+            instanceIdsToDelete.add(inst.id);
+            continue;
+          }
+          instancesToSave.add(
+            buildUpdatedPendingInstance(
+              inst: inst,
+              task: updatedTask,
+              rule: newRule,
+              newScheduledDate: updatedScheduledDate,
+            ),
           );
-          await _localDataSource.saveInstance(updatedInst);
-          await _localDataSource.markDirty(updatedInst.id);
         } else {
-          await _localDataSource.deleteInstance(inst.id);
-          await _localDataSource.markDirty(inst.id);
+          instanceIdsToDelete.add(inst.id);
         }
       }
     } else {
-      final seenDatesByRule = <String, Set<CivilDay>>{};
       for (final inst in instances) {
-        if (updatedTask.workflowType != 'mealWorkflow' &&
-            inst.workflowPayload != null) {
-          final seenDates = seenDatesByRule.putIfAbsent(
-            inst.ruleId,
-            () => <CivilDay>{},
-          );
-          if (!seenDates.add(inst.scheduledDate)) {
-            await _localDataSource.deleteInstance(inst.id);
-            await _localDataSource.markDirty(inst.id);
-            continue;
-          }
+        if (_shouldPruneDuplicateWorkflowSibling(
+          updatedTask: updatedTask,
+          inst: inst,
+          effectiveDate: inst.scheduledDate,
+          seenDatesByRule: seenDatesByRule,
+        )) {
+          instanceIdsToDelete.add(inst.id);
+          continue;
         }
         final rule = updatedTask.schedules
             .where((s) => s.id == inst.ruleId)
             .firstOrNull;
-        final updatedInst = buildUpdatedPendingInstance(
-          inst: inst,
-          task: updatedTask,
-          rule: rule,
+        instancesToSave.add(
+          buildUpdatedPendingInstance(
+            inst: inst,
+            task: updatedTask,
+            rule: rule,
+          ),
         );
-        await _localDataSource.saveInstance(updatedInst);
-        await _localDataSource.markDirty(updatedInst.id);
       }
     }
 
@@ -143,17 +141,58 @@ class TaskScheduleReconciler {
               i.familyCompletionMode != updatedTask.familyCompletionMode),
     );
     for (final inst in nonPendingScopeMismatches) {
-      final updatedInst = inst.copyWith(
-        isFamily: updatedTask.isFamily,
-        familyCompletionMode: updatedTask.familyCompletionMode,
-        lastModifiedByUserId: _userId,
-        lastModifiedByAppVersion: AppVersion.display,
-        lastModifiedByPlatform: AppVersion.platform,
-        hasPendingWrites: true,
-        updatedAt: DateTime.now().toUtc(),
+      instancesToSave.add(
+        inst.copyWith(
+          isFamily: updatedTask.isFamily,
+          familyCompletionMode: updatedTask.familyCompletionMode,
+          lastModifiedByUserId: _userId,
+          lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
+          hasPendingWrites: true,
+          updatedAt: DateTime.now().toUtc(),
+        ),
       );
-      await _localDataSource.saveInstance(updatedInst);
-      await _localDataSource.markDirty(updatedInst.id);
+    }
+
+    await _persistReconciledInstances(
+      instancesToSave: instancesToSave,
+      instanceIdsToDelete: instanceIdsToDelete,
+    );
+  }
+
+  static bool _shouldPruneDuplicateWorkflowSibling({
+    required TaskSchedule updatedTask,
+    required TaskInstance inst,
+    required CivilDay effectiveDate,
+    required Map<String, Set<CivilDay>> seenDatesByRule,
+  }) {
+    if (updatedTask.workflowType == 'mealWorkflow' ||
+        inst.workflowPayload == null) {
+      return false;
+    }
+    final seenDates = seenDatesByRule.putIfAbsent(
+      inst.ruleId,
+      () => <CivilDay>{},
+    );
+    return !seenDates.add(effectiveDate);
+  }
+
+  Future<void> _persistReconciledInstances({
+    required List<TaskInstance> instancesToSave,
+    required List<String> instanceIdsToDelete,
+  }) async {
+    if (instanceIdsToDelete.isNotEmpty) {
+      await _localDataSource.deleteInstances(instanceIdsToDelete);
+    }
+    if (instancesToSave.isNotEmpty) {
+      await _localDataSource.saveInstances(instancesToSave);
+    }
+    final dirtyIds = <String>[
+      ...instanceIdsToDelete,
+      ...instancesToSave.map((i) => i.id),
+    ];
+    if (dirtyIds.isNotEmpty) {
+      await _localDataSource.markDirtyBatch(dirtyIds);
     }
   }
 
@@ -168,7 +207,7 @@ class TaskScheduleReconciler {
       return true;
     }
     if (oldRule != null &&
-        oldRule.toJson().toString() == newRule.toJson().toString()) {
+        _deepEquals.equals(oldRule.toJson(), newRule.toJson())) {
       return true;
     }
     final isDateStillValid =
@@ -205,7 +244,7 @@ class TaskScheduleReconciler {
       ..remove('startRelativeTime')
       ..remove('dueRelativeTime')
       ..remove('notificationRelativeTimes');
-    return oldJson.toString() == newJson.toString();
+    return _deepEquals.equals(oldJson, newJson);
   }
 
   static TaskInstance buildUpdatedPendingInstance({
