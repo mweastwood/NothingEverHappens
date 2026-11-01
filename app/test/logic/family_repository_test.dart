@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
@@ -841,6 +842,162 @@ void main() {
             .collection('recipes')
             .get();
         expect(userRecipesSnap.docs.length, 50);
+      },
+    );
+
+    test(
+      'leaveFamily sets personal scope on migrated labels, bumps updatedAt, and clears assignedUserId',
+      () async {
+        await repository.createFamily('Solo Family');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        final oldTime = Timestamp.fromDate(DateTime.utc(2026, 1, 1, 10, 0));
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-assigned')
+            .set({
+              'id': 'task-assigned',
+              'title': 'Assigned Task',
+              'isFamily': true,
+              'assignedUserId': userId,
+              'updatedAt': oldTime,
+            });
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('recipes')
+            .doc('recipe-old')
+            .set({
+              'id': 'recipe-old',
+              'title': 'Family Recipe',
+              'isFamily': true,
+              'updatedAt': oldTime,
+            });
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('labels')
+            .doc('label-fam')
+            .set({
+              'id': 'label-fam',
+              'name': 'Errands',
+              'scope': 'family',
+              'updatedAt': '2026-01-01T10:00:00.000Z',
+            });
+
+        await repository.leaveFamily(familyId);
+
+        final migratedTask = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc('task-assigned')
+            .get();
+        expect(migratedTask.data()?['isFamily'], isFalse);
+        expect(migratedTask.data()?['assignedUserId'], isNull);
+        final taskUpdatedAt = migratedTask.data()?['updatedAt'] as Timestamp;
+        expect(taskUpdatedAt.compareTo(oldTime), greaterThan(0));
+
+        final migratedRecipe = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('recipes')
+            .doc('recipe-old')
+            .get();
+        expect(migratedRecipe.data()?['isFamily'], isFalse);
+        final recipeUpdatedAt =
+            migratedRecipe.data()?['updatedAt'] as Timestamp;
+        expect(recipeUpdatedAt.compareTo(oldTime), greaterThan(0));
+
+        final migratedLabel = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('labels')
+            .doc('label-fam')
+            .get();
+        expect(migratedLabel.data()?['scope'], equals('personal'));
+        expect(migratedLabel.data()?['isFamily'], isFalse);
+      },
+    );
+
+    test(
+      'leaveFamily clears assignedUserId on family tasks and instances assigned to departing member',
+      () async {
+        await repository.createFamily('Shared Family');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        await firestore.collection('families').doc(familyId).update({
+          'members.user-bob': {
+            'userId': 'user-bob',
+            'displayName': 'Bob',
+            'email': 'bob@example.com',
+            'role': 'parent',
+          },
+        });
+
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-alice')
+            .set({
+              'id': 'task-alice',
+              'title': 'Alice Task',
+              'isFamily': true,
+              'assignedUserId': userId,
+            });
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-bob')
+            .set({
+              'id': 'task-bob',
+              'title': 'Bob Task',
+              'isFamily': true,
+              'assignedUserId': 'user-bob',
+            });
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc('inst-alice')
+            .set({
+              'id': 'inst-alice',
+              'scheduleId': 'task-alice',
+              'isFamily': true,
+              'assignedUserId': userId,
+            });
+
+        await repository.leaveFamily(familyId);
+
+        final aliceTask = await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-alice')
+            .get();
+        expect(aliceTask.data()?['assignedUserId'], isNull);
+
+        final bobTask = await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-bob')
+            .get();
+        expect(bobTask.data()?['assignedUserId'], equals('user-bob'));
+
+        final aliceInst = await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc('inst-alice')
+            .get();
+        expect(aliceInst.data()?['assignedUserId'], isNull);
       },
     );
   });

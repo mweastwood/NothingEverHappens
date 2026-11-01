@@ -182,13 +182,13 @@ class FamilyRepository {
       timeZoneOffsetMinutes: now.timeZoneOffset.inMinutes,
     );
 
-    final batch = _firestore.batch();
-
     if (prevFamilyId != null &&
         prevFamilyId.isNotEmpty &&
         prevFamilyId != invite.familyId) {
-      await leaveFamily(prevFamilyId, batch: batch);
+      await leaveFamily(prevFamilyId, clearUserFamilyFields: false);
     }
+
+    final batch = _firestore.batch();
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
 
@@ -263,7 +263,11 @@ class FamilyRepository {
     }
   }
 
-  Future<void> leaveFamily(String familyId, {WriteBatch? batch}) async {
+  Future<void> leaveFamily(
+    String familyId, {
+    WriteBatch? batch,
+    bool clearUserFamilyFields = true,
+  }) async {
     final familyRef = _firestore
         .collection(FirestorePaths.families)
         .doc(familyId);
@@ -285,6 +289,10 @@ class FamilyRepository {
           .where((m) => m.userId != _userId)
           .toList();
 
+      final nowUtc = AppClock.now.toUtc();
+      final nowTs = Timestamp.fromDate(nowUtc);
+      final nowIso = nowUtc.toIso8601String();
+
       if (remainingMembers.isEmpty) {
         final tasksSnap = await familyRef
             .collection(FirestorePaths.tasks)
@@ -292,6 +300,8 @@ class FamilyRepository {
         for (final doc in tasksSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
+          data['assignedUserId'] = null;
+          data['updatedAt'] = nowTs;
           final userDocRef = _firestore
               .collection(FirestorePaths.users)
               .doc(_userId)
@@ -308,6 +318,8 @@ class FamilyRepository {
         for (final doc in instancesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
+          data['assignedUserId'] = null;
+          data['updatedAt'] = nowTs;
           final userDocRef = _firestore
               .collection(FirestorePaths.users)
               .doc(_userId)
@@ -324,6 +336,7 @@ class FamilyRepository {
         for (final doc in recipesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
+          data['updatedAt'] = nowTs;
           final userDocRef = _firestore
               .collection(FirestorePaths.users)
               .doc(_userId)
@@ -340,6 +353,8 @@ class FamilyRepository {
         for (final doc in labelsSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
+          data['scope'] = 'personal';
+          data['updatedAt'] = nowIso;
           final userDocRef = _firestore
               .collection(FirestorePaths.users)
               .doc(_userId)
@@ -352,6 +367,30 @@ class FamilyRepository {
 
         ops.add((b) => b.delete(familyRef));
       } else {
+        final assignedTasksSnap = await familyRef
+            .collection(FirestorePaths.tasks)
+            .where('assignedUserId', isEqualTo: _userId)
+            .get();
+        for (final doc in assignedTasksSnap.docs) {
+          final docRef = doc.reference;
+          ops.add(
+            (b) =>
+                b.update(docRef, {'assignedUserId': null, 'updatedAt': nowTs}),
+          );
+        }
+
+        final assignedInstancesSnap = await familyRef
+            .collection(FirestorePaths.instances)
+            .where('assignedUserId', isEqualTo: _userId)
+            .get();
+        for (final doc in assignedInstancesSnap.docs) {
+          final docRef = doc.reference;
+          ops.add(
+            (b) =>
+                b.update(docRef, {'assignedUserId': null, 'updatedAt': nowTs}),
+          );
+        }
+
         ops.add(
           (b) => b.update(familyRef, {'members.$_userId': FieldValue.delete()}),
         );
@@ -387,12 +426,15 @@ class FamilyRepository {
         op(batch);
       }
     } else {
-      ops.add(
-        (b) => b.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-          'familyId': FieldValue.delete(),
-          'familyRole': FieldValue.delete(),
-        }, SetOptions(merge: true)),
-      );
+      if (clearUserFamilyFields) {
+        ops.add(
+          (b) =>
+              b.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
+                'familyId': FieldValue.delete(),
+                'familyRole': FieldValue.delete(),
+              }, SetOptions(merge: true)),
+        );
+      }
 
       await _commitInChunks(_firestore, ops);
     }
