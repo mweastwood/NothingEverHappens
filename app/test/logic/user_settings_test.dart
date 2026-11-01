@@ -175,5 +175,50 @@ void main() {
         expect(current.dailyCapacityOverrides, {'2026-07-10': 3.0});
       },
     );
+
+    test(
+      'updateSettings removes deleted dailyCapacityOverrides date keys in Firestore',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 7, 10));
+        addTearDown(AppClock.reset);
+
+        await repository.updateSettings(
+          const UserSettings(
+            hoursAvailable: 8.0,
+            dailyCapacityOverrides: {'2026-07-10': 3.0, '2026-07-11': 5.0},
+          ),
+        );
+
+        var snapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('settings')
+            .doc('agile')
+            .get();
+        expect(snapshot.data()?['dailyCapacityOverrides'], {
+          '2026-07-10': 3.0,
+          '2026-07-11': 5.0,
+        });
+
+        await repository.updateSettings(
+          const UserSettings(
+            hoursAvailable: 8.0,
+            dailyCapacityOverrides: {'2026-07-11': 5.0},
+          ),
+        );
+
+        snapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('settings')
+            .doc('agile')
+            .get();
+        final overrides =
+            snapshot.data()?['dailyCapacityOverrides'] as Map<String, dynamic>?;
+        expect(overrides, isNotNull);
+        expect(overrides!.containsKey('2026-07-10'), isFalse);
+        expect(overrides, {'2026-07-11': 5.0});
+      },
+    );
   });
 }
