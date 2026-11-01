@@ -607,7 +607,7 @@ void main() {
           expect(monthlyOct28.dayOfWeek, DateTime.wednesday);
           expect(monthlyOct28.occurrence, 4);
 
-          // Day 29 (5th): Oct 29 2026 is Thursday (4) -> (29-1)~/7 + 1 = 5
+          // Day 29 (5th): Oct 29 2026 is Thursday (4) -> (29-1)~/7 + 1 = 5 -> clamped to -1 (Last)
           final oct29 = OneOffSchedule(
             date: const CivilDay(year: 2026, month: 10, day: 29),
             startRelativeTime: defaultStart,
@@ -617,9 +617,9 @@ void main() {
             HierarchicalRecurrenceKind.monthlyNthWeekday,
           ) as MonthlySchedule;
           expect(monthlyOct29.dayOfWeek, DateTime.thursday);
-          expect(monthlyOct29.occurrence, 5);
+          expect(monthlyOct29.occurrence, -1);
 
-          // Day 31 (5th): Oct 31 2026 is Saturday (6) -> (31-1)~/7 + 1 = 5
+          // Day 31 (5th): Oct 31 2026 is Saturday (6) -> (31-1)~/7 + 1 = 5 -> clamped to -1 (Last)
           final oct31 = OneOffSchedule(
             date: const CivilDay(year: 2026, month: 10, day: 31),
             startRelativeTime: defaultStart,
@@ -629,7 +629,7 @@ void main() {
             HierarchicalRecurrenceKind.monthlyNthWeekday,
           ) as MonthlySchedule;
           expect(monthlyOct31.dayOfWeek, DateTime.saturday);
-          expect(monthlyOct31.occurrence, 5);
+          expect(monthlyOct31.occurrence, -1);
         },
       );
 
@@ -737,7 +737,35 @@ void main() {
       test(
         'normalizes scheduledDate to today and dayOffset to 0 when converting OneOffSchedule for tomorrow with dayOffset -1 to recurring kind',
         () {
-          final oneOffTomorrow = OneOffSchedule(
+          final oneOffTomorrowMorning = OneOffSchedule(
+            date: tomorrowCivil,
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              hour: 10,
+              minute: 15,
+            ),
+            dueRelativeTime: defaultDue,
+          );
+
+          for (final kind in HierarchicalRecurrenceKind.values) {
+            if (kind == HierarchicalRecurrenceKind.oneOff) continue;
+
+            final converted = convertRuleToKind(oneOffTomorrowMorning, kind);
+            expect(
+              converted.scheduledDate,
+              todayCivil,
+              reason: 'scheduledDate normalized to today for $kind',
+            );
+            expect(
+              converted.startRelativeTime,
+              const RelativeTime(dayOffset: 0, hour: 10, minute: 15),
+              reason: 'startRelativeTime normalized to dayOffset 0 for $kind',
+            );
+          }
+
+          // When startRelativeTime (e.g. 20:15) would exceed dueRelativeTime (17:30) after setting dayOffset: 0,
+          // it defaults startRelativeTime to 09:00 so startRelativeTime <= dueRelativeTime holds.
+          final oneOffTomorrowEvening = OneOffSchedule(
             date: tomorrowCivil,
             startRelativeTime: const RelativeTime(
               dayOffset: -1,
@@ -750,7 +778,7 @@ void main() {
           for (final kind in HierarchicalRecurrenceKind.values) {
             if (kind == HierarchicalRecurrenceKind.oneOff) continue;
 
-            final converted = convertRuleToKind(oneOffTomorrow, kind);
+            final converted = convertRuleToKind(oneOffTomorrowEvening, kind);
             expect(
               converted.scheduledDate,
               todayCivil,
@@ -758,8 +786,9 @@ void main() {
             );
             expect(
               converted.startRelativeTime,
-              const RelativeTime(dayOffset: 0, hour: 20, minute: 15),
-              reason: 'startRelativeTime normalized to dayOffset 0 for $kind',
+              const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+              reason:
+                  'evening startRelativeTime clamped to 09:00 <= dueRelativeTime for $kind',
             );
           }
         },

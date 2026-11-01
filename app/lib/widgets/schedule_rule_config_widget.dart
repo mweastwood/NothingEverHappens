@@ -145,11 +145,23 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onSchedulingPolicyChanged: (policy) =>
           state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) =>
-          state._emit(rule.copyWithTiming(startRelativeTime: start)),
+      onStartRelativeTimeChanged: (start) => state._emit(
+        rule.copyWithTiming(
+          startRelativeTime: start,
+          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
+              ? start
+              : null,
+        ),
+      ),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) =>
-          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
+      onDueRelativeTimeChanged: (due) => state._emit(
+        rule.copyWithTiming(
+          dueRelativeTime: due,
+          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
+              ? due
+              : null,
+        ),
+      ),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
@@ -176,11 +188,23 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onWeekdaysChanged: (days) =>
           state._emit(_updateWeekly(rule, daysOfWeek: days)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) =>
-          state._emit(rule.copyWithTiming(startRelativeTime: start)),
+      onStartRelativeTimeChanged: (start) => state._emit(
+        rule.copyWithTiming(
+          startRelativeTime: start,
+          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
+              ? start
+              : null,
+        ),
+      ),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) =>
-          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
+      onDueRelativeTimeChanged: (due) => state._emit(
+        rule.copyWithTiming(
+          dueRelativeTime: due,
+          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
+              ? due
+              : null,
+        ),
+      ),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
@@ -237,11 +261,23 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
         _updateMonthly(rule, dayOfWeek: val, clearDayOfMonth: true),
       ),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) =>
-          state._emit(rule.copyWithTiming(startRelativeTime: start)),
+      onStartRelativeTimeChanged: (start) => state._emit(
+        rule.copyWithTiming(
+          startRelativeTime: start,
+          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
+              ? start
+              : null,
+        ),
+      ),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) =>
-          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
+      onDueRelativeTimeChanged: (due) => state._emit(
+        rule.copyWithTiming(
+          dueRelativeTime: due,
+          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
+              ? due
+              : null,
+        ),
+      ),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
@@ -276,11 +312,23 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       day: rule.day,
       onDayChanged: (val) => state._emit(_updateYearly(rule, day: val)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) =>
-          state._emit(rule.copyWithTiming(startRelativeTime: start)),
+      onStartRelativeTimeChanged: (start) => state._emit(
+        rule.copyWithTiming(
+          startRelativeTime: start,
+          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
+              ? start
+              : null,
+        ),
+      ),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) =>
-          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
+      onDueRelativeTimeChanged: (due) => state._emit(
+        rule.copyWithTiming(
+          dueRelativeTime: due,
+          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
+              ? due
+              : null,
+        ),
+      ),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
@@ -401,6 +449,10 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     }
 
     final isCompletionRelative = s.schedulingPolicy is CompletionRelativePolicy;
+
+    if (!isCompletionRelative && s is WeeklySchedule && s.daysOfWeek.isEmpty) {
+      error = l10n.selectAtLeastOneDayError;
+    }
 
     if (!isCompletionRelative && s is MonthlySchedule && s.dayOfMonth != null) {
       final domText = _monthlyDayOfMonthController.text.trim();

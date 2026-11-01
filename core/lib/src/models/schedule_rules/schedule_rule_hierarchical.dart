@@ -75,11 +75,20 @@ TaskScheduleRule convertRuleToKind(
         scheduledDate == tomorrow &&
         startRelativeTime.dayOffset == -1) {
       scheduledDate = CivilDay.fromDateTime(currentNow);
-      startRelativeTime = RelativeTime(
+      final candidateStart = RelativeTime(
         dayOffset: 0,
         hour: startRelativeTime.hour,
         minute: startRelativeTime.minute,
       );
+      if (candidateStart.inMinutes <= dueRelativeTime.inMinutes) {
+        startRelativeTime = candidateStart;
+      } else {
+        const morningDefault = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+        startRelativeTime =
+            morningDefault.inMinutes <= dueRelativeTime.inMinutes
+                ? morningDefault
+                : dueRelativeTime;
+      }
     }
   }
 
@@ -186,7 +195,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.monthlyNthWeekday:
       final weekday = scheduledDate.toUtcDateTime().weekday;
-      final occurrence = (scheduledDate.day - 1) ~/ 7 + 1;
+      final rawOccurrence = (scheduledDate.day - 1) ~/ 7 + 1;
+      final occurrence = rawOccurrence > 4 ? -1 : rawOccurrence;
       return MonthlySchedule(
         id: id,
         scheduleId: scheduleId,

@@ -122,22 +122,26 @@ class CreateTaskFormState {
       final List<TaskScheduleRule> schedules;
       if (defaultToRepeating) {
         final now = AppClock.now;
+        final candidateStart = RelativeTime(
+          dayOffset: 0,
+          hour: now.hour,
+          minute: now.minute,
+        );
+        const defaultDue = RelativeTime(
+          dayOffset: 0,
+          hour: 17,
+          minute: 0,
+        );
         schedules = [
           DailySchedule(
             id: TaskScheduleRule.generateId(),
             scheduleId: taskScheduleId,
             startDate: CivilDay.fromDateTime(now),
             interval: 1,
-            startRelativeTime: RelativeTime(
-              dayOffset: 0,
-              hour: now.hour,
-              minute: now.minute,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
+            startRelativeTime: candidateStart.inMinutes <= defaultDue.inMinutes
+                ? candidateStart
+                : const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            dueRelativeTime: defaultDue,
             schedulingPolicy: const FixedCalendarPolicy(),
           ),
         ];
