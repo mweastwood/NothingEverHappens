@@ -334,6 +334,22 @@ class FamilyRepository {
           ops.add((b) => b.delete(docRef));
         }
 
+        final labelsSnap = await familyRef
+            .collection(FirestorePaths.labels)
+            .get();
+        for (final doc in labelsSnap.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['isFamily'] = false;
+          final userDocRef = _firestore
+              .collection(FirestorePaths.users)
+              .doc(_userId)
+              .collection(FirestorePaths.labels)
+              .doc(doc.id);
+          final docRef = doc.reference;
+          ops.add((b) => b.set(userDocRef, data));
+          ops.add((b) => b.delete(docRef));
+        }
+
         ops.add((b) => b.delete(familyRef));
       } else {
         ops.add(
