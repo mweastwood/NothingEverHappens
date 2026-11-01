@@ -46,6 +46,7 @@ class RemoteSnapshotReconciler {
     final localMap = {for (final t in localTasks) t.id: t};
 
     final toSave = <TaskSchedule>[];
+    final remoteSavedIds = <String>{};
     final toDelete = <String>[];
     final toPush = <TaskSchedule>[];
 
@@ -57,6 +58,9 @@ class RemoteSnapshotReconciler {
             (isFamily ? localTask.isFamily : !localTask.isFamily)) {
           toDelete.add(docId);
           localMap.remove(docId);
+          toSave.removeWhere((t) => t.id == docId);
+          remoteSavedIds.remove(docId);
+          toPush.removeWhere((t) => t.id == docId);
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
@@ -72,20 +76,27 @@ class RemoteSnapshotReconciler {
               toPush.add(localTask);
             } else {
               toSave.add(remoteTask);
+              remoteSavedIds.add(remoteTask.id);
               localMap[remoteTask.id] = remoteTask;
             }
           } else {
             toSave.add(remoteTask);
+            remoteSavedIds.add(remoteTask.id);
             localMap[remoteTask.id] = remoteTask;
           }
         }
       }
     }
 
-    if (!isCache) {
+    final toPushIds = {for (final t in toPush) t.id};
+    if (!isCache && localMap.isNotEmpty) {
+      late final dirtySet = _localDataSource.getDirtyTaskIds().toSet();
       for (final localTask in localMap.values) {
         if ((isFamily ? localTask.isFamily : !localTask.isFamily) &&
-            localTask.isFromCache) {
+            localTask.isFromCache &&
+            !localTask.hasPendingWrites &&
+            !dirtySet.contains(localTask.id) &&
+            !toPushIds.contains(localTask.id)) {
           final updated = localTask.copyWith(isFromCache: false);
           toSave.add(updated);
           localMap[localTask.id] = updated;
@@ -99,7 +110,9 @@ class RemoteSnapshotReconciler {
     }
     if (toSave.isNotEmpty) {
       await _localDataSource.saveTasks(toSave);
-      await _localDataSource.clearDirtyBatch(toSave.map((t) => t.id).toList());
+    }
+    if (remoteSavedIds.isNotEmpty) {
+      await _localDataSource.clearDirtyBatch(remoteSavedIds.toList());
     }
 
     final pushedTaskIds = <String>{};
@@ -136,6 +149,7 @@ class RemoteSnapshotReconciler {
     };
 
     final toSave = <TaskInstance>[];
+    final remoteSavedIds = <String>{};
     final toDelete = <String>[];
     final toPush = <TaskInstance>[];
     final remoteIdsToDelete = <String>[];
@@ -152,6 +166,7 @@ class RemoteSnapshotReconciler {
           toDelete.add(docId);
           localMap.remove(docId);
           toSave.removeWhere((i) => i.id == docId);
+          remoteSavedIds.remove(docId);
           toPush.removeWhere((i) => i.id == docId);
           if (localInst != null) {
             final slotKey =
@@ -204,6 +219,7 @@ class RemoteSnapshotReconciler {
               toPush.add(localInst);
             } else {
               toSave.add(remoteInst);
+              remoteSavedIds.add(remoteInst.id);
               localMap[remoteInst.id] = remoteInst;
               localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
                   remoteInst;
@@ -226,13 +242,16 @@ class RemoteSnapshotReconciler {
                 }
                 localMap.remove(localSlotInst.id);
                 toSave.removeWhere((i) => i.id == localSlotInst.id);
+                remoteSavedIds.remove(localSlotInst.id);
                 toPush.removeWhere((i) => i.id == localSlotInst.id);
                 toSave.add(remoteInst);
+                remoteSavedIds.add(remoteInst.id);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
               }
             } else {
               toSave.add(remoteInst);
+              remoteSavedIds.add(remoteInst.id);
               localMap[remoteInst.id] = remoteInst;
               localSlotMap[slotKey] = remoteInst;
             }
@@ -241,10 +260,15 @@ class RemoteSnapshotReconciler {
       }
     }
 
-    if (!isCache) {
+    final toPushIds = {for (final i in toPush) i.id};
+    if (!isCache && localMap.isNotEmpty) {
+      late final dirtySet = _localDataSource.getDirtyTaskIds().toSet();
       for (final localInst in localMap.values) {
         if ((isFamily ? localInst.isFamily : !localInst.isFamily) &&
-            localInst.isFromCache) {
+            localInst.isFromCache &&
+            !localInst.hasPendingWrites &&
+            !dirtySet.contains(localInst.id) &&
+            !toPushIds.contains(localInst.id)) {
           final updated = localInst.copyWith(isFromCache: false);
           toSave.add(updated);
           localMap[localInst.id] = updated;
@@ -258,7 +282,9 @@ class RemoteSnapshotReconciler {
     }
     if (toSave.isNotEmpty) {
       await _localDataSource.saveInstances(toSave);
-      await _localDataSource.clearDirtyBatch(toSave.map((i) => i.id).toList());
+    }
+    if (remoteSavedIds.isNotEmpty) {
+      await _localDataSource.clearDirtyBatch(remoteSavedIds.toList());
     }
 
     final pushedInstIds = <String>{};
