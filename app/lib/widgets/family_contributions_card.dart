@@ -1,5 +1,7 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+
 import '../logic/app_clock.dart';
 import '../logic/civil_day.dart';
 import '../logic/dashboard_stats.dart';
@@ -7,6 +9,7 @@ import '../logic/family.dart';
 import '../logic/task_schedule.dart';
 import '../logic/utils/format_utils.dart';
 import 'family_member_tasks_sheet.dart';
+import 'timeline_chart_components.dart';
 
 export 'family_member_tasks_sheet.dart';
 
@@ -35,35 +38,17 @@ class FamilyContributionsCard extends StatelessWidget {
     this.scheduleMap,
   });
 
-  String _formatDateRange(CivilDay start, CivilDay end) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final startMonth = months[start.month - 1];
-    final endMonth = months[end.month - 1];
-    if (start.month == end.month) {
-      return '$startMonth ${start.day} – ${end.day}';
-    }
-    return '$startMonth ${start.day} – $endMonth ${end.day}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = CivilDay.fromDateTime(AppClock.now);
     final past6Days = today.addDays(-6);
-    final dateRangeStr = _formatDateRange(past6Days, today);
+    final dateRangeStr = formatTimelineDateRange(
+      startMonth: past6Days.month,
+      startDay: past6Days.day,
+      endMonth: today.month,
+      endDay: today.day,
+    );
 
     // Calculate total time-weighted sum
     final totalHours = stats.memberStats.fold<double>(

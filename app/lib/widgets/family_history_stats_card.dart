@@ -1,8 +1,11 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+
 import '../logic/app_clock.dart';
 import '../logic/civil_day.dart';
 import '../logic/dashboard_stats.dart';
+import '../logic/utils/format_utils.dart';
 import 'timeline_chart_components.dart';
 
 class FamilyHistoryStatsCard extends StatefulWidget {
@@ -193,11 +196,10 @@ class _FamilyHistoryStatsCardState extends State<FamilyHistoryStatsCard> {
     CivilDay today,
   ) {
     final day = data.day;
-    final dateStr =
-        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final dateTime = DateTime(day.year, day.month, day.day);
+    final dateStr = FormatUtils.formatIsoDate(dateTime);
     final isToday = day == today;
     final isPast = day.isBefore(today);
-    final dateTime = DateTime(day.year, day.month, day.day);
 
     return TimelineDayColumnShell(
       gestureKey: Key('family_day_bar_$dateStr'),

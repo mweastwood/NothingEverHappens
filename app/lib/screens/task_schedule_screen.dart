@@ -19,6 +19,7 @@ import '../logic/utils/layout_breakpoints.dart';
 import '../logic/utils/masonry_layout_helper.dart';
 import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
+import '../widgets/two_column_masonry_list.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -374,85 +375,33 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           return _buildNoMatchesState(context);
                         }
 
-                        final isWide = isWideScreen(context);
-                        late final List<TaskSchedule> leftTasks;
-                        late final List<TaskSchedule> rightTasks;
-                        if (isWide) {
-                          leftTasks = [];
-                          rightTasks = [];
-                          final currentIds = filteredTasks
-                              .map((e) => e.id)
-                              .toSet();
-                          _columnAffinity.removeWhere(
-                            (id, _) => !currentIds.contains(id),
+                        Widget buildScheduleItem(TaskSchedule task) {
+                          return TaskScheduleCard(
+                            task: task,
+                            isParent: isParent,
+                            showLastSpawnedDate: showLastSpawnedDate,
+                            labels: task.labelIds
+                                .map((id) => labelsMap[id])
+                                .whereType<TaskLabel>()
+                                .toList(),
                           );
-                          double leftHeight = 0.0;
-                          double rightHeight = 0.0;
-                          for (final task in filteredTasks) {
-                            final taskHeight = estimateTaskScheduleHeight(
-                              task,
-                              showLastSpawnedDate: showLastSpawnedDate,
-                            );
-                            int? col = _columnAffinity[task.id];
-                            if (col == null) {
-                              col = leftHeight <= rightHeight ? 0 : 1;
-                              _columnAffinity[task.id] = col;
-                            }
-                            if (col == 0) {
-                              leftTasks.add(task);
-                              leftHeight += taskHeight;
-                            } else {
-                              rightTasks.add(task);
-                              rightHeight += taskHeight;
-                            }
-                          }
                         }
 
+                        final isWide = isWideScreen(context);
                         final bodySliver = isWide
                             ? SliverToBoxAdapter(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          for (final task in leftTasks)
-                                            TaskScheduleCard(
-                                              task: task,
-                                              isParent: isParent,
-                                              showLastSpawnedDate:
-                                                  showLastSpawnedDate,
-                                              labels: task.labelIds
-                                                  .map((id) => labelsMap[id])
-                                                  .whereType<TaskLabel>()
-                                                  .toList(),
-                                            ),
-                                        ],
+                                child: TwoColumnMasonryList<TaskSchedule>(
+                                  items: filteredTasks,
+                                  idOf: (task) => task.id,
+                                  estimatedHeightOf: (task) =>
+                                      estimateTaskScheduleHeight(
+                                        task,
+                                        showLastSpawnedDate:
+                                            showLastSpawnedDate,
                                       ),
-                                    ),
-                                    const SizedBox(width: 8.0),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          for (final task in rightTasks)
-                                            TaskScheduleCard(
-                                              task: task,
-                                              isParent: isParent,
-                                              showLastSpawnedDate:
-                                                  showLastSpawnedDate,
-                                              labels: task.labelIds
-                                                  .map((id) => labelsMap[id])
-                                                  .whereType<TaskLabel>()
-                                                  .toList(),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                  columnAffinity: _columnAffinity,
+                                  itemBuilder: (context, task) =>
+                                      buildScheduleItem(task),
                                 ),
                               )
                             : SliverList(
@@ -461,15 +410,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   index,
                                 ) {
                                   final task = filteredTasks[index];
-                                  return TaskScheduleCard(
-                                    task: task,
-                                    isParent: isParent,
-                                    showLastSpawnedDate: showLastSpawnedDate,
-                                    labels: task.labelIds
-                                        .map((id) => labelsMap[id])
-                                        .whereType<TaskLabel>()
-                                        .toList(),
-                                  );
+                                  return buildScheduleItem(task);
                                 }, childCount: filteredTasks.length),
                               );
 

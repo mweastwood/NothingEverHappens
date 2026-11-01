@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/app_clock.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
@@ -8,6 +9,7 @@ import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
 import '../logic/dashboard_stats.dart';
+import '../logic/utils/format_utils.dart';
 import '../widgets/family_history_stats_card.dart';
 import '../widgets/family_contributions_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
@@ -28,7 +30,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _getWeekIdentifier(DateTime date) {
     final monday = date.subtract(Duration(days: date.weekday - 1));
-    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+    return FormatUtils.formatIsoDate(monday);
   }
 
   void _confirmCapacity(UserSettings settings, String weekId) {
@@ -112,8 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final capacity = settings.getCapacityForDate(date);
                 final day = CivilDay.fromDateTime(date);
                 final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
-                final dateStr =
-                    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                final dateStr = FormatUtils.formatIsoDate(date);
                 final isOverridden =
                     settings.dailyCapacityOverrides?.containsKey(dateStr) ??
                     false;

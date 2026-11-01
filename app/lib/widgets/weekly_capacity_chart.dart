@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../logic/app_clock.dart';
 import '../logic/dashboard_stats.dart';
+import '../logic/utils/format_utils.dart';
 import 'timeline_chart_components.dart';
 
 export 'timeline_chart_components.dart'
@@ -236,8 +238,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     final capacity = data.capacityHours;
     final isOverridden = data.isOverridden;
 
-    final dateStr =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateStr = FormatUtils.formatIsoDate(date);
     final isToday =
         date.day == today.day &&
         date.month == today.month &&

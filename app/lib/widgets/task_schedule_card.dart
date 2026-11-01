@@ -11,6 +11,7 @@ import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
 import '../logic/undo_notifier.dart';
 import '../logic/user_settings_repository.dart';
+import '../logic/utils/format_utils.dart';
 import '../screens/create_task_screen.dart';
 import 'markdown_styles.dart';
 import 'task_badges.dart';
@@ -39,20 +40,6 @@ class TaskScheduleCard extends ConsumerWidget {
     this.onDelete,
     this.labels,
   });
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    if (minutes <= 0) return '';
-    final hours = minutes ~/ 60;
-    final remainingMinutes = minutes % 60;
-    if (hours > 0) {
-      final hourStr = hours == 1 ? '1 hr' : '$hours hrs';
-      final minStr = remainingMinutes > 0 ? '$remainingMinutes min' : '';
-      return minStr.isEmpty ? hourStr : '$hourStr $minStr';
-    } else {
-      return '$minutes min';
-    }
-  }
 
   List<TaskLabel> _resolveLabels(WidgetRef ref) {
     if (labels != null) {
@@ -319,7 +306,7 @@ class TaskScheduleCard extends ConsumerWidget {
                     ),
                     child: Text(
                       context.l10n.estimatedEffortLabel(
-                        _formatDuration(task.estimatedDuration!),
+                        FormatUtils.formatDuration(task.estimatedDuration!),
                       ),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant.withValues(

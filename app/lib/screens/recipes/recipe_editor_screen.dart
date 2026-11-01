@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../logic/recipes/recipe.dart';
 import '../../logic/recipes/recipe_repository.dart';
+import '../../widgets/recipes/servings_stepper_card.dart';
 
 class RecipeEditorScreen extends ConsumerStatefulWidget {
   final Recipe? recipeToEdit;
@@ -211,34 +213,9 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.people_outline),
-                    const SizedBox(width: 12),
-                    Text('Servings:', style: theme.textTheme.titleMedium),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: _servings > 1
-                          ? () => setState(() => _servings--)
-                          : null,
-                    ),
-                    Text(
-                      '$_servings',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () => setState(() => _servings++),
-                    ),
-                  ],
-                ),
-              ),
+            ServingsStepperCard(
+              servings: _servings,
+              onChanged: (val) => setState(() => _servings = val),
             ),
             SwitchListTile(
               secondary: const Icon(Icons.group_outlined),
