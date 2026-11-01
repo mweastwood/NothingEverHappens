@@ -9,6 +9,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/task_instance.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
+import '../logic/utils/format_utils.dart';
 import '../screens/create_task_screen.dart';
 import 'app_snackbar.dart';
 import 'calendar_month_card.dart';
@@ -45,20 +46,6 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
         );
       },
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    if (minutes <= 0) return '';
-    final hours = minutes ~/ 60;
-    final remainingMinutes = minutes % 60;
-    if (hours > 0) {
-      final hourStr = hours == 1 ? '1 hr' : '$hours hrs';
-      final minStr = remainingMinutes > 0 ? '$remainingMinutes min' : '';
-      return minStr.isEmpty ? hourStr : '$hourStr $minStr';
-    } else {
-      return '$minutes min';
-    }
   }
 
   String _getPriorityLabel(BuildContext context, TaskPriority priority) {
@@ -119,7 +106,9 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
 
     final duration =
         resolvedSchedule?.estimatedDuration ?? task.estimatedDuration;
-    final durationStr = duration != null ? _formatDuration(duration) : null;
+    final durationStr = duration != null
+        ? FormatUtils.formatDuration(duration)
+        : null;
 
     final isFamily =
         (updatedInstance?.isFamily ?? task.instance?.isFamily ?? false) ||

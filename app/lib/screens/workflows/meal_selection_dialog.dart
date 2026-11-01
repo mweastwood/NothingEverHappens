@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../logic/recipes/recipe.dart';
 import '../../logic/recipes/recipe_repository.dart';
 import '../../logic/task_instance.dart';
 import '../../logic/task_schedule.dart';
 import '../../logic/task_repository.dart';
 import '../../logic/workflows/meal_workflow_engine.dart';
+import '../../widgets/recipes/servings_stepper_card.dart';
 import '../recipes/recipe_editor_screen.dart';
 
 class MealSelectionDialog extends ConsumerStatefulWidget {
@@ -238,37 +240,11 @@ class _MealSelectionDialogState extends ConsumerState<MealSelectionDialog> {
 
             if (_chosenRecipe != null) ...[
               const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.people_outline),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Target Servings:',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: _targetServings > 1
-                            ? () => setState(() => _targetServings--)
-                            : null,
-                      ),
-                      Text(
-                        '$_targetServings',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () => setState(() => _targetServings++),
-                      ),
-                    ],
-                  ),
-                ),
+              ServingsStepperCard(
+                label: 'Target Servings:',
+                padding: const EdgeInsets.all(16),
+                servings: _targetServings,
+                onChanged: (val) => setState(() => _targetServings = val),
               ),
             ],
           ] else if (_selectedOption == MealSelectionOption.leftovers ||

@@ -21,12 +21,14 @@ import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
+import '../logic/utils/format_utils.dart';
 import '../logic/utils/layout_breakpoints.dart';
 import '../logic/utils/masonry_layout_helper.dart';
 import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
 import '../logic/task_filter.dart';
 import '../widgets/task_filter_bottom_sheet.dart';
+import '../widgets/two_column_masonry_list.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -342,59 +344,20 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
             final isWide = isWideScreen(context);
             if (isWide) {
-              final List<TaskInstance> leftColumnInstances = [];
-              final List<TaskInstance> rightColumnInstances = [];
-
-              final currentIds = filteredInstances.map((e) => e.id).toSet();
-              _columnAffinity.removeWhere((id, _) => !currentIds.contains(id));
-
               final now = AppClock.now;
-              double leftHeight = 0.0;
-              double rightHeight = 0.0;
-
-              for (final inst in filteredInstances) {
-                final sched = scheduleMap[inst.scheduleId];
-                final instHeight = estimateTaskInstanceHeight(inst, sched, now);
-                int? col = _columnAffinity[inst.id];
-                if (col == null) {
-                  col = leftHeight <= rightHeight ? 0 : 1;
-                  _columnAffinity[inst.id] = col;
-                }
-                if (col == 0) {
-                  leftColumnInstances.add(inst);
-                  leftHeight += instHeight;
-                } else {
-                  rightColumnInstances.add(inst);
-                  rightHeight += instHeight;
-                }
-              }
-
               bodySliver = SliverPadding(
                 padding: const EdgeInsets.all(8.0),
                 sliver: SliverToBoxAdapter(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final inst in leftColumnInstances)
-                              buildTaskItem(inst),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final inst in rightColumnInstances)
-                              buildTaskItem(inst),
-                          ],
-                        ),
-                      ),
-                    ],
+                  child: TwoColumnMasonryList<TaskInstance>(
+                    items: filteredInstances,
+                    idOf: (inst) => inst.id,
+                    estimatedHeightOf: (inst) => estimateTaskInstanceHeight(
+                      inst,
+                      scheduleMap[inst.scheduleId],
+                      now,
+                    ),
+                    columnAffinity: _columnAffinity,
+                    itemBuilder: (context, inst) => buildTaskItem(inst),
                   ),
                 ),
               );
@@ -417,7 +380,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
         String getWeekIdentifier(DateTime date) {
           final monday = date.subtract(Duration(days: date.weekday - 1));
-          return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+          return FormatUtils.formatIsoDate(monday);
         }
 
         final today = AppClock.now;
