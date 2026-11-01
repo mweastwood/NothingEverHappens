@@ -105,44 +105,36 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     _controller.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
         if (!mounted) return;
-        final repo = ref.read(taskRepositoryProvider)!;
-        final notifier = ref.read(undoNotifierProvider.notifier);
-        final instance = widget.instance;
-        // Capture context-sensitive values before any async gap.
-        final messenger = ScaffoldMessenger.of(context);
-        final dismissMsg = context.l10n.taskDismissed(instance.title);
-        final completeMsg = context.l10n.taskCompleted(instance.title);
-        final undoLabel = context.l10n.undoButton;
-        final undoneLabel = context.l10n.taskRestored(instance.title);
-        if (_isDeleting) {
-          final resolved = await repo.dismissTaskInstance(instance.id);
-          UndoSnackBar.showWithMessenger(
-            messenger: messenger,
-            notifier: notifier,
-            action: UndoResolveTaskInstanceAction(
-              message: dismissMsg,
-              instance: resolved ?? instance,
-            ),
-            repository: repo,
-            undoLabel: undoLabel,
-            undoneLabel: undoneLabel,
-          );
-        } else {
-          final resolved = await repo.completeTaskInstance(instance.id);
-          UndoSnackBar.showWithMessenger(
-            messenger: messenger,
-            notifier: notifier,
-            action: UndoResolveTaskInstanceAction(
-              message: completeMsg,
-              instance: resolved ?? instance,
-            ),
-            repository: repo,
-            undoLabel: undoLabel,
-            undoneLabel: undoneLabel,
-          );
-        }
+        await _executeTaskAction(!_isDeleting);
       }
     });
+  }
+
+  Future<void> _executeTaskAction(bool isCompletion) async {
+    final repo = ref.read(taskRepositoryProvider)!;
+    final notifier = ref.read(undoNotifierProvider.notifier);
+    final instance = widget.instance;
+    // Capture context-sensitive values before any async gap.
+    final messenger = ScaffoldMessenger.of(context);
+    final message = isCompletion
+        ? context.l10n.taskCompleted(instance.title)
+        : context.l10n.taskDismissed(instance.title);
+    final undoLabel = context.l10n.undoButton;
+    final undoneLabel = context.l10n.taskRestored(instance.title);
+    final resolved = isCompletion
+        ? await repo.completeTaskInstance(instance.id)
+        : await repo.dismissTaskInstance(instance.id);
+    UndoSnackBar.showWithMessenger(
+      messenger: messenger,
+      notifier: notifier,
+      action: UndoResolveTaskInstanceAction(
+        message: message,
+        instance: resolved ?? instance,
+      ),
+      repository: repo,
+      undoLabel: undoLabel,
+      undoneLabel: undoneLabel,
+    );
   }
 
   @override
@@ -490,47 +482,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   setState(() {
                     _isDismissed = true;
                   });
-                  final repo = ref.read(taskRepositoryProvider)!;
-                  final notifier = ref.read(undoNotifierProvider.notifier);
-                  final instance = widget.instance;
-                  // Capture context-sensitive values before any async gap.
-                  final messenger = ScaffoldMessenger.of(context);
-                  final completeMsg = context.l10n.taskCompleted(
-                    instance.title,
-                  );
-                  final dismissMsg = context.l10n.taskDismissed(instance.title);
-                  final undoLabel = context.l10n.undoButton;
-                  final undoneLabel = context.l10n.taskRestored(instance.title);
                   if (direction == DismissDirection.startToEnd) {
-                    final resolved = await repo.completeTaskInstance(
-                      instance.id,
-                    );
-                    UndoSnackBar.showWithMessenger(
-                      messenger: messenger,
-                      notifier: notifier,
-                      action: UndoResolveTaskInstanceAction(
-                        message: completeMsg,
-                        instance: resolved ?? instance,
-                      ),
-                      repository: repo,
-                      undoLabel: undoLabel,
-                      undoneLabel: undoneLabel,
-                    );
+                    await _executeTaskAction(true);
                   } else if (direction == DismissDirection.endToStart) {
-                    final resolved = await repo.dismissTaskInstance(
-                      instance.id,
-                    );
-                    UndoSnackBar.showWithMessenger(
-                      messenger: messenger,
-                      notifier: notifier,
-                      action: UndoResolveTaskInstanceAction(
-                        message: dismissMsg,
-                        instance: resolved ?? instance,
-                      ),
-                      repository: repo,
-                      undoLabel: undoLabel,
-                      undoneLabel: undoneLabel,
-                    );
+                    await _executeTaskAction(false);
                   }
                 },
                 child: Listener(

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+
 import '../logic/auth_repository.dart';
 import '../logic/firestore_paths.dart';
 import '../logic/subscription_service.dart';
@@ -67,16 +68,18 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return false;
   }
 
-  Future<void> _upgradeToIndividual(BuildContext context) async {
+  Future<void> _upgradeToTier({required bool isFamilyTier}) async {
     setState(() {
       _isProcessing = true;
     });
+    final tierKey = isFamilyTier ? 'family' : 'standard';
+    final tierLabel = isFamilyTier ? 'Family' : 'Individual';
     try {
       final authRepo = ref.read(authRepositoryProvider);
       final user = authRepo.currentUser;
       if (user != null) {
         if (_isWeb) {
-          if (context.mounted) {
+          if (mounted) {
             AppSnackBar.show(
               context,
               content: const Text('In-app purchases are not supported on web.'),
@@ -88,7 +91,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         final offerings = await _getOfferings();
         final current = offerings.current;
         if (current == null || current.availablePackages.isEmpty) {
-          if (context.mounted) {
+          if (mounted) {
             AppSnackBar.show(
               context,
               content: const Text(
@@ -100,7 +103,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         }
 
         final package = current.availablePackages.firstWhere(
-          (p) => p.identifier.contains('standard'),
+          (p) => p.identifier.contains(tierKey),
           orElse: () => current.availablePackages.first,
         );
         await _purchase(PurchaseParams.package(package));
@@ -108,12 +111,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         await _getFirestore()
             .collection(FirestorePaths.users)
             .doc(user.uid)
-            .set({'subscriptionTier': 'standard'}, SetOptions(merge: true));
+            .set({'subscriptionTier': tierKey}, SetOptions(merge: true));
 
-        if (context.mounted) {
+        if (mounted) {
           AppSnackBar.show(
             context,
-            content: const Text('Upgraded to Individual Subscription!'),
+            content: Text('Upgraded to $tierLabel Subscription!'),
           );
         }
       }
@@ -122,77 +125,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         return;
       }
       debugPrint('Error purchasing: $e');
-      if (context.mounted) {
-        AppSnackBar.show(
-          context,
-          content: const Text('Failed to complete subscription purchase.'),
-        );
-      }
-    } finally {
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _upgradeToFamily(BuildContext context) async {
-    setState(() {
-      _isProcessing = true;
-    });
-    try {
-      final authRepo = ref.read(authRepositoryProvider);
-      final user = authRepo.currentUser;
-      if (user != null) {
-        if (_isWeb) {
-          if (context.mounted) {
-            AppSnackBar.show(
-              context,
-              content: const Text('In-app purchases are not supported on web.'),
-            );
-          }
-          return;
-        }
-
-        final offerings = await _getOfferings();
-        final current = offerings.current;
-        if (current == null || current.availablePackages.isEmpty) {
-          if (context.mounted) {
-            AppSnackBar.show(
-              context,
-              content: const Text(
-                'Subscription packages are currently unavailable.',
-              ),
-            );
-          }
-          return;
-        }
-
-        final package = current.availablePackages.firstWhere(
-          (p) => p.identifier.contains('family'),
-          orElse: () => current.availablePackages.first,
-        );
-        await _purchase(PurchaseParams.package(package));
-
-        await _getFirestore()
-            .collection(FirestorePaths.users)
-            .doc(user.uid)
-            .set({'subscriptionTier': 'family'}, SetOptions(merge: true));
-
-        if (context.mounted) {
-          AppSnackBar.show(
-            context,
-            content: const Text('Upgraded to Family Subscription!'),
-          );
-        }
-      }
-    } catch (e) {
-      if (_isPurchaseCancelled(e)) {
-        return;
-      }
-      debugPrint('Error purchasing: $e');
-      if (context.mounted) {
         AppSnackBar.show(
           context,
           content: const Text('Failed to complete subscription purchase.'),
@@ -402,7 +335,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => _upgradeToIndividual(context),
+                onPressed: () => _upgradeToTier(isFamilyTier: false),
                 icon: const Icon(Icons.person_outline),
                 label: Text(
                   'Upgrade to Individual Subscription ($individualPrice)',
@@ -423,7 +356,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => _upgradeToFamily(context),
+                onPressed: () => _upgradeToTier(isFamilyTier: true),
                 icon: const Icon(Icons.star_outline),
                 label: Text(
                   'Upgrade to Family Subscription ($familyPrice)',

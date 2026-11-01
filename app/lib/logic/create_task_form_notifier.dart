@@ -52,71 +52,9 @@ class CreateTaskFormState {
     bool defaultToRepeating = false,
   }) {
     if (taskToEdit != null) {
-      final task = taskToEdit;
-      final isMealWorkflow = task.workflowType == 'mealWorkflow';
-      TimeOfDay selectTime = const TimeOfDay(hour: 10, minute: 0);
-      TimeOfDay shopTime = const TimeOfDay(hour: 16, minute: 0);
-      TimeOfDay prepTime = const TimeOfDay(hour: 18, minute: 30);
-      if (task.mealWorkflowConfig != null) {
-        selectTime = task.mealWorkflowConfig!.selectTime.time;
-        shopTime = task.mealWorkflowConfig!.shopTime.time;
-        prepTime = task.mealWorkflowConfig!.prepTime.time;
-      }
-      final schedules = List<TaskScheduleRule>.from(task.schedules);
-      return CreateTaskFormState(
-        taskScheduleId: task.id,
-        schedules: schedules,
-        expandedScheduleIndex: schedules.isNotEmpty ? 0 : null,
-        isFamily: task.isFamily,
-        familyCompletionMode: task.familyCompletionMode,
-        priority: task.priority,
-        cycleId: task.cycleId,
-        preferredBy: Map<String, bool>.from(task.preferredBy),
-        assignedUserId: task.assignedUserId,
-        skipIfNoCapacity: task.skipIfNoCapacity,
-        isMealWorkflow: isMealWorkflow,
-        selectTime: selectTime,
-        shopTime: shopTime,
-        prepTime: prepTime,
-        labelIds: List<String>.from(task.labelIds),
-      );
+      return _fromExistingTask(taskToEdit, isDuplicate: false);
     } else if (taskToDuplicate != null) {
-      final task = taskToDuplicate;
-      final isMealWorkflow = task.workflowType == 'mealWorkflow';
-      TimeOfDay selectTime = const TimeOfDay(hour: 10, minute: 0);
-      TimeOfDay shopTime = const TimeOfDay(hour: 16, minute: 0);
-      TimeOfDay prepTime = const TimeOfDay(hour: 18, minute: 30);
-      if (task.mealWorkflowConfig != null) {
-        selectTime = task.mealWorkflowConfig!.selectTime.time;
-        shopTime = task.mealWorkflowConfig!.shopTime.time;
-        prepTime = task.mealWorkflowConfig!.prepTime.time;
-      }
-      final taskScheduleId = TaskSchedule.generateId();
-      final schedules = task.schedules
-          .map(
-            (s) => s.copyWithTiming(
-              id: TaskScheduleRule.generateId(),
-              scheduleId: taskScheduleId,
-            ),
-          )
-          .toList();
-      return CreateTaskFormState(
-        taskScheduleId: taskScheduleId,
-        schedules: schedules,
-        expandedScheduleIndex: schedules.isNotEmpty ? 0 : null,
-        isFamily: task.isFamily,
-        familyCompletionMode: task.familyCompletionMode,
-        priority: task.priority,
-        cycleId: task.cycleId,
-        preferredBy: Map<String, bool>.from(task.preferredBy),
-        assignedUserId: task.assignedUserId,
-        skipIfNoCapacity: task.skipIfNoCapacity,
-        isMealWorkflow: isMealWorkflow,
-        selectTime: selectTime,
-        shopTime: shopTime,
-        prepTime: prepTime,
-        labelIds: List<String>.from(task.labelIds),
-      );
+      return _fromExistingTask(taskToDuplicate, isDuplicate: true);
     } else {
       final taskScheduleId = TaskSchedule.generateId();
       final List<TaskScheduleRule> schedules;
@@ -151,6 +89,51 @@ class CreateTaskFormState {
         labelIds: const [],
       );
     }
+  }
+
+  static CreateTaskFormState _fromExistingTask(
+    TaskSchedule sourceTask, {
+    required bool isDuplicate,
+  }) {
+    final isMealWorkflow = sourceTask.workflowType == 'mealWorkflow';
+    TimeOfDay selectTime = const TimeOfDay(hour: 10, minute: 0);
+    TimeOfDay shopTime = const TimeOfDay(hour: 16, minute: 0);
+    TimeOfDay prepTime = const TimeOfDay(hour: 18, minute: 30);
+    if (sourceTask.mealWorkflowConfig != null) {
+      selectTime = sourceTask.mealWorkflowConfig!.selectTime.time;
+      shopTime = sourceTask.mealWorkflowConfig!.shopTime.time;
+      prepTime = sourceTask.mealWorkflowConfig!.prepTime.time;
+    }
+    final taskScheduleId = isDuplicate
+        ? TaskSchedule.generateId()
+        : sourceTask.id;
+    final schedules = isDuplicate
+        ? sourceTask.schedules
+              .map(
+                (s) => s.copyWithTiming(
+                  id: TaskScheduleRule.generateId(),
+                  scheduleId: taskScheduleId,
+                ),
+              )
+              .toList()
+        : List<TaskScheduleRule>.from(sourceTask.schedules);
+    return CreateTaskFormState(
+      taskScheduleId: taskScheduleId,
+      schedules: schedules,
+      expandedScheduleIndex: schedules.isNotEmpty ? 0 : null,
+      isFamily: sourceTask.isFamily,
+      familyCompletionMode: sourceTask.familyCompletionMode,
+      priority: sourceTask.priority,
+      cycleId: sourceTask.cycleId,
+      preferredBy: Map<String, bool>.from(sourceTask.preferredBy),
+      assignedUserId: sourceTask.assignedUserId,
+      skipIfNoCapacity: sourceTask.skipIfNoCapacity,
+      isMealWorkflow: isMealWorkflow,
+      selectTime: selectTime,
+      shopTime: shopTime,
+      prepTime: prepTime,
+      labelIds: List<String>.from(sourceTask.labelIds),
+    );
   }
 
   static OneOffSchedule createDefaultOneOffSchedule(String taskScheduleId) {
