@@ -665,6 +665,117 @@ void main() {
       final famRecipe = recipes.firstWhere((r) => r.id == 'R-family-remote');
       expect(famRecipe.isFamily, isTrue);
       expect(famRecipe.title, 'Remote Family Recipe');
+      expect(localDataSource.getDirtyTaskIds(), contains('R-local-unsynced'));
+    },
+  );
+
+  test(
+    'Upgrading from Free Tier to Premium preserves local tasks, instances, and recipes and marks them dirty for sync',
+    () async {
+      final now = DateTime.utc(2026, 8, 15, 12, 0);
+
+      // 1. User starts on Free Tier
+      final freeService = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: false,
+      );
+      await freeService.migrateIfNeeded();
+      expect(localDataSource.getActiveUserId(), 'user1');
+      expect(localDataSource.getIsActivePremium(), isFalse);
+
+      // 2. User creates a task, instance, and recipe while on Free Tier
+      final freeTask = TaskSchedule(
+        id: 'S-free-task',
+        title: 'Free Tier Task',
+        description: 'Created before upgrade',
+        schedules: const [],
+        updatedAt: now,
+        hasPendingWrites: true,
+      );
+      final freeInst = TaskInstance(
+        id: 'I-free-inst',
+        scheduleId: 'S-free-task',
+        ruleId: 'R-1',
+        title: 'Free Tier Instance',
+        description: 'Created before upgrade',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        updatedAt: now,
+        hasPendingWrites: true,
+      );
+      final freeRecipe = Recipe(
+        id: 'R-free-recipe',
+        title: 'Free Tier Recipe',
+        updatedAt: now,
+        hasPendingWrites: true,
+      );
+      await localDataSource.saveTask(freeTask);
+      await localDataSource.saveInstance(freeInst);
+      await localDataSource.saveRecipe(freeRecipe);
+      await localDataSource.markDirty(freeTask.id);
+      await localDataSource.markDirty(freeInst.id);
+      await localDataSource.markDirty(freeRecipe.id);
+
+      // 3. User upgrades to Premium
+      final premiumService = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      await premiumService.migrateIfNeeded();
+
+      expect(localDataSource.isMigrationCompleted(), isTrue);
+      expect(localDataSource.getIsActivePremium(), isTrue);
+      expect(
+        localDataSource.getTasks().map((t) => t.id),
+        contains('S-free-task'),
+      );
+      expect(
+        localDataSource.getInstances().map((i) => i.id),
+        contains('I-free-inst'),
+      );
+      expect(
+        localDataSource.getRecipes().map((r) => r.id),
+        contains('R-free-recipe'),
+      );
+      expect(
+        localDataSource.getDirtyTaskIds(),
+        containsAll(['S-free-task', 'I-free-inst', 'R-free-recipe']),
+      );
+    },
+  );
+
+  test(
+    'Switching to a different Free Tier user wipes previous user data from Hive',
+    () async {
+      await localDataSource.setActiveUserId('user1');
+      await localDataSource.saveTask(
+        TaskSchedule(
+          id: 'S-user1',
+          title: 'User 1 Task',
+          description: '',
+          schedules: const [],
+        ),
+      );
+      await localDataSource.saveRecipe(
+        Recipe(id: 'R-user1', title: 'User 1 Recipe'),
+      );
+
+      final user2FreeService = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user2',
+        isActivePremium: false,
+      );
+      await user2FreeService.migrateIfNeeded();
+
+      expect(localDataSource.getActiveUserId(), 'user2');
+      expect(localDataSource.getTasks(), isEmpty);
+      expect(localDataSource.getRecipes(), isEmpty);
     },
   );
 }
