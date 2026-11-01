@@ -9,31 +9,25 @@ Future<AccountDeletionAuthResult> authenticateUserRequest(
   Map<String, dynamic> headers, {
   AuthService? auth,
 }) async {
-  final idToken = extractBearerToken(headers);
-  if (idToken != null) {
-    try {
-      final firebaseAuth = auth ?? getFirebaseAdminAuth();
-      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
-      return AccountDeletionAuthResult(
-        authenticated: true,
-        user: AuthenticatedUser(
-          uid: decodedToken.uid,
-          email: decodedToken.email,
-        ),
-      );
-    } catch (_) {
-      return const AccountDeletionAuthResult(
-        authenticated: false,
-        status: 401,
-        error: 'Unauthorized: Invalid or expired authentication token.',
-      );
-    }
+  final verification = await verifyBearerIdToken(headers, auth: auth);
+  if (!verification.hasToken) {
+    return const AccountDeletionAuthResult(
+      authenticated: false,
+      status: 401,
+      error: 'Unauthorized: Missing or invalid Authorization header.',
+    );
   }
-
-  return const AccountDeletionAuthResult(
-    authenticated: false,
-    status: 401,
-    error: 'Unauthorized: Missing or invalid Authorization header.',
+  final decodedToken = verification.decodedToken;
+  if (decodedToken == null) {
+    return const AccountDeletionAuthResult(
+      authenticated: false,
+      status: 401,
+      error: 'Unauthorized: Invalid or expired authentication token.',
+    );
+  }
+  return AccountDeletionAuthResult(
+    authenticated: true,
+    user: AuthenticatedUser(uid: decodedToken.uid, email: decodedToken.email),
   );
 }
 
@@ -84,20 +78,17 @@ Future<AccountDeletionResult> deleteUserAccountData(
         ];
         if (assignedDocs.isNotEmpty) {
           final nowUtc = DateTime.now().toUtc();
-          const chunkSize = 499;
-          for (var i = 0; i < assignedDocs.length; i += chunkSize) {
-            final batch = db.batch();
-            final end = (i + chunkSize < assignedDocs.length)
-                ? i + chunkSize
-                : assignedDocs.length;
-            for (var j = i; j < end; j++) {
-              batch.update(assignedDocs[j].ref, {
-                'assignedUserId': null,
-                'updatedAt': nowUtc,
-              });
-            }
-            await batch.commit();
-          }
+          await commitOperationsInChunks(
+            db,
+            assignedDocs
+                .map(
+                  (doc) => (WriteBatch batch) => batch.update(doc.ref, {
+                        'assignedUserId': null,
+                        'updatedAt': nowUtc,
+                      }),
+                )
+                .toList(),
+          );
         }
 
         // Remove user from members map and promote a successor parent if needed
@@ -158,17 +149,14 @@ Future<AccountDeletionResult> deleteUserAccountData(
     }
 
     if (docsToDelete.isNotEmpty) {
-      const chunkSize = 499;
-      for (var i = 0; i < docsToDelete.length; i += chunkSize) {
-        final batch = db.batch();
-        final end = (i + chunkSize < docsToDelete.length)
-            ? i + chunkSize
-            : docsToDelete.length;
-        for (var j = i; j < end; j++) {
-          batch.delete(docsToDelete[j].ref);
-        }
-        await batch.commit();
-      }
+      await commitOperationsInChunks(
+        db,
+        docsToDelete
+            .map(
+              (doc) => (WriteBatch batch) => batch.delete(doc.ref),
+            )
+            .toList(),
+      );
     }
   }
 

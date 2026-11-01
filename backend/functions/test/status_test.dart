@@ -10,7 +10,9 @@ void main() {
 
       expect(payload['status'], equals('ok'));
       expect(
-          payload['service'], equals('Nothing Ever Happens Cloud Functions'));
+        payload['service'],
+        equals('Nothing Ever Happens Cloud Functions'),
+      );
       expect(payload['version'], equals('1.0.0'));
       expect(payload['timestamp'], equals('2026-08-30T12:00:00.000Z'));
     });

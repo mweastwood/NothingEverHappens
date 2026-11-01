@@ -1,4 +1,5 @@
 import 'package:core/core.dart' show CivilDay;
+
 import '../interop/firebase_admin.dart';
 import '../interop/firebase_functions.dart';
 import '../interop/node_interop.dart';
@@ -99,32 +100,29 @@ Future<TaskAuthValidationResult> authenticateTaskEventRequest(
   }
 
   // 2. Check Firebase ID Token in Bearer header
-  final idToken = extractBearerToken(headers);
-  if (idToken != null) {
-    try {
-      final firebaseAuth = auth ?? getFirebaseAdminAuth();
-      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
-      if (decodedToken.uid == targetUserId || decodedToken.admin == true) {
-        return const TaskAuthValidationResult(authenticated: true);
-      }
-      return const TaskAuthValidationResult(
-        authenticated: false,
-        status: 403,
-        error: 'Forbidden: Authenticated user does not match target userId.',
-      );
-    } catch (_) {
-      return const TaskAuthValidationResult(
-        authenticated: false,
-        status: 401,
-        error: 'Unauthorized: Invalid or expired authentication token.',
-      );
-    }
+  final verification = await verifyBearerIdToken(headers, auth: auth);
+  if (!verification.hasToken) {
+    return const TaskAuthValidationResult(
+      authenticated: false,
+      status: 401,
+      error: 'Unauthorized: Missing or invalid authentication credentials.',
+    );
   }
-
+  final decodedToken = verification.decodedToken;
+  if (decodedToken == null) {
+    return const TaskAuthValidationResult(
+      authenticated: false,
+      status: 401,
+      error: 'Unauthorized: Invalid or expired authentication token.',
+    );
+  }
+  if (decodedToken.uid == targetUserId || decodedToken.admin == true) {
+    return const TaskAuthValidationResult(authenticated: true);
+  }
   return const TaskAuthValidationResult(
     authenticated: false,
-    status: 401,
-    error: 'Unauthorized: Missing or invalid authentication credentials.',
+    status: 403,
+    error: 'Forbidden: Authenticated user does not match target userId.',
   );
 }
 
@@ -268,9 +266,10 @@ Future<TaskEventResult> processExternalTaskEvent(
     if (statusReason != null) 'statusReason': statusReason,
     'completedAt': completedAt,
     'completedByUserId': completedByUserId,
-    'completedByUserIds': event.action == 'completed' && completedByUserId != null
-        ? [completedByUserId]
-        : <String>[],
+    'completedByUserIds':
+        event.action == 'completed' && completedByUserId != null
+            ? [completedByUserId]
+            : <String>[],
     'integrationBinding': {
       'providerId': event.providerId,
       'entityType': event.entityType,
@@ -301,16 +300,18 @@ Future<void> handleReportExternalTaskEvent(
   AuthService? auth,
 }) async {
   if (req.method != 'POST') {
-    res
-        .status(405)
-        .json({'success': false, 'error': 'Method Not Allowed. Use POST.'});
+    res.status(405).json({
+      'success': false,
+      'error': 'Method Not Allowed. Use POST.',
+    });
     return;
   }
 
   final validation = validateTaskEvent(req.body);
   if (!validation.valid || validation.event == null) {
     logWarn(
-        'Invalid external task event received: ${req.body} ${validation.error}');
+      'Invalid external task event received: ${req.body} ${validation.error}',
+    );
     res.status(400).json({'success': false, 'error': validation.error});
     return;
   }
@@ -324,16 +325,19 @@ Future<void> handleReportExternalTaskEvent(
     logWarn(
       'Unauthorized external task event attempt for user ${validation.event!.userId}: ${authResult.error}',
     );
-    res
-        .status(authResult.status ?? 401)
-        .json({'success': false, 'error': authResult.error});
+    res.status(authResult.status ?? 401).json({
+      'success': false,
+      'error': authResult.error,
+    });
     return;
   }
 
   try {
     final firestoreDb = db ?? getFirebaseAdminDb();
-    final result =
-        await processExternalTaskEvent(firestoreDb, validation.event!);
+    final result = await processExternalTaskEvent(
+      firestoreDb,
+      validation.event!,
+    );
     logInfo(
       'Processed task event for user ${validation.event!.userId}, provider ${validation.event!.providerId}: ${validation.event!.action}',
     );
