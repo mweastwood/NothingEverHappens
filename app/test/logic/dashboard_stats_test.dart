@@ -631,6 +631,90 @@ void main() {
         data.verifyDailyStats(stats.dailyStats);
       },
     );
+
+    testWidgets(
+      'accounts completed one-off task with UTC completedAt timestamp to completedAt.toLocal() CivilDay',
+      (tester) async {
+        final oneOffSchedule = TaskSchedule(
+          id: 's-oneoff-utc',
+          title: 'UTC One-off Task',
+          description: 'Desc',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [
+            OneOffSchedule(
+              id: 'r-oneoff-utc',
+              date: const CivilDay(year: 2026, month: 7, day: 5),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+            ),
+          ],
+        );
+
+        final localCompletion = DateTime(2026, 7, 9, 23, 30);
+        final utcCompletion = localCompletion.toUtc();
+        expect(utcCompletion.isUtc, isTrue);
+        final expectedDay = CivilDay.fromDateTime(utcCompletion.toLocal());
+        expect(expectedDay, const CivilDay(year: 2026, month: 7, day: 9));
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          oneOffSchedule,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          TaskInstance(
+            id: 'i-oneoff-utc',
+            scheduleId: oneOffSchedule.id,
+            ruleId: 'r-oneoff-utc',
+            title: 'UTC One-off Task',
+            description: 'Desc',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 5),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: utcCompletion,
+            completedByUserId: 'user-alice',
+          ),
+        ]);
+        final authSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+          authSubject.close();
+        });
+
+        late PersonalLastWeekStats stats;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => authSubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                stats = ref.watch(personalLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final day5 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 5),
+        );
+        expect(day5.completedCount, 0);
+
+        final accountedStats = stats.dailyStats.firstWhere(
+          (d) => d.day == expectedDay,
+        );
+        expect(accountedStats.completedCount, 1);
+        expect(accountedStats.completedTasks.first.id, 'i-oneoff-utc');
+        expect(accountedStats.completedHours, 1.0);
+      },
+    );
   });
 
   group('familyLastWeekStatsProvider', () {
@@ -1329,6 +1413,195 @@ void main() {
         expect(bobStats?.completedHours, 1.0);
         expect(aliceStats?.missedCount, 1);
         expect(aliceStats?.completedCount, 0);
+      },
+    );
+
+    testWidgets(
+      'Individual task assigned to a single family member: uses multiplier of 1 for hours and only counts missed/skipped against assigned member',
+      (tester) async {
+        const dayCompleted = CivilDay(year: 2026, month: 7, day: 6);
+        const daySkipped = CivilDay(year: 2026, month: 7, day: 7);
+        const dayFailed = CivilDay(year: 2026, month: 7, day: 8);
+        const dayPendingPast = CivilDay(year: 2026, month: 7, day: 9);
+        const dayPlannedFuture = CivilDay(year: 2026, month: 7, day: 11);
+        const dayPlannedOtherCompleted = CivilDay(
+          year: 2026,
+          month: 7,
+          day: 12,
+        );
+
+        final instances = [
+          // 1. Completed single-assigned individual task -> 1.0h (not multiplied by 2)
+          TaskInstance(
+            id: 'i-indiv-assigned-completed',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: dayCompleted,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            completedByUserId: 'user-alice',
+            completedByUserIds: const ['user-alice'],
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 6, 12, 0),
+          ),
+          // 2. Skipped single-assigned individual task -> 1.0h skipped, only Alice gets skippedCount
+          TaskInstance(
+            id: 'i-indiv-assigned-skipped',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: daySkipped,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            status: TaskStatus.skipped,
+          ),
+          // 3. Failed single-assigned individual task -> 1.0h missed, only Alice gets missedCount
+          TaskInstance(
+            id: 'i-indiv-assigned-failed',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: dayFailed,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            status: TaskStatus.failed,
+          ),
+          // 4. Past pending single-assigned individual task -> 1.0h missed, only Alice gets missedCount
+          TaskInstance(
+            id: 'i-indiv-assigned-pending-past',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: dayPendingPast,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            status: TaskStatus.pending,
+          ),
+          // 5. Future pending single-assigned individual task -> 1.0h planned (not multiplied by 2)
+          TaskInstance(
+            id: 'i-indiv-assigned-planned',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: dayPlannedFuture,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            status: TaskStatus.pending,
+          ),
+          // 6. Future pending single-assigned individual task where non-assigned member (Bob) is in completedByUserIds,
+          //    but assigned member (Alice) has not completed it -> remainingCount is still 1 (1.0h planned)
+          TaskInstance(
+            id: 'i-indiv-assigned-other-completed',
+            scheduleId: scheduleIndividual.id,
+            ruleId: 'r-1',
+            title: 'Individual Chore',
+            description: '',
+            scheduledDate: dayPlannedOtherCompleted,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            assignedUserId: 'user-alice',
+            completedByUserIds: const ['user-bob'],
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleIndividual,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
+          instances,
+        );
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+        });
+
+        late FamilyLastWeekStats? familyStats;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              familyProfileStreamProvider.overrideWith(
+                (ref) => profileSubject.stream,
+              ),
+              familyStreamProvider(
+                'fam-100',
+              ).overrideWith((ref) => familySubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                familyStats = ref.watch(familyLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(familyStats, isNotNull);
+        expect(familyStats!.totalCompletedCount, 1);
+        expect(familyStats!.totalCompletedHours, 1.0);
+        expect(familyStats!.totalSkippedCount, 1);
+        expect(familyStats!.totalMissedCount, 2);
+        expect(familyStats!.totalPlannedCount, 2);
+        expect(familyStats!.totalPlannedHours, 2.0);
+
+        DailyStatsData statsFor(CivilDay day) =>
+            familyStats!.dailyStats.firstWhere((d) => d.day == day);
+
+        expect(statsFor(dayCompleted).completedHours, 1.0);
+        expect(statsFor(daySkipped).skippedHours, 1.0);
+        expect(statsFor(dayFailed).missedHours, 1.0);
+        expect(statsFor(dayPendingPast).missedHours, 1.0);
+        expect(statsFor(dayPlannedFuture).plannedHours, 1.0);
+        expect(statsFor(dayPlannedOtherCompleted).plannedHours, 1.0);
+
+        final aliceStats = familyStats!.memberStats.firstWhere(
+          (m) => m.userId == 'user-alice',
+        );
+        final bobStats = familyStats!.memberStats.firstWhere(
+          (m) => m.userId == 'user-bob',
+        );
+
+        // Alice (assigned): 1 completed (1.0h), 1 skipped, 2 missed (dayFailed + dayPendingPast)
+        expect(aliceStats.completedCount, 1);
+        expect(aliceStats.completedHours, 1.0);
+        expect(aliceStats.skippedCount, 1);
+        expect(aliceStats.missedCount, 2);
+
+        // Bob (not assigned): 0 missed, 0 skipped, 1 completed from dayPlannedOtherCompleted
+        expect(bobStats.missedCount, 0);
+        expect(bobStats.skippedCount, 0);
+        expect(bobStats.completedCount, 1);
+        expect(bobStats.completedHours, 1.0);
       },
     );
   });

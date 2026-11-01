@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app_clock.dart';
 import 'auth_repository.dart';
 import 'civil_day.dart';
@@ -189,7 +190,7 @@ CivilDay _accountedDay(TaskInstance inst, TaskSchedule? schedule) {
   if (inst.status == TaskStatus.completed &&
       inst.completedAt != null &&
       _isOneOffInstance(inst, schedule)) {
-    return CivilDay.fromDateTime(inst.completedAt!);
+    return CivilDay.fromDateTime(inst.completedAt!.toLocal());
   }
   return inst.scheduledDate;
 }
@@ -547,10 +548,21 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
 
     if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
       final completedUserIds = inst.completedByUserIds;
-      final remainingCount = (totalFamilyMembers - completedUserIds.length)
-          .clamp(0, totalFamilyMembers);
+      final isAssignedToSingleMember =
+          inst.assignedUserId != null && inst.assignedUserId!.isNotEmpty;
+      final int targetMembers = isAssignedToSingleMember
+          ? 1
+          : totalFamilyMembers;
+      final remainingCount = isAssignedToSingleMember
+          ? (completedUserIds.contains(inst.assignedUserId) ? 0 : 1)
+          : (targetMembers - completedUserIds.length).clamp(0, targetMembers);
 
       for (final m in family.members.values) {
+        if (isAssignedToSingleMember &&
+            m.userId != inst.assignedUserId &&
+            !completedUserIds.contains(m.userId)) {
+          continue;
+        }
         final memberAcc = memberAccByUser[m.userId]!;
         if (completedUserIds.contains(m.userId)) {
           memberAcc.recordCompleted(inst, baseDuration);
@@ -565,7 +577,7 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
 
       if (inst.status == TaskStatus.completed) {
         totalCompleted++;
-        final taskCompletedHours = baseDuration * totalFamilyMembers;
+        final taskCompletedHours = baseDuration * targetMembers;
         totalHours += taskCompletedHours;
         acc.recordCompleted(
           inst,
@@ -574,22 +586,22 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
         );
       } else if (inst.status == TaskStatus.skipped) {
         totalSkipped++;
-        acc.recordSkipped(inst, baseDuration * totalFamilyMembers);
+        acc.recordSkipped(inst, baseDuration * targetMembers);
       } else if (inst.status == TaskStatus.failed) {
         totalMissed++;
-        acc.recordMissed(inst, baseDuration * totalFamilyMembers);
+        acc.recordMissed(inst, baseDuration * targetMembers);
       } else if (inst.status == TaskStatus.pending) {
         if (inst.scheduledDate.isBefore(today)) {
           totalMissed++;
           final missedHours =
               baseDuration *
               (inst.completedByUserIds.isEmpty
-                  ? totalFamilyMembers
+                  ? targetMembers
                   : remainingCount);
           acc.recordMissed(inst, missedHours);
         } else {
           final neededMembers = inst.completedByUserIds.isEmpty
-              ? totalFamilyMembers
+              ? targetMembers
               : remainingCount;
           if (neededMembers > 0) {
             final plannedHrs = baseDuration * neededMembers;
