@@ -590,7 +590,12 @@ class SchedulerEngine {
       initialBaseDate = pending.first.scheduledDate;
     } else {
       final resolved = canonicalInstances
-          .where((inst) => inst.status != TaskStatus.pending)
+          .where(
+            (inst) =>
+                inst.status != TaskStatus.pending &&
+                inst.statusReason !=
+                    InstanceStatusReason.schedulerCapacityLimit.value,
+          )
           .toList()
         ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
       final CivilDay? lastResolvedOrSpawnedDate = resolved.isNotEmpty
@@ -687,8 +692,10 @@ class SchedulerEngine {
         while (spawnedFutureCount < ruleFutureInstancesCount &&
             current.compareTo(today) > 0) {
           final existing = workingInstances[current];
-          final isResolved =
-              existing != null && existing.status != TaskStatus.pending;
+          final isResolved = existing != null &&
+              existing.status != TaskStatus.pending &&
+              existing.statusReason !=
+                  InstanceStatusReason.schedulerCapacityLimit.value;
           if (!isResolved) {
             targetDates.add(current);
             spawnedFutureCount++;
