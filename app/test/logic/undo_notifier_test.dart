@@ -273,6 +273,106 @@ void main() {
     );
 
     test(
+      'UndoEditTaskScheduleAction uses deep equality for schedules, labelIds, and mealWorkflowConfig',
+      () async {
+        final rule1 = OneOffSchedule(
+          id: 'R-1',
+          date: const CivilDay(year: 2026, month: 6, day: 15),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        );
+        final rule1Clone = OneOffSchedule(
+          id: 'R-1',
+          date: const CivilDay(year: 2026, month: 6, day: 15),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        );
+
+        final prevSchedule = TaskSchedule(
+          id: 'task-deep',
+          title: 'Task',
+          description: 'Desc',
+          schedules: [rule1],
+          labelIds: const ['L-1', 'L-2'],
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ),
+        );
+        final currScheduleUnchangedCollections = TaskSchedule(
+          id: 'task-deep',
+          title: 'New Title',
+          description: 'Desc',
+          schedules: [rule1Clone],
+          labelIds: ['L-1', 'L-2'],
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ),
+        );
+
+        final unchangedAction = UndoEditTaskScheduleAction(
+          message: 'Edited title only',
+          previousSchedule: prevSchedule,
+          currentSchedule: currScheduleUnchangedCollections,
+        );
+        await unchangedAction.undo(mockRepository);
+
+        var captured =
+            verify(
+                  mockRepository.updateTaskSchedule(captureAny),
+                ).captured.single
+                as TaskModification;
+        expect(captured.changes.keys, equals(['title']));
+
+        final currScheduleChangedCollections = TaskSchedule(
+          id: 'task-deep',
+          title: 'Task',
+          description: 'Desc',
+          schedules: [rule1Clone],
+          labelIds: const ['L-1', 'L-3'],
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(dayOffset: 0, hour: 11, minute: 30),
+          ),
+        );
+        final changedAction = UndoEditTaskScheduleAction(
+          message: 'Edited labels and mealWorkflowConfig',
+          previousSchedule: prevSchedule,
+          currentSchedule: currScheduleChangedCollections,
+        );
+        await changedAction.undo(mockRepository);
+
+        captured =
+            verify(
+                  mockRepository.updateTaskSchedule(captureAny),
+                ).captured.single
+                as TaskModification;
+        expect(
+          captured.changes.keys,
+          containsAll(['labelIds', 'mealWorkflowConfig']),
+        );
+        expect(captured.changes.containsKey('schedules'), isFalse);
+      },
+    );
+
+    test(
       'UndoEditTaskScheduleAction reconciles pending instances back to previousSchedule rules',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 15, 10, 0));
