@@ -7,27 +7,38 @@ class SchedulerCapacityFilter {
   final String? appVersion;
   final String? platform;
 
-  const SchedulerCapacityFilter({
-    this.appVersion,
-    this.platform,
-  });
+  const SchedulerCapacityFilter({this.appVersion, this.platform});
 
   double _capacityForDate(UserSettings? userSettings, CivilDay day) {
     return userSettings?.getCapacityForDate(day.toDateTime()) ??
         SchedulerEngine.defaultDailyCapacityHours;
   }
 
+  bool _isWithinCapacityWindow(
+    TaskInstance inst,
+    SchedulerEvaluationContext context,
+  ) {
+    final start = context.referenceToEarliest(
+      inst.startRelativeTime,
+      inst.scheduledDate,
+    );
+    final due = context.referenceToLatest(
+      inst.dueRelativeTime,
+      inst.scheduledDate,
+    );
+    return context.now.isBefore(start) ||
+        (!inst.scheduledDate.isBefore(context.latestToday) &&
+            context.now.isBefore(due));
+  }
+
   TaskInstance _markSkippedByCapacity(
     TaskInstance inst,
     SchedulerEvaluationContext context,
   ) {
-    return inst.copyWith(
+    return context.stampModified(
+      inst,
       status: TaskStatus.skipped,
       statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
-      lastModifiedByAppVersion: appVersion,
-      lastModifiedByPlatform: platform,
-      lastModifiedByUserId: context.userId,
-      updatedAt: context.now.toUtc(),
     );
   }
 
@@ -35,13 +46,10 @@ class SchedulerCapacityFilter {
     TaskInstance inst,
     SchedulerEvaluationContext context,
   ) {
-    return inst.copyWith(
+    return context.stampModified(
+      inst,
       status: TaskStatus.pending,
       clearStatusReason: true,
-      lastModifiedByAppVersion: appVersion,
-      lastModifiedByPlatform: platform,
-      lastModifiedByUserId: context.userId,
-      updatedAt: context.now.toUtc(),
     );
   }
 
@@ -54,7 +62,6 @@ class SchedulerCapacityFilter {
   }) {
     final task = context.task;
     final taskInstances = context.taskInstances;
-    final now = context.now;
     final latestToday = context.latestToday;
     final userSettings = context.userSettings;
     final dayPlannedHours = context.dayPlannedHours;
@@ -77,16 +84,7 @@ class SchedulerCapacityFilter {
 
       // 1. Process instances already in the DB that are pending or skipped (support skipping and revival)
       for (final inst in taskInstances) {
-        final start = context.referenceToEarliest(
-          inst.startRelativeTime,
-          inst.scheduledDate,
-        );
-        final due = context.referenceToLatest(
-          inst.dueRelativeTime,
-          inst.scheduledDate,
-        );
-        final isEligibleWindow = now.isBefore(start) ||
-            (!inst.scheduledDate.isBefore(latestToday) && now.isBefore(due));
+        final isEligibleWindow = _isWithinCapacityWindow(inst, context);
 
         final isMarkedForDelete = toDeleteSet.contains(inst.id);
         final updateIdx = updateIndexById[inst.id];
@@ -180,16 +178,7 @@ class SchedulerCapacityFilter {
       // If skipIfNoCapacity is false and applyCapacityLimits is true, revive only capacity-skipped instances back to pending
       if (!task.skipIfNoCapacity && applyCapacityLimits) {
         for (final inst in taskInstances) {
-          final start = context.referenceToEarliest(
-            inst.startRelativeTime,
-            inst.scheduledDate,
-          );
-          final due = context.referenceToLatest(
-            inst.dueRelativeTime,
-            inst.scheduledDate,
-          );
-          final isEligibleWindow = now.isBefore(start) ||
-              (!inst.scheduledDate.isBefore(latestToday) && now.isBefore(due));
+          final isEligibleWindow = _isWithinCapacityWindow(inst, context);
           if (inst.isRevivableByCapacity && isEligibleWindow) {
             final isMarkedForDelete = toDeleteSet.contains(inst.id);
             if (isMarkedForDelete) continue;

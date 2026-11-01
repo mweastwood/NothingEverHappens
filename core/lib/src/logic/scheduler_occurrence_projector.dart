@@ -37,6 +37,84 @@ class SchedulerOccurrenceProjector {
     return 0;
   }
 
+  static List<TaskInstance> findLatestResolvedInstancesForRule(
+    List<TaskInstance> ruleInstances,
+  ) {
+    return ruleInstances
+        .where(
+          (inst) =>
+              inst.status != TaskStatus.pending &&
+              inst.statusReason !=
+                  InstanceStatusReason.schedulerCapacityLimit.value,
+        )
+        .toList()
+      ..sort(
+        (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
+          a.completedAt ?? a.updatedAt,
+        ),
+      );
+  }
+
+  static DateTime clampEarlyCompletionTime(
+    DateTime wallClockTime,
+    CivilDay scheduledDate,
+  ) {
+    if (CivilDay.fromDateTime(wallClockTime).isBefore(scheduledDate)) {
+      return DateTime.utc(
+        scheduledDate.year,
+        scheduledDate.month,
+        scheduledDate.day,
+        wallClockTime.hour,
+        wallClockTime.minute,
+        wallClockTime.second,
+      );
+    }
+    return wallClockTime;
+  }
+
+  static ({DateTime? nextSpawnTime, CivilDay? resolvedDay})
+      computeNextCompletionRelativeDateTime(
+    TaskSchedule task,
+    TaskScheduleRule rule,
+    List<TaskInstance> ruleInstances, {
+    required DateTime Function(DateTime instant) toWallClock,
+  }) {
+    final resolved = findLatestResolvedInstancesForRule(ruleInstances);
+    if (resolved.isNotEmpty) {
+      final latest = resolved.first;
+      final rawResolvedTime = latest.completedAt ?? latest.updatedAt;
+      final referenceTime = toWallClock(rawResolvedTime);
+      final resolvedDay = CivilDay.fromDateTime(referenceTime);
+      final effectiveReferenceTime = clampEarlyCompletionTime(
+        referenceTime,
+        latest.scheduledDate,
+      );
+      return (
+        nextSpawnTime: rule.nextCompletionRelativeDateTime(
+          effectiveReferenceTime,
+        ),
+        resolvedDay: resolvedDay,
+      );
+    }
+    if (task.lastSpawnedDate != null &&
+        task.lastSpawnedDate!.compareTo(rule.scheduledDate) >= 0) {
+      final lastSpawned = task.lastSpawnedDate!;
+      final approxCompletedWallClock = DateTime.utc(
+        lastSpawned.year,
+        lastSpawned.month,
+        lastSpawned.day,
+        12,
+      );
+      return (
+        nextSpawnTime: rule.nextCompletionRelativeDateTime(
+          approxCompletedWallClock,
+        ),
+        resolvedDay: null,
+      );
+    }
+    return (nextSpawnTime: null, resolvedDay: null);
+  }
+
   TaskInstance? getNextOccurrenceToSpawn(
     TaskSchedule task,
     TaskInstance completedInstance,
@@ -77,18 +155,10 @@ class SchedulerOccurrenceProjector {
 
       final wallClockNow =
           utcOffset != null ? now.toUtc().add(utcOffset) : now.toLocal();
-      final effectiveBaseTime = CivilDay.fromDateTime(wallClockNow).isBefore(
+      final effectiveBaseTime = clampEarlyCompletionTime(
+        wallClockNow,
         completedInstance.scheduledDate,
-      )
-          ? DateTime.utc(
-              completedInstance.scheduledDate.year,
-              completedInstance.scheduledDate.month,
-              completedInstance.scheduledDate.day,
-              wallClockNow.hour,
-              wallClockNow.minute,
-              wallClockNow.second,
-            )
-          : wallClockNow;
+      );
       final nextSpawnTime = rule.nextCompletionRelativeDateTime(
         effectiveBaseTime,
       );
@@ -178,7 +248,9 @@ class SchedulerOccurrenceProjector {
               inst.status == TaskStatus.pending &&
               inst.scheduledDate != completedInstance.scheduledDate &&
               (isCompletionRelative ||
-                  inst.scheduledDate.isAfter(completedInstance.scheduledDate)),
+                  inst.scheduledDate.isAfter(
+                    completedInstance.scheduledDate,
+                  )),
         )
         .toList()
       ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
@@ -223,44 +295,16 @@ class SchedulerOccurrenceProjector {
         result.add(effectiveFirstDay);
         cursorTime = effectiveFirstDay.toDateTime();
       } else {
-        final resolved = ruleInstances
-            .where(
-              (inst) =>
-                  inst.status != TaskStatus.pending &&
-                  inst.statusReason !=
-                      InstanceStatusReason.schedulerCapacityLimit.value,
-            )
-            .toList()
-          ..sort(
-            (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
-              a.completedAt ?? a.updatedAt,
-            ),
-          );
-        if (resolved.isNotEmpty) {
-          final latest = resolved.first;
-          final rawResolvedTime = latest.completedAt ?? latest.updatedAt;
-          final resolvedTime = utcOffset != null
-              ? rawResolvedTime.toUtc().add(utcOffset)
-              : rawResolvedTime.toLocal();
-          cursorTime = rule.nextCompletionRelativeDateTime(resolvedTime);
-          final nextDay = CivilDay.fromDateTime(cursorTime);
-          final effectiveNextDay =
-              nextDay.isBefore(fromDate) ? fromDate : nextDay;
-          result.add(effectiveNextDay);
-          cursorTime =
-              nextDay.isBefore(fromDate) ? fromDate.toDateTime() : cursorTime;
-        } else if (task.lastSpawnedDate != null &&
-            task.lastSpawnedDate!.compareTo(rule.scheduledDate) >= 0) {
-          final lastSpawned = task.lastSpawnedDate!;
-          final approxCompletedWallClock = DateTime.utc(
-            lastSpawned.year,
-            lastSpawned.month,
-            lastSpawned.day,
-            12,
-          );
-          cursorTime = rule.nextCompletionRelativeDateTime(
-            approxCompletedWallClock,
-          );
+        final anchor = computeNextCompletionRelativeDateTime(
+          task,
+          rule,
+          ruleInstances,
+          toWallClock: (instant) => utcOffset != null
+              ? instant.toUtc().add(utcOffset)
+              : instant.toLocal(),
+        );
+        if (anchor.nextSpawnTime != null) {
+          cursorTime = anchor.nextSpawnTime!;
           final nextDay = CivilDay.fromDateTime(cursorTime);
           final effectiveNextDay =
               nextDay.isBefore(fromDate) ? fromDate : nextDay;

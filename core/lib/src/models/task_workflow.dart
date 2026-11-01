@@ -1,4 +1,6 @@
 import 'package:uuid/uuid.dart';
+
+import 'civil_day.dart';
 import 'relative_time.dart';
 
 enum WorkflowStage { selectMeal, shoppingList, prepDinner }
@@ -11,21 +13,9 @@ class MealWorkflowConfig {
   final RelativeTime prepTime;
 
   const MealWorkflowConfig({
-    this.selectTime = const RelativeTime(
-      dayOffset: 0,
-      hour: 10,
-      minute: 0,
-    ),
-    this.shopTime = const RelativeTime(
-      dayOffset: 0,
-      hour: 16,
-      minute: 0,
-    ),
-    this.prepTime = const RelativeTime(
-      dayOffset: 0,
-      hour: 18,
-      minute: 30,
-    ),
+    this.selectTime = const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+    this.shopTime = const RelativeTime(dayOffset: 0, hour: 16, minute: 0),
+    this.prepTime = const RelativeTime(dayOffset: 0, hour: 18, minute: 30),
   });
 
   MealWorkflowConfig copyWith({
@@ -54,29 +44,17 @@ class MealWorkflowConfig {
           ? RelativeTime.fromJson(
               Map<String, dynamic>.from(json['selectTime'] as Map),
             )
-          : const RelativeTime(
-              dayOffset: 0,
-              hour: 10,
-              minute: 0,
-            ),
+          : const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       shopTime: json['shopTime'] != null
           ? RelativeTime.fromJson(
               Map<String, dynamic>.from(json['shopTime'] as Map),
             )
-          : const RelativeTime(
-              dayOffset: 0,
-              hour: 16,
-              minute: 0,
-            ),
+          : const RelativeTime(dayOffset: 0, hour: 16, minute: 0),
       prepTime: json['prepTime'] != null
           ? RelativeTime.fromJson(
               Map<String, dynamic>.from(json['prepTime'] as Map),
             )
-          : const RelativeTime(
-              dayOffset: 0,
-              hour: 18,
-              minute: 30,
-            ),
+          : const RelativeTime(dayOffset: 0, hour: 18, minute: 30),
     );
   }
 }
@@ -167,6 +145,9 @@ class WorkflowInstancePayload {
     this.shoppingItems = const [],
     this.customMealNote,
   });
+
+  static String generateGroupId(String scheduleId, CivilDay date) =>
+      '$scheduleId-${date.year}-${date.month}-${date.day}';
 
   WorkflowInstancePayload copyWith({
     String? workflowType,

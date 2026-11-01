@@ -65,8 +65,12 @@ void main() {
         completedAt: completedAt,
       );
 
-      final action =
-          const SchedulerEngine().evaluate(task, [completedInst], now);
+      final action = const SchedulerEngine().evaluate(
+          task,
+          [
+            completedInst,
+          ],
+          now);
       expect(action.instancesToSpawn, hasLength(1));
       expect(
         action.instancesToSpawn.first.scheduledDate,
@@ -74,52 +78,59 @@ void main() {
       );
     });
 
-    test('evaluates completion relative scheduling when occurrence is skipped',
-        () {
-      final today = CivilDay(year: 2026, month: 9, day: 8);
-      final skippedAt = DateTime(2026, 9, 8, 10, 0);
-      final now = DateTime(2026, 9, 10, 12, 0); // 2 days later
+    test(
+      'evaluates completion relative scheduling when occurrence is skipped',
+      () {
+        final today = CivilDay(year: 2026, month: 9, day: 8);
+        final skippedAt = DateTime(2026, 9, 8, 10, 0);
+        final now = DateTime(2026, 9, 10, 12, 0); // 2 days later
 
-      final task = TaskSchedule(
-        id: 'task-cr',
-        title: 'Completion Relative Task',
-        description: 'Test task',
-        schedules: [
-          DailySchedule(
-            startDate: today,
-            interval: 2,
-            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 2),
-              targetHour: 9,
-              targetMinute: 0,
+        final task = TaskSchedule(
+          id: 'task-cr',
+          title: 'Completion Relative Task',
+          description: 'Test task',
+          schedules: [
+            DailySchedule(
+              startDate: today,
+              interval: 2,
+              startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+              dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 2),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
 
-      final skippedInst = TaskInstance(
-        id: 'inst-skipped',
-        scheduleId: task.id,
-        ruleId: task.schedules.first.id,
-        title: task.title,
-        description: task.description,
-        scheduledDate: today,
-        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
-        status: TaskStatus.skipped,
-        completedAt: null,
-        updatedAt: skippedAt,
-      );
+        final skippedInst = TaskInstance(
+          id: 'inst-skipped',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          status: TaskStatus.skipped,
+          completedAt: null,
+          updatedAt: skippedAt,
+        );
 
-      final action = const SchedulerEngine().evaluate(task, [skippedInst], now);
-      expect(action.instancesToSpawn, hasLength(1));
-      expect(
-        action.instancesToSpawn.first.scheduledDate,
-        equals(CivilDay(year: 2026, month: 9, day: 10)),
-      );
-    });
+        final action = const SchedulerEngine().evaluate(
+            task,
+            [
+              skippedInst,
+            ],
+            now);
+        expect(action.instancesToSpawn, hasLength(1));
+        expect(
+          action.instancesToSpawn.first.scheduledDate,
+          equals(CivilDay(year: 2026, month: 9, day: 10)),
+        );
+      },
+    );
 
     test(
         'evaluates completion relative scheduling ordering when older completed instance exists before skipped instance',
@@ -176,8 +187,13 @@ void main() {
         updatedAt: skippedAt,
       );
 
-      final action = const SchedulerEngine()
-          .evaluate(task, [olderCompletedInst, newerSkippedInst], now);
+      final action = const SchedulerEngine().evaluate(
+          task,
+          [
+            olderCompletedInst,
+            newerSkippedInst,
+          ],
+          now);
       expect(action.instancesToSpawn, hasLength(1));
       expect(
         action.instancesToSpawn.first.scheduledDate,
@@ -224,8 +240,11 @@ void main() {
         ],
       );
 
-      final oneOffAction =
-          const SchedulerEngine().evaluate(oneOffTask, [], now);
+      final oneOffAction = const SchedulerEngine().evaluate(
+        oneOffTask,
+        [],
+        now,
+      );
       expect(oneOffAction.instancesToSpawn, isNotEmpty);
       expect(
         oneOffAction.instancesToSpawn.first.labelIds,
@@ -269,10 +288,11 @@ void main() {
 
       // Should not throw Exception('No occurrence found within 10 years')
       final action = const SchedulerEngine().evaluate(
-        task,
-        [completedInst],
-        now,
-      );
+          task,
+          [
+            completedInst,
+          ],
+          now);
       expect(action.instancesToSpawn, isEmpty);
     });
 
@@ -390,10 +410,14 @@ void main() {
 
       // 1. With skipIfNoCapacity: true and plenty of capacity, only capacitySkipped is revived
       final action1 = const SchedulerEngine().evaluate(
-        taskWithCapacity,
-        [userDismissed, policySkipped, capacitySkipped, autoDismissSkipped],
-        now,
-      );
+          taskWithCapacity,
+          [
+            userDismissed,
+            policySkipped,
+            capacitySkipped,
+            autoDismissSkipped,
+          ],
+          now);
       expect(
         action1.instancesToUpdate.map((i) => i.id).toList(),
         equals(['I-capacity-skipped']),
@@ -402,13 +426,18 @@ void main() {
       expect(action1.instancesToUpdate.first.statusReason, isNull);
 
       // 2. With skipIfNoCapacity: false, still only capacitySkipped is revived
-      final taskWithoutCapacity =
-          taskWithCapacity.copyWith(skipIfNoCapacity: false);
-      final action2 = const SchedulerEngine().evaluate(
-        taskWithoutCapacity,
-        [userDismissed, policySkipped, capacitySkipped, autoDismissSkipped],
-        now,
+      final taskWithoutCapacity = taskWithCapacity.copyWith(
+        skipIfNoCapacity: false,
       );
+      final action2 = const SchedulerEngine().evaluate(
+          taskWithoutCapacity,
+          [
+            userDismissed,
+            policySkipped,
+            capacitySkipped,
+            autoDismissSkipped,
+          ],
+          now);
       expect(
         action2.instancesToUpdate.map((i) => i.id).toList(),
         equals(['I-capacity-skipped']),
@@ -496,10 +525,16 @@ void main() {
             scheduleId: 'task-prefer-newer-neg',
             startDate: today,
             interval: 1,
-            startRelativeTime:
-                const RelativeTime(dayOffset: -1, hour: 20, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              hour: 20,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 18,
+              minute: 0,
+            ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           ),
         ],
@@ -511,10 +546,12 @@ void main() {
         now,
         futureInstancesCount: 1,
       );
-      final todayNewer = actionNewer.instancesToSpawn
-          .firstWhere((i) => i.scheduledDate == today);
-      final tomorrowNewer = actionNewer.instancesToSpawn
-          .firstWhere((i) => i.scheduledDate == tomorrow);
+      final todayNewer = actionNewer.instancesToSpawn.firstWhere(
+        (i) => i.scheduledDate == today,
+      );
+      final tomorrowNewer = actionNewer.instancesToSpawn.firstWhere(
+        (i) => i.scheduledDate == tomorrow,
+      );
       expect(todayNewer.status, TaskStatus.pending);
       expect(tomorrowNewer.status, TaskStatus.pending);
 
@@ -528,10 +565,16 @@ void main() {
             scheduleId: 'task-prefer-older-neg',
             startDate: today,
             interval: 1,
-            startRelativeTime:
-                const RelativeTime(dayOffset: -1, hour: 20, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              hour: 20,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 18,
+              minute: 0,
+            ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           ),
         ],
@@ -543,10 +586,12 @@ void main() {
         now,
         futureInstancesCount: 1,
       );
-      final todayOlder = actionOlder.instancesToSpawn
-          .firstWhere((i) => i.scheduledDate == today);
-      final tomorrowOlder = actionOlder.instancesToSpawn
-          .firstWhere((i) => i.scheduledDate == tomorrow);
+      final todayOlder = actionOlder.instancesToSpawn.firstWhere(
+        (i) => i.scheduledDate == today,
+      );
+      final tomorrowOlder = actionOlder.instancesToSpawn.firstWhere(
+        (i) => i.scheduledDate == tomorrow,
+      );
       expect(todayOlder.status, TaskStatus.pending);
       expect(tomorrowOlder.status, TaskStatus.pending);
     });
@@ -602,10 +647,11 @@ void main() {
 
       // evaluate() also spawns Feb 28 once Feb 28 10:00 arrives
       final evalAction = const SchedulerEngine().evaluate(
-        monthlyTask,
-        [completedJan31],
-        DateTime(2026, 2, 28, 12, 0),
-      );
+          monthlyTask,
+          [
+            completedJan31,
+          ],
+          DateTime(2026, 2, 28, 12, 0));
       expect(evalAction.instancesToSpawn, hasLength(1));
       expect(
         evalAction.instancesToSpawn.first.scheduledDate,
@@ -703,142 +749,1595 @@ void main() {
       );
 
       // Undoing completedToday when only overduePending exists must NOT delete overduePending
-      final idToDeleteWithoutFuture =
-          const SchedulerEngine().getNextOccurrenceIdToDelete(
-        mealTask,
-        completedToday,
-        now,
-        [overduePending],
-      );
+      final idToDeleteWithoutFuture = const SchedulerEngine()
+          .getNextOccurrenceIdToDelete(mealTask, completedToday, now, [
+        overduePending,
+      ]);
       expect(idToDeleteWithoutFuture, isNull);
 
       // Undoing completedToday when future spawned exists deletes the future instance
-      final idToDeleteWithFuture =
-          const SchedulerEngine().getNextOccurrenceIdToDelete(
-        mealTask,
-        completedToday,
-        now,
-        [overduePending, spawned],
-      );
+      final idToDeleteWithFuture = const SchedulerEngine()
+          .getNextOccurrenceIdToDelete(mealTask, completedToday, now, [
+        overduePending,
+        spawned,
+      ]);
       expect(idToDeleteWithFuture, equals(spawned.id));
     });
 
     test(
-      'getNextOccurrenceToSpawn normalizes UTC completedAt to local calendar date for CompletionRelativePolicy',
-      () {
-        final jan31 = const CivilDay(year: 2026, month: 1, day: 31);
-        final rule = MonthlySchedule(
-          id: 'R-monthly-cr',
-          scheduleId: 'task-cr',
-          startDate: jan31,
+        'getNextOccurrenceToSpawn normalizes UTC completedAt to local calendar date for CompletionRelativePolicy',
+        () {
+      final jan31 = const CivilDay(year: 2026, month: 1, day: 31);
+      final rule = MonthlySchedule(
+        id: 'R-monthly-cr',
+        scheduleId: 'task-cr',
+        startDate: jan31,
+        interval: 1,
+        dayOfMonth: -1,
+        schedulingPolicy: const CompletionRelativePolicy(
+          interval: Duration(days: 30),
+          targetHour: 9,
+          targetMinute: 0,
+        ),
+      );
+      final task = TaskSchedule(
+        id: 'task-cr',
+        title: 'Monthly CR Task',
+        description: 'Test',
+        schedules: [rule],
+      );
+
+      // Late-evening local time on Jan 31 (stored as UTC on TaskInstance.completedAt)
+      final localCompletionTime = DateTime(2026, 1, 31, 22, 0);
+      final completedInstance = TaskInstance(
+        id: 'I-jan31',
+        scheduleId: task.id,
+        ruleId: rule.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: jan31,
+        startRelativeTime: rule.startRelativeTime,
+        dueRelativeTime: rule.dueRelativeTime,
+        status: TaskStatus.completed,
+        completedAt: localCompletionTime, // TaskInstance converts this to UTC
+      );
+      expect(completedInstance.completedAt!.isUtc, isTrue);
+
+      final spawned = const SchedulerEngine().getNextOccurrenceToSpawn(
+        task,
+        completedInstance,
+        completedInstance.completedAt!,
+        [completedInstance],
+      );
+
+      expect(spawned, isNotNull);
+      expect(
+        spawned!.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 2, day: 28)),
+      );
+    });
+
+    test(
+        'projectUpcomingOccurrences handles OneOff, fixed-calendar, and CompletionRelativePolicy edge cases',
+        () {
+      const engine = SchedulerEngine();
+      final fromDate = const CivilDay(year: 2026, month: 6, day: 10);
+
+      // 1. OneOffSchedule before and on/after fromDate
+      final pastOneOff = OneOffSchedule(
+        id: 'R-oneoff-past',
+        date: const CivilDay(year: 2026, month: 6, day: 5),
+      );
+      final futureOneOff = OneOffSchedule(
+        id: 'R-oneoff-future',
+        date: const CivilDay(year: 2026, month: 6, day: 12),
+      );
+      final oneOffTask = TaskSchedule(
+        id: 'T-oneoff',
+        title: 'OneOff',
+        description: '',
+        schedules: [pastOneOff, futureOneOff],
+      );
+      expect(
+        engine.projectUpcomingOccurrences(oneOffTask, pastOneOff, fromDate),
+        isEmpty,
+      );
+      expect(
+        engine.projectUpcomingOccurrences(oneOffTask, futureOneOff, fromDate),
+        equals([const CivilDay(year: 2026, month: 6, day: 12)]),
+      );
+
+      // 2. Fixed-calendar rule
+      final weeklyRule = WeeklySchedule(
+        id: 'R-weekly',
+        startDate: const CivilDay(year: 2026, month: 6, day: 1),
+        interval: 1,
+        daysOfWeek: const {3}, // Wednesday (June 10, 17, 24)
+      );
+      final weeklyTask = TaskSchedule(
+        id: 'T-weekly',
+        title: 'Weekly',
+        description: '',
+        schedules: [weeklyRule],
+      );
+      expect(
+        engine.projectUpcomingOccurrences(
+          weeklyTask,
+          weeklyRule,
+          fromDate,
+          count: 3,
+        ),
+        equals([
+          const CivilDay(year: 2026, month: 6, day: 10),
+          const CivilDay(year: 2026, month: 6, day: 17),
+          const CivilDay(year: 2026, month: 6, day: 24),
+        ]),
+      );
+
+      // 3. CompletionRelativePolicy: initial (no instances), overdue pending, elapsed resolved, and sub-day deduplication
+      final crDailyRule = DailySchedule(
+        id: 'R-cr-daily',
+        scheduleId: 'T-cr',
+        startDate: const CivilDay(year: 2026, month: 6, day: 1),
+        interval: 2,
+        schedulingPolicy: const CompletionRelativePolicy(
+          interval: Duration(days: 2),
+          targetHour: 9,
+          targetMinute: 0,
+        ),
+      );
+      final crTask = TaskSchedule(
+        id: 'T-cr',
+        title: 'CR Task',
+        description: '',
+        schedules: [crDailyRule],
+      );
+
+      // Initial (startDate before fromDate -> clamps to fromDate)
+      expect(
+        engine.projectUpcomingOccurrences(
+          crTask,
+          crDailyRule,
+          fromDate,
+          count: 3,
+        ),
+        equals([
+          const CivilDay(year: 2026, month: 6, day: 10),
+          const CivilDay(year: 2026, month: 6, day: 12),
+          const CivilDay(year: 2026, month: 6, day: 14),
+        ]),
+      );
+
+      // Overdue pending instance (scheduledDate June 5 < fromDate June 10 -> clamps first upcoming to June 10)
+      final overduePending = TaskInstance(
+        id: 'I-overdue',
+        scheduleId: crTask.id,
+        ruleId: crDailyRule.id,
+        title: crTask.title,
+        description: crTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
+        startRelativeTime: crDailyRule.startRelativeTime,
+        dueRelativeTime: crDailyRule.dueRelativeTime,
+        status: TaskStatus.pending,
+      );
+      expect(
+        engine.projectUpcomingOccurrences(
+          crTask,
+          crDailyRule,
+          fromDate,
+          count: 3,
+          existingInstances: [overduePending],
+        ),
+        equals([
+          const CivilDay(year: 2026, month: 6, day: 10),
+          const CivilDay(year: 2026, month: 6, day: 12),
+          const CivilDay(year: 2026, month: 6, day: 14),
+        ]),
+      );
+
+      // Resolved instance whose next occurrence is in the past (completed June 1 + 2d = June 3 < June 10 -> clamps to June 10)
+      final oldResolved = TaskInstance(
+        id: 'I-resolved-old',
+        scheduleId: crTask.id,
+        ruleId: crDailyRule.id,
+        title: crTask.title,
+        description: crTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 6, day: 1),
+        startRelativeTime: crDailyRule.startRelativeTime,
+        dueRelativeTime: crDailyRule.dueRelativeTime,
+        status: TaskStatus.completed,
+        completedAt: DateTime(2026, 6, 1, 10, 0),
+      );
+      expect(
+        engine.projectUpcomingOccurrences(
+          crTask,
+          crDailyRule,
+          fromDate,
+          count: 3,
+          existingInstances: [oldResolved],
+        ),
+        equals([
+          const CivilDay(year: 2026, month: 6, day: 10),
+          const CivilDay(year: 2026, month: 6, day: 12),
+          const CivilDay(year: 2026, month: 6, day: 14),
+        ]),
+      );
+
+      // Sub-day CompletionRelativePolicy interval deduplicates same CivilDay
+      final subDayRule = DailySchedule(
+        id: 'R-subday',
+        scheduleId: 'T-subday',
+        startDate: fromDate,
+        interval: 1,
+        schedulingPolicy: const CompletionRelativePolicy(
+          interval: Duration(hours: 6),
+          targetHour: 9,
+          targetMinute: 0,
+        ),
+      );
+      final subDayTask = TaskSchedule(
+        id: 'T-subday',
+        title: 'Sub-day CR',
+        description: '',
+        schedules: [subDayRule],
+      );
+      final projectedSubDay = engine.projectUpcomingOccurrences(
+        subDayTask,
+        subDayRule,
+        fromDate,
+        count: 3,
+      );
+      expect(
+        projectedSubDay,
+        equals([
+          const CivilDay(year: 2026, month: 6, day: 10),
+          const CivilDay(year: 2026, month: 6, day: 11),
+          const CivilDay(year: 2026, month: 6, day: 12),
+        ]),
+      );
+    });
+
+    test(
+        'fixed-calendar rule with >30 existing stacked past instances spawns new occurrences up to today and future lookahead',
+        () {
+      const engine = SchedulerEngine();
+      final evalNow = DateTime.utc(2026, 3, 15, 10, 0);
+      final startDate = const CivilDay(year: 2026, month: 2, day: 1);
+      final today = const CivilDay(year: 2026, month: 3, day: 15);
+
+      final rule = DailySchedule(
+        id: 'R-daily-stack',
+        scheduleId: 'S-daily-stack',
+        startDate: startDate,
+        interval: 1,
+        missedOccurrencePolicy: const MissedOccurrencePolicy(
+          policy: MissedPolicy.stack,
+        ),
+      );
+      final task = TaskSchedule(
+        id: 'S-daily-stack',
+        title: 'Stacked Daily Task',
+        description: '',
+        schedules: [rule],
+      );
+
+      // Pre-populate 35 already-spawned pending instances from Feb 1 through Mar 7
+      final existingInstances = <TaskInstance>[];
+      var d = startDate;
+      for (var i = 0; i < 35; i++) {
+        existingInstances.add(
+          TaskInstance(
+            id: 'I-stack-$i',
+            scheduleId: task.id,
+            ruleId: rule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: d,
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+          ),
+        );
+        d = d.addDays(1);
+      }
+
+      final action = engine.evaluate(
+        task,
+        existingInstances,
+        evalNow,
+        futureInstancesCount: 2,
+        utcOffset: Duration.zero,
+      );
+      final spawnedDates =
+          action.instancesToSpawn.map((i) => i.scheduledDate).toSet();
+
+      // Should spawn remaining past dates up to today (Mar 15) plus 2 future occurrences (Mar 16, Mar 17)
+      expect(spawnedDates, contains(today));
+      expect(
+        spawnedDates,
+        contains(const CivilDay(year: 2026, month: 3, day: 16)),
+      );
+      expect(
+        spawnedDates,
+        contains(const CivilDay(year: 2026, month: 3, day: 17)),
+      );
+    });
+
+    group('Timezone-Aware & Multi-Timezone Bounding-Box Evaluation', () {
+      const engine = SchedulerEngine();
+
+      test(
+          'utcOffset evaluates floating wall-clock start and autoDismiss relative to target timezone instead of UTC',
+          () {
+        const pdtOffset = Duration(hours: -7);
+        final rule = DailySchedule(
+          id: 'R-tz-daily',
+          scheduleId: 'T-tz-daily',
+          startDate: const CivilDay(year: 2026, month: 9, day: 10),
           interval: 1,
-          dayOfMonth: -1,
+          startRelativeTime: const RelativeTime(hour: 7, minute: 30),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+        );
+        final task = TaskSchedule(
+          id: 'T-tz-daily',
+          title: 'Daily Mass',
+          description: '',
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration.zero,
+          ),
+          schedules: [rule],
+        );
+
+        // 1. At 2026-09-10 10:00 UTC (03:00 PDT): spawns for today with pending status, triggerTimes includes 07:30 PDT (14:30 UTC)
+        final beforeStart = engine.evaluate(
+          task,
+          [],
+          DateTime.utc(2026, 9, 10, 10, 0),
+          utcOffset: pdtOffset,
+        );
+        final sept10Inst = beforeStart.instancesToSpawn.firstWhere(
+          (i) =>
+              i.scheduledDate == const CivilDay(year: 2026, month: 9, day: 10),
+        );
+        expect(sept10Inst.status, equals(TaskStatus.pending));
+        expect(
+          beforeStart.triggerTimes,
+          contains(DateTime.utc(2026, 9, 10, 14, 30)),
+        );
+
+        // 2. At 2026-09-10 14:30 UTC (07:30 PDT): triggerTimes includes 20:00 PDT (03:00 UTC next day)
+        final atStart = engine.evaluate(
+          task,
+          beforeStart.instancesToSpawn,
+          DateTime.utc(2026, 9, 10, 14, 30),
+          utcOffset: pdtOffset,
+        );
+        expect(atStart.instancesToUpdate, isEmpty);
+        expect(atStart.triggerTimes, contains(DateTime.utc(2026, 9, 11, 3, 0)));
+
+        // 3. At 2026-09-10 21:00 UTC (14:00 PDT): past 20:00 UTC, but still 14:00 PDT -> MUST NOT auto-dismiss!
+        final midAfternoonPdt = engine.evaluate(
+          task,
+          beforeStart.instancesToSpawn,
+          DateTime.utc(2026, 9, 10, 21, 0),
+          utcOffset: pdtOffset,
+        );
+        expect(midAfternoonPdt.instancesToUpdate, isEmpty);
+
+        // 4. At 2026-09-11 03:01 UTC (20:01 PDT on Sep 10): past 20:00 PDT -> auto-dismisses Sep 10 instance!
+        final atDuePdt = engine.evaluate(
+          task,
+          beforeStart.instancesToSpawn,
+          DateTime.utc(2026, 9, 11, 3, 1),
+          utcOffset: pdtOffset,
+        );
+        expect(atDuePdt.instancesToUpdate, hasLength(1));
+        expect(
+          atDuePdt.instancesToUpdate.single.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 9, day: 10)),
+        );
+        expect(
+          atDuePdt.instancesToUpdate.single.status,
+          equals(TaskStatus.skipped),
+        );
+        expect(
+          atDuePdt.instancesToUpdate.single.statusReason,
+          equals(InstanceStatusReason.schedulerAutoDismiss.value),
+        );
+      });
+
+      test(
+          'earliestUtcOffset and latestUtcOffset implement Option 1 bounding-box window for multi-timezone families',
+          () {
+        const edtOffset = Duration(hours: -4); // Eastern member (earliest)
+        const pdtOffset = Duration(hours: -7); // Western member (latest)
+
+        final rule = DailySchedule(
+          id: 'R-family-tz',
+          scheduleId: 'T-family-tz',
+          startDate: const CivilDay(year: 2026, month: 9, day: 10),
+          interval: 1,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+        );
+        final task = TaskSchedule(
+          id: 'T-family-tz',
+          title: 'Family Chore',
+          description: '',
+          isFamily: true,
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration.zero,
+          ),
+          schedules: [rule],
+        );
+
+        // 1. At 2026-09-10 11:00 UTC (07:00 EDT / 04:00 PDT): triggerTimes includes 08:00 EDT (12:00 UTC)
+        final beforeEasternStart = engine.evaluate(
+          task,
+          [],
+          DateTime.utc(2026, 9, 10, 11, 0),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(
+          beforeEasternStart.triggerTimes,
+          contains(DateTime.utc(2026, 9, 10, 12, 0)),
+        );
+
+        // 2. At 2026-09-11 01:00 UTC (21:00 EDT / 18:00 PDT): past due in EDT, still active in PDT -> NOT dismissed!
+        final afterEasternDue = engine.evaluate(
+          task,
+          beforeEasternStart.instancesToSpawn,
+          DateTime.utc(2026, 9, 11, 1, 0),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(afterEasternDue.instancesToUpdate, isEmpty);
+        expect(
+          afterEasternDue.triggerTimes,
+          contains(DateTime.utc(2026, 9, 11, 3, 0)),
+        );
+
+        // 3. At 2026-09-11 03:01 UTC (23:01 EDT / 20:01 PDT): due in westernmost timezone -> dismissed
+        final atWesternDue = engine.evaluate(
+          task,
+          beforeEasternStart.instancesToSpawn,
+          DateTime.utc(2026, 9, 11, 3, 1),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(atWesternDue.instancesToUpdate, hasLength(1));
+        expect(
+          atWesternDue.instancesToUpdate.single.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 9, day: 10)),
+        );
+        expect(
+          atWesternDue.instancesToUpdate.single.status,
+          equals(TaskStatus.skipped),
+        );
+      });
+
+      test(
+          'CompletionRelativePolicy computes next scheduledDate in earliestUtcOffset local wall-clock time across UTC midnight',
+          () {
+        const pdtOffset = Duration(hours: -7);
+        final rule = DailySchedule(
+          id: 'R-cr-tz',
+          scheduleId: 'T-cr-tz',
+          startDate: const CivilDay(year: 2026, month: 9, day: 10),
+          interval: 1,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
           schedulingPolicy: const CompletionRelativePolicy(
-            interval: Duration(days: 30),
-            targetHour: 9,
+            interval: Duration(days: 1),
+            targetHour: 8,
             targetMinute: 0,
           ),
         );
         final task = TaskSchedule(
-          id: 'task-cr',
-          title: 'Monthly CR Task',
-          description: 'Test',
+          id: 'T-cr-tz',
+          title: 'Water Plants',
+          description: '',
           schedules: [rule],
         );
 
-        // Late-evening local time on Jan 31 (stored as UTC on TaskInstance.completedAt)
-        final localCompletionTime = DateTime(2026, 1, 31, 22, 0);
+        // Completed on 2026-09-10 at 20:00 PDT, which is 2026-09-11 03:00 UTC (next UTC day!)
         final completedInstance = TaskInstance(
-          id: 'I-jan31',
+          id: 'I-cr-1',
           scheduleId: task.id,
           ruleId: rule.id,
           title: task.title,
           description: task.description,
-          scheduledDate: jan31,
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
           startRelativeTime: rule.startRelativeTime,
           dueRelativeTime: rule.dueRelativeTime,
           status: TaskStatus.completed,
-          completedAt: localCompletionTime, // TaskInstance converts this to UTC
+          completedAt: DateTime.utc(2026, 9, 11, 3, 0),
         );
-        expect(completedInstance.completedAt!.isUtc, isTrue);
 
-        final spawned = const SchedulerEngine().getNextOccurrenceToSpawn(
+        // At 2026-09-12 03:00 UTC (2026-09-11 20:00 PDT): 24h after completion,
+        // local calendar day in PDT is Sep 11 (whereas in UTC it would be Sep 12).
+        final afterIntervalPdt = engine.evaluate(
+          task,
+          [completedInstance],
+          DateTime.utc(2026, 9, 12, 3, 0),
+          utcOffset: pdtOffset,
+        );
+        expect(afterIntervalPdt.instancesToSpawn, hasLength(1));
+        expect(
+          afterIntervalPdt.instancesToSpawn.single.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 9, day: 11)),
+        );
+
+        // Verify getNextOccurrenceToSpawn and projectUpcomingOccurrences also respect utcOffset
+        final nextToSpawn = engine.getNextOccurrenceToSpawn(
           task,
           completedInstance,
-          completedInstance.completedAt!,
+          DateTime.utc(2026, 9, 11, 3, 0),
           [completedInstance],
-        );
-
-        expect(spawned, isNotNull);
-        expect(
-          spawned!.scheduledDate,
-          equals(const CivilDay(year: 2026, month: 2, day: 28)),
-        );
-      },
-    );
-
-    test(
-      'projectUpcomingOccurrences handles OneOff, fixed-calendar, and CompletionRelativePolicy edge cases',
-      () {
-        const engine = SchedulerEngine();
-        final fromDate = const CivilDay(year: 2026, month: 6, day: 10);
-
-        // 1. OneOffSchedule before and on/after fromDate
-        final pastOneOff = OneOffSchedule(
-          id: 'R-oneoff-past',
-          date: const CivilDay(year: 2026, month: 6, day: 5),
-        );
-        final futureOneOff = OneOffSchedule(
-          id: 'R-oneoff-future',
-          date: const CivilDay(year: 2026, month: 6, day: 12),
-        );
-        final oneOffTask = TaskSchedule(
-          id: 'T-oneoff',
-          title: 'OneOff',
-          description: '',
-          schedules: [pastOneOff, futureOneOff],
+          utcOffset: pdtOffset,
         );
         expect(
-          engine.projectUpcomingOccurrences(oneOffTask, pastOneOff, fromDate),
-          isEmpty,
+          nextToSpawn?.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 9, day: 11)),
+        );
+        final projected = engine.projectUpcomingOccurrences(
+          task,
+          rule,
+          const CivilDay(year: 2026, month: 9, day: 10),
+          count: 2,
+          existingInstances: [completedInstance],
+          utcOffset: pdtOffset,
         );
         expect(
-          engine.projectUpcomingOccurrences(oneOffTask, futureOneOff, fromDate),
-          equals([const CivilDay(year: 2026, month: 6, day: 12)]),
-        );
-
-        // 2. Fixed-calendar rule
-        final weeklyRule = WeeklySchedule(
-          id: 'R-weekly',
-          startDate: const CivilDay(year: 2026, month: 6, day: 1),
-          interval: 1,
-          daysOfWeek: const {3}, // Wednesday (June 10, 17, 24)
-        );
-        final weeklyTask = TaskSchedule(
-          id: 'T-weekly',
-          title: 'Weekly',
-          description: '',
-          schedules: [weeklyRule],
-        );
-        expect(
-          engine.projectUpcomingOccurrences(
-            weeklyTask,
-            weeklyRule,
-            fromDate,
-            count: 3,
-          ),
+          projected,
           equals([
-            const CivilDay(year: 2026, month: 6, day: 10),
-            const CivilDay(year: 2026, month: 6, day: 17),
-            const CivilDay(year: 2026, month: 6, day: 24),
+            const CivilDay(year: 2026, month: 9, day: 11),
+            const CivilDay(year: 2026, month: 9, day: 12),
           ]),
         );
+      });
 
-        // 3. CompletionRelativePolicy: initial (no instances), overdue pending, elapsed resolved, and sub-day deduplication
-        final crDailyRule = DailySchedule(
-          id: 'R-cr-daily',
-          scheduleId: 'T-cr',
+      test(
+          'preferNewer and preferOlder wait until startRelativeTime in latestUtcOffset before skipping across multi-timezone bounding box',
+          () {
+        const edtOffset = Duration(hours: -4); // Eastern member (earliest)
+        const pdtOffset = Duration(hours: -7); // Western member (latest)
+
+        final rule = DailySchedule(
+          id: 'R-pref',
+          scheduleId: 'T-pref',
+          startDate: const CivilDay(year: 2026, month: 9, day: 10),
+          interval: 1,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+        );
+
+        final preferNewerTask = TaskSchedule(
+          id: 'T-pref',
+          title: 'Prefer Newer Family Task',
+          description: '',
+          isFamily: true,
+          missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
+          schedules: [rule],
+        );
+
+        final sept10Inst = TaskInstance(
+          id: 'I-sep10',
+          scheduleId: 'S-T-pref',
+          ruleId: 'R-pref',
+          title: 'Prefer Newer Family Task',
+          description: '',
+          isFamily: true,
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+        final sept11Inst = TaskInstance(
+          id: 'I-sep11',
+          scheduleId: 'S-T-pref',
+          ruleId: 'R-pref',
+          title: 'Prefer Newer Family Task',
+          description: '',
+          isFamily: true,
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 11),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+
+        // 1. At 2026-09-11 13:00 UTC (09:00 EDT / 06:00 PDT):
+        // Sep 11 08:00 has started in EDT, but NOT yet in PDT (06:00 PDT < 08:00 PDT).
+        // Neither preferNewer nor preferOlder should skip yet!
+        final beforeWesternStartNewer = engine.evaluate(
+          preferNewerTask,
+          [sept10Inst, sept11Inst],
+          DateTime.utc(2026, 9, 11, 13, 0),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(beforeWesternStartNewer.instancesToUpdate, isEmpty);
+
+        final preferOlderTask = preferNewerTask.copyWith(
+          missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+        );
+        final beforeWesternStartOlder = engine.evaluate(
+          preferOlderTask,
+          [sept10Inst, sept11Inst],
+          DateTime.utc(2026, 9, 11, 13, 0),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(beforeWesternStartOlder.instancesToUpdate, isEmpty);
+
+        // 2. At 2026-09-11 15:01 UTC (11:01 EDT / 08:01 PDT):
+        // Sep 11 08:00 has now started in PDT (latestUtcOffset) as well!
+        final afterWesternStartNewer = engine.evaluate(
+          preferNewerTask,
+          [sept10Inst, sept11Inst],
+          DateTime.utc(2026, 9, 11, 15, 1),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(afterWesternStartNewer.instancesToUpdate, hasLength(1));
+        expect(
+          afterWesternStartNewer.instancesToUpdate.single.id,
+          equals('I-sep10'),
+        );
+        expect(
+          afterWesternStartNewer.instancesToUpdate.single.statusReason,
+          equals(InstanceStatusReason.schedulerPreferNewer.value),
+        );
+
+        final afterWesternStartOlder = engine.evaluate(
+          preferOlderTask,
+          [sept10Inst, sept11Inst],
+          DateTime.utc(2026, 9, 11, 15, 1),
+          earliestUtcOffset: edtOffset,
+          latestUtcOffset: pdtOffset,
+        );
+        expect(afterWesternStartOlder.instancesToUpdate, hasLength(1));
+        expect(
+          afterWesternStartOlder.instancesToUpdate.single.id,
+          equals('I-sep11'),
+        );
+        expect(
+          afterWesternStartOlder.instancesToUpdate.single.statusReason,
+          equals(InstanceStatusReason.schedulerPreferOlder.value),
+        );
+      });
+
+      test(
+          'shiftRelativeToStart preserves 1-day offset across spring-forward DST date (2026-03-08)',
+          () {
+        const dstStartDay = CivilDay(year: 2026, month: 3, day: 8);
+        final rule = DailySchedule(
+          id: 'R-dst',
+          scheduleId: 'S-dst',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(dayOffset: 1, hour: 8, minute: 0),
+        );
+        const policy = CompletionRelativePolicy(
+          interval: Duration(days: 1),
+          targetHour: 9,
+          targetMinute: 0,
+        );
+        final shifted = SchedulerEngine.shiftRelativeToStart(
+          rule.dueRelativeTime,
+          rule,
+          policy,
+          dstStartDay,
+        );
+        expect(shifted.dayOffset, equals(1));
+        expect(shifted.hour, equals(8));
+        expect(shifted.minute, equals(0));
+      });
+    });
+
+    group('Family Scope & Completion Mode Reconciliation', () {
+      test(
+          'reconciles stale isFamily and familyCompletionMode on existing pending, skipped, and completed instances for fixed-calendar, completion-relative, and one-off tasks',
+          () {
+        const engine = SchedulerEngine(appVersion: 'v1.9.10', platform: 'test');
+        final now = DateTime.utc(2026, 10, 21, 10, 0);
+
+        final rule = WeeklySchedule(
+          id: 'R-trash',
+          scheduleId: 'S-trash',
+          startDate: const CivilDay(year: 2026, month: 10, day: 1),
+          interval: 1,
+          daysOfWeek: const {DateTime.friday},
+          startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+        );
+
+        final personalTask = TaskSchedule(
+          id: 'S-trash',
+          title: 'Take in the trash',
+          description: '',
+          isFamily: false,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          schedules: [rule],
+        );
+
+        final staleCompleted = TaskInstance(
+          id: 'I-completed-fam',
+          scheduleId: 'S-trash',
+          ruleId: 'R-trash',
+          title: 'Take in the trash',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 9),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 10, 9, 18, 0),
+        );
+
+        final staleMissedPending = TaskInstance(
+          id: 'I-missed-fam',
+          scheduleId: 'S-trash',
+          ruleId: 'R-trash',
+          title: 'Take in the trash',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 16),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+
+        final staleFuturePending = [
+          for (final day in [
+            const CivilDay(year: 2026, month: 10, day: 23),
+            const CivilDay(year: 2026, month: 10, day: 30),
+            const CivilDay(year: 2026, month: 11, day: 6),
+            const CivilDay(year: 2026, month: 11, day: 13),
+            const CivilDay(year: 2026, month: 11, day: 20),
+          ])
+            TaskInstance(
+              id: 'I-future-$day',
+              scheduleId: 'S-trash',
+              ruleId: 'R-trash',
+              title: 'Take in the trash',
+              description: '',
+              scheduledDate: day,
+              startRelativeTime: rule.startRelativeTime,
+              dueRelativeTime: rule.dueRelativeTime,
+              isFamily: true,
+              status: TaskStatus.pending,
+            ),
+        ];
+
+        final action = engine.evaluate(
+          personalTask.copyWith(
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(days: 1),
+            ),
+          ),
+          [staleCompleted, staleMissedPending, ...staleFuturePending],
+          now,
+          userId: 'user-1',
+        );
+
+        // All 7 existing instances (1 completed, 1 newly skipped, 5 future pending)
+        // must be returned in instancesToUpdate with isFamily: false.
+        expect(action.instancesToUpdate, hasLength(7));
+        for (final updated in action.instancesToUpdate) {
+          expect(updated.isFamily, isFalse);
+          expect(updated.familyCompletionMode, FamilyCompletionMode.anyone);
+          expect(updated.lastModifiedByUserId, 'user-1');
+          expect(updated.lastModifiedByAppVersion, 'v1.9.10');
+          expect(updated.lastModifiedByPlatform, 'test');
+        }
+
+        final updatedMissed = action.instancesToUpdate.firstWhere(
+          (i) => i.id == 'I-missed-fam',
+        );
+        expect(updatedMissed.status, TaskStatus.skipped);
+        expect(updatedMissed.isFamily, isFalse);
+
+        // One-off task with stale isFamily on existing instance
+        final oneOffRule = OneOffSchedule(
+          id: 'R-oneoff',
+          scheduleId: 'S-oneoff',
+          date: const CivilDay(year: 2026, month: 10, day: 25),
+        );
+        final oneOffTask = TaskSchedule(
+          id: 'S-oneoff',
+          title: 'One-Off Personal',
+          description: '',
+          isFamily: false,
+          schedules: [oneOffRule],
+        );
+        final staleOneOffInst = TaskInstance(
+          id: 'I-oneoff',
+          scheduleId: 'S-oneoff',
+          ruleId: 'R-oneoff',
+          title: 'One-Off Personal',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+          startRelativeTime: oneOffRule.startRelativeTime,
+          dueRelativeTime: oneOffRule.dueRelativeTime,
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+        final oneOffAction = engine.evaluate(
+            oneOffTask,
+            [
+              staleOneOffInst,
+            ],
+            now);
+        expect(oneOffAction.instancesToSpawn, isEmpty);
+        expect(oneOffAction.instancesToUpdate, hasLength(1));
+        expect(oneOffAction.instancesToUpdate.single.isFamily, isFalse);
+        expect(oneOffAction.instancesToUpdate.single.updatedAt, now.toUtc());
+      });
+
+      test(
+          'bumps updatedAt to now.toUtc() and sets lastModifiedBy metadata on spawned instances, updated instances, updatedSchedule, and getNextOccurrenceToSpawn',
+          () {
+        const engine = SchedulerEngine(
+          appVersion: 'v1.9.10',
+          platform: 'linux',
+        );
+        final oldTimestamp = DateTime.utc(2026, 9, 1, 0, 0);
+        final evalNow = DateTime.utc(2026, 10, 21, 9, 30);
+
+        final rule = DailySchedule(
+          id: 'R-daily',
+          scheduleId: 'S-daily',
+          startDate: const CivilDay(year: 2026, month: 10, day: 19),
+          interval: 1,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 10, minute: 0),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 2),
+          ),
+        );
+        final task = TaskSchedule(
+          id: 'S-daily',
+          title: 'Daily Task',
+          description: '',
+          schedules: [rule],
+          updatedAt: oldTimestamp,
+        );
+
+        final expiredInst = TaskInstance(
+          id: 'I-oct19',
+          scheduleId: 'S-daily',
+          ruleId: 'R-daily',
+          title: 'Daily Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 19),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+          updatedAt: oldTimestamp,
+        );
+
+        final action = engine.evaluate(
+          task,
+          [expiredInst],
+          evalNow,
+          userId: 'user-meta',
+        );
+
+        expect(action.updatedSchedule, isNotNull);
+        expect(action.updatedSchedule!.updatedAt, equals(evalNow));
+
+        expect(action.instancesToUpdate, isNotEmpty);
+        for (final updated in action.instancesToUpdate) {
+          expect(updated.updatedAt, equals(evalNow));
+          expect(updated.lastModifiedByUserId, equals('user-meta'));
+          expect(updated.lastModifiedByAppVersion, equals('v1.9.10'));
+          expect(updated.lastModifiedByPlatform, equals('linux'));
+        }
+
+        expect(action.instancesToSpawn, isNotEmpty);
+        for (final spawned in action.instancesToSpawn) {
+          expect(spawned.updatedAt, equals(evalNow));
+          expect(spawned.lastModifiedByUserId, equals('user-meta'));
+          expect(spawned.lastModifiedByAppVersion, equals('v1.9.10'));
+          expect(spawned.lastModifiedByPlatform, equals('linux'));
+        }
+
+        final nextSpawned = engine.getNextOccurrenceToSpawn(
+          task,
+          expiredInst.copyWith(status: TaskStatus.completed),
+          evalNow,
+          const [],
+          userId: 'user-meta',
+        );
+        expect(nextSpawned, isNotNull);
+        expect(nextSpawned!.updatedAt, equals(evalNow));
+        expect(nextSpawned.lastModifiedByUserId, equals('user-meta'));
+        expect(nextSpawned.lastModifiedByAppVersion, equals('v1.9.10'));
+        expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
+      });
+
+      test(
+          'respects lastSpawnedDate after history cleanup deletes old resolved instances for OneOff, FixedCalendar, and CompletionRelative rules',
+          () {
+        const engine = SchedulerEngine();
+        final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
+
+        // 1. OneOffSchedule whose resolved instance was purged by 90-day history cleanup
+        final oneOffRule = OneOffSchedule(
+          id: 'R-oneoff',
+          scheduleId: 'S-oneoff',
+          date: const CivilDay(year: 2026, month: 1, day: 10),
+        );
+        final oneOffTask = TaskSchedule(
+          id: 'S-oneoff',
+          title: 'One-off Task',
+          description: '',
+          schedules: [oneOffRule],
+          lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 10),
+        );
+        final oneOffAction = engine.evaluate(oneOffTask, const [], evalNow);
+        expect(oneOffAction.instancesToSpawn, isEmpty);
+
+        // Also verify initial spawn of OneOffSchedule sets lastSpawnedDate on updatedSchedule
+        final freshOneOffTask = TaskSchedule(
+          id: 'S-oneoff-fresh',
+          title: 'Fresh One-off Task',
+          description: '',
+          schedules: [oneOffRule],
+        );
+        final freshOneOffAction = engine.evaluate(
+          freshOneOffTask,
+          const [],
+          evalNow,
+        );
+        expect(freshOneOffAction.instancesToSpawn, hasLength(1));
+        expect(
+          freshOneOffAction.updatedSchedule?.lastSpawnedDate,
+          equals(const CivilDay(year: 2026, month: 1, day: 10)),
+        );
+
+        // 2. FixedCalendarPolicy (MissedPolicy.stack) whose resolved instances up to March 1 were purged
+        final fixedRule = MonthlySchedule(
+          id: 'R-monthly',
+          scheduleId: 'S-monthly',
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 1,
+          missedOccurrencePolicy: const MissedOccurrencePolicy(
+            policy: MissedPolicy.stack,
+          ),
+        );
+        final fixedTask = TaskSchedule(
+          id: 'S-monthly',
+          title: 'Monthly Stack Task',
+          description: '',
+          schedules: [fixedRule],
+          lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 1),
+        );
+        final fixedAction = engine.evaluate(fixedTask, const [], evalNow);
+        final spawnedDates =
+            fixedAction.instancesToSpawn.map((i) => i.scheduledDate).toList();
+        // Should not resurrect Jan 1, Feb 1, or Mar 1; should start from Apr 1
+        expect(
+          spawnedDates,
+          isNot(contains(const CivilDay(year: 2026, month: 1, day: 1))),
+        );
+        expect(
+          spawnedDates,
+          isNot(contains(const CivilDay(year: 2026, month: 2, day: 1))),
+        );
+        expect(
+          spawnedDates,
+          isNot(contains(const CivilDay(year: 2026, month: 3, day: 1))),
+        );
+        expect(
+          spawnedDates.first,
+          equals(const CivilDay(year: 2026, month: 4, day: 1)),
+        );
+
+        // 3. CompletionRelativePolicy whose resolved instance on March 1 was purged, with 180-day interval
+        final crRule = DailySchedule(
+          id: 'R-cr',
+          scheduleId: 'S-cr',
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 180,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 180),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final crTaskBeforePurge = TaskSchedule(
+          id: 'S-cr',
+          title: 'CR Long Interval Task',
+          description: '',
+          schedules: [crRule],
+          lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 1),
+        );
+        final completedCrInst = TaskInstance(
+          id: 'I-cr-mar1',
+          scheduleId: 'S-cr',
+          ruleId: 'R-cr',
+          title: 'CR Long Interval Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 1, day: 1),
+          startRelativeTime: crRule.startRelativeTime,
+          dueRelativeTime: crRule.dueRelativeTime,
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 3, 1, 14, 0),
+        );
+        // Evaluating while the resolved instance still exists records the completion date (March 1) in lastSpawnedDate even though dateToSpawn is still in the future
+        final crActionWithResolved = engine.evaluate(
+            crTaskBeforePurge,
+            [
+              completedCrInst,
+            ],
+            DateTime.utc(2026, 3, 2, 10, 0));
+        expect(crActionWithResolved.instancesToSpawn, isEmpty);
+        expect(
+          crActionWithResolved.updatedSchedule?.lastSpawnedDate,
+          equals(const CivilDay(year: 2026, month: 3, day: 1)),
+        );
+
+        // At June 15 (106 days after March 1), after the resolved instance is purged, 180 days have not elapsed yet, so it waits the full interval from March 1
+        final crAction = engine.evaluate(
+          crActionWithResolved.updatedSchedule!,
+          const [],
+          evalNow,
+        );
+        expect(crAction.instancesToSpawn, isEmpty);
+
+        // Once 180 days from March 1 have elapsed (Aug 28, 2026), it spawns the next occurrence
+        final afterIntervalAction = engine.evaluate(
+          crActionWithResolved.updatedSchedule!,
+          const [],
+          DateTime.utc(2026, 8, 29, 10, 0),
+        );
+        expect(afterIntervalAction.instancesToSpawn, hasLength(1));
+        expect(
+          afterIntervalAction.instancesToSpawn.single.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 28)),
+        );
+      });
+
+      test(
+          'CompletionRelativePolicy applies autoDismiss to expired pending instance and does not treat capacity-skipped instances as resolved',
+          () {
+        const engine = SchedulerEngine();
+        final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
+
+        final crRule = DailySchedule(
+          id: 'R-cr-autodismiss',
+          scheduleId: 'S-cr-autodismiss',
           startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 2,
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 2),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy(
+            policy: MissedPolicy.autoDismiss,
+            gracePeriod: Duration(hours: 2),
+          ),
+        );
+        final crTask = TaskSchedule(
+          id: 'S-cr-autodismiss',
+          title: 'CR AutoDismiss Task',
+          description: '',
+          schedules: [crRule],
+          skipIfNoCapacity: true,
+          estimatedDuration: const Duration(hours: 2),
+        );
+
+        // 1. Expired pending instance on June 5 is auto-dismissed at June 10 12:00 UTC
+        final expiredPending = TaskInstance(
+          id: 'I-cr-june5',
+          scheduleId: crTask.id,
+          ruleId: crRule.id,
+          title: crTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
+          startRelativeTime: crRule.startRelativeTime,
+          dueRelativeTime: crRule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+
+        final action = engine.evaluate(
+          crTask,
+          [expiredPending],
+          evalNow,
+          applyCapacityLimits: false,
+        );
+        expect(action.instancesToUpdate, hasLength(1));
+        expect(
+          action.instancesToUpdate.first.status,
+          equals(TaskStatus.skipped),
+        );
+        expect(
+          action.instancesToUpdate.first.statusReason,
+          equals(InstanceStatusReason.schedulerAutoDismiss.value),
+        );
+
+        // 2. Capacity-skipped instance on today (June 10) is not treated as a completed/resolved occurrence
+        // and is revived when capacity is available instead of spawning June 12
+        final capacitySkippedToday = TaskInstance(
+          id: 'I-cr-cap-june10',
+          scheduleId: crTask.id,
+          ruleId: crRule.id,
+          title: crTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 15,
+            minute: 0,
+          ),
+          dueRelativeTime: crRule.dueRelativeTime,
+          status: TaskStatus.skipped,
+          statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+          updatedAt: DateTime.utc(2026, 6, 10, 8, 0),
+        );
+
+        final capAction = engine.evaluate(
+          crTask,
+          [capacitySkippedToday],
+          evalNow,
+          dayPlannedHours: const {},
+        );
+        expect(capAction.instancesToSpawn, isEmpty);
+        expect(capAction.instancesToUpdate, hasLength(1));
+        expect(capAction.instancesToUpdate.first.id, equals('I-cr-cap-june10'));
+        expect(
+          capAction.instancesToUpdate.first.status,
+          equals(TaskStatus.pending),
+        );
+      });
+
+      test(
+          'CompletionRelativePolicy does not advance lastSpawnedDate when spawning a pending instance, and multi-rule OneOffSchedule spawns newly added rule on same date',
+          () {
+        const engine = SchedulerEngine();
+        final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
+        const today = CivilDay(year: 2026, month: 6, day: 15);
+
+        // 1. Spawning the initial pending instance for a CompletionRelativePolicy rule does not set lastSpawnedDate
+        final crRule = DailySchedule(
+          id: 'R-cr-init',
+          scheduleId: 'S-cr-init',
+          startDate: today,
+          interval: 7,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 7),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final crTask = TaskSchedule(
+          id: 'S-cr-init',
+          title: 'CR Task',
+          description: '',
+          schedules: [crRule],
+        );
+        final crInitialAction = engine.evaluate(crTask, const [], evalNow);
+        expect(crInitialAction.instancesToSpawn, hasLength(1));
+        expect(
+          crInitialAction.instancesToSpawn.first.scheduledDate,
+          equals(today),
+        );
+        expect(crInitialAction.updatedSchedule?.lastSpawnedDate, isNull);
+
+        // 2. Multi-rule OneOffSchedule where rule 1 already spawned on today (setting lastSpawnedDate = today)
+        // still spawns newly added rule 2 on today
+        final oneOff1 = OneOffSchedule(
+          id: 'R-oneoff-1',
+          scheduleId: 'S-multi-oneoff',
+          date: today,
+        );
+        final oneOff2 = OneOffSchedule(
+          id: 'R-oneoff-2',
+          scheduleId: 'S-multi-oneoff',
+          date: today,
+        );
+        final multiOneOffTask = TaskSchedule(
+          id: 'S-multi-oneoff',
+          title: 'Multi One-Off',
+          description: '',
+          schedules: [oneOff1, oneOff2],
+          lastSpawnedDate: today,
+        );
+        final existingRule1Instance = TaskInstance(
+          id: 'I-oneoff-1',
+          scheduleId: 'S-multi-oneoff',
+          ruleId: 'R-oneoff-1',
+          title: 'Multi One-Off',
+          description: '',
+          scheduledDate: today,
+          startRelativeTime: oneOff1.startRelativeTime,
+          dueRelativeTime: oneOff1.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+        final multiAction = engine.evaluate(
+            multiOneOffTask,
+            [
+              existingRule1Instance,
+            ],
+            evalNow);
+        expect(multiAction.instancesToSpawn, hasLength(1));
+        expect(
+          multiAction.instancesToSpawn.single.ruleId,
+          equals('R-oneoff-2'),
+        );
+      });
+
+      test(
+          'FixedCalendarPolicy and projectUpcomingOccurrences do not treat capacity-skipped instances as resolved',
+          () {
+        const engine = SchedulerEngine();
+        final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
+        const today = CivilDay(year: 2026, month: 10, day: 10);
+        final fixedNow = DateTime.utc(2026, 10, 10, 12, 0);
+
+        final dailyRule = DailySchedule(
+          id: 'R-daily-cap',
+          scheduleId: 'S-daily-cap',
+          startDate: today,
+          interval: 1,
+        );
+        final dailyTask = TaskSchedule(
+          id: 'S-daily-cap',
+          title: 'Daily Cap Task',
+          description: '',
+          schedules: [dailyRule],
+          skipIfNoCapacity: true,
+          estimatedDuration: const Duration(hours: 2),
+        );
+
+        final completedToday = TaskInstance(
+          id: 'I-daily-today',
+          scheduleId: dailyTask.id,
+          ruleId: dailyRule.id,
+          title: dailyTask.title,
+          description: '',
+          scheduledDate: today,
+          startRelativeTime: dailyRule.startRelativeTime,
+          dueRelativeTime: dailyRule.dueRelativeTime,
+          status: TaskStatus.completed,
+          completedAt: fixedNow,
+        );
+        final capacitySkippedTomorrow = TaskInstance(
+          id: 'I-daily-tomorrow',
+          scheduleId: dailyTask.id,
+          ruleId: dailyRule.id,
+          title: dailyTask.title,
+          description: '',
+          scheduledDate: today.addDays(1),
+          startRelativeTime: dailyRule.startRelativeTime,
+          dueRelativeTime: dailyRule.dueRelativeTime,
+          status: TaskStatus.skipped,
+          statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+          updatedAt: fixedNow,
+        );
+
+        // When tomorrow (Oct 11) is capacity-skipped and at capacity, FixedCalendarPolicy
+        // should count Oct 11 toward futureInstancesCount=1 and NOT spawn Oct 12
+        final action = engine.evaluate(
+          dailyTask,
+          [completedToday, capacitySkippedTomorrow],
+          fixedNow,
+          futureInstancesCount: 1,
+          userSettings: const UserSettings(hoursAvailable: 2.0),
+          dayPlannedHours: {today.addDays(1): 2.0},
+        );
+        expect(action.instancesToSpawn, isEmpty);
+
+        // And projectUpcomingOccurrences for CompletionRelativePolicy ignores capacity-skipped instances
+        // and respects lastSpawnedDate when resolved instances were purged
+        final crRule = DailySchedule(
+          id: 'R-cr-proj',
+          scheduleId: 'S-cr-proj',
+          startDate: const CivilDay(year: 2026, month: 6, day: 10),
+          interval: 5,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 5),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final crTask = TaskSchedule(
+          id: 'S-cr-proj',
+          title: 'CR Proj Task',
+          description: '',
+          schedules: [crRule],
+        );
+        final capSkippedCr = TaskInstance(
+          id: 'I-cr-cap',
+          scheduleId: crTask.id,
+          ruleId: crRule.id,
+          title: crTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
+          startRelativeTime: crRule.startRelativeTime,
+          dueRelativeTime: crRule.dueRelativeTime,
+          status: TaskStatus.skipped,
+          statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+          updatedAt: evalNow,
+        );
+        final projected = engine.projectUpcomingOccurrences(
+          crTask,
+          crRule,
+          const CivilDay(year: 2026, month: 6, day: 10),
+          count: 2,
+          existingInstances: [capSkippedCr],
+        );
+        expect(
+          projected.first,
+          equals(const CivilDay(year: 2026, month: 6, day: 10)),
+        );
+
+        final crTaskWithLastSpawned = crTask.copyWith(
+          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 10),
+        );
+        final projectedFromLastSpawned = engine.projectUpcomingOccurrences(
+          crTaskWithLastSpawned,
+          crRule,
+          const CivilDay(year: 2026, month: 6, day: 11),
+          count: 1,
+          existingInstances: const [],
+        );
+        expect(
+          projectedFromLastSpawned.first,
+          equals(const CivilDay(year: 2026, month: 6, day: 15)),
+        );
+      });
+
+      test(
+          'CompletionRelativePolicy early completion of future-scheduled instance and sub-day interval do not spawn on already-resolved dates',
+          () {
+        const engine = SchedulerEngine();
+        const today = CivilDay(year: 2026, month: 6, day: 19);
+        const tomorrow = CivilDay(year: 2026, month: 6, day: 20);
+        final tonight = DateTime.utc(2026, 6, 19, 21, 0);
+
+        final crDailyRule = DailySchedule(
+          id: 'R-cr-early',
+          scheduleId: 'S-cr-early',
+          startDate: today,
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: -1,
+            hour: 20,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 1),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final crDailyTask = TaskSchedule(
+          id: 'S-cr-early',
+          title: 'Early Complete CR Task',
+          description: '',
+          schedules: [crDailyRule],
+        );
+
+        final completedTomorrowInst = TaskInstance(
+          id: 'I-tomorrow-early',
+          scheduleId: crDailyTask.id,
+          ruleId: crDailyRule.id,
+          title: crDailyTask.title,
+          description: '',
+          scheduledDate: tomorrow,
+          startRelativeTime: crDailyRule.startRelativeTime,
+          dueRelativeTime: crDailyRule.dueRelativeTime,
+          status: TaskStatus.completed,
+          completedAt: tonight,
+          updatedAt: tonight,
+        );
+
+        final spawnedNext = engine.getNextOccurrenceToSpawn(
+          crDailyTask,
+          completedTomorrowInst,
+          tonight,
+          [completedTomorrowInst],
+          utcOffset: Duration.zero,
+        );
+        expect(spawnedNext, isNotNull);
+        expect(
+          spawnedNext!.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 6, day: 21)),
+        );
+
+        // And evaluate() does not delete spawnedNext or spawn a duplicate on tomorrow
+        final evalAction = engine.evaluate(
+          crDailyTask,
+          [completedTomorrowInst, spawnedNext],
+          tonight,
+          utcOffset: Duration.zero,
+        );
+        expect(evalAction.instancesToDelete, isEmpty);
+        expect(evalAction.instancesToSpawn, isEmpty);
+      });
+
+      test(
+          'WorkflowInstancePayload.generateGroupId produces canonical schedule-date group ID',
+          () {
+        const day = CivilDay(year: 2026, month: 6, day: 5);
+        expect(
+          WorkflowInstancePayload.generateGroupId('sched-123', day),
+          equals('sched-123-2026-6-5'),
+        );
+      });
+
+      test(
+          'SchedulerInstanceDeduplicator selects canonical instance by status, updatedAt, and id, and preserves workflow stages',
+          () {
+        const date = CivilDay(year: 2026, month: 6, day: 15);
+        final pendingEarly = TaskInstance(
+          id: 'I-a',
+          scheduleId: 'S-1',
+          ruleId: 'R-1',
+          title: 'Task',
+          description: '',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          status: TaskStatus.pending,
+          updatedAt: DateTime.utc(2026, 6, 15, 8, 0),
+        );
+        final skippedMid = TaskInstance(
+          id: 'I-b',
+          scheduleId: 'S-1',
+          ruleId: 'R-1',
+          title: 'Task',
+          description: '',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          status: TaskStatus.skipped,
+          updatedAt: DateTime.utc(2026, 6, 15, 9, 0),
+        );
+        final completedLate = TaskInstance(
+          id: 'I-c',
+          scheduleId: 'S-1',
+          ruleId: 'R-1',
+          title: 'Task',
+          description: '',
+          scheduledDate: date,
+          startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          status: TaskStatus.completed,
+          completedAt: DateTime.utc(2026, 6, 15, 10, 0),
+          updatedAt: DateTime.utc(2026, 6, 15, 10, 0),
+        );
+
+        expect(
+          SchedulerInstanceDeduplicator.selectCanonicalInstance([
+            pendingEarly,
+            skippedMid,
+            completedLate,
+          ]).id,
+          equals('I-c'),
+        );
+
+        final toDelete = <String>[];
+        final canonicalByDate =
+            SchedulerInstanceDeduplicator.deduplicateRuleInstancesByDate([
+          pendingEarly,
+          skippedMid,
+          completedLate,
+        ], toDelete);
+        expect(canonicalByDate[date]?.id, equals('I-c'));
+        expect(toDelete, containsAll(['I-a', 'I-b']));
+      });
+
+      test(
+          'SchedulerInstanceFactory creates instances with CompletionRelativePolicy shifted due/notifications and mealWorkflow payload',
+          () {
+        const startDate = CivilDay(year: 2026, month: 6, day: 10);
+        const spawnedDate = CivilDay(year: 2026, month: 6, day: 15);
+        final now = DateTime.utc(2026, 6, 15, 10, 0);
+        final crRule = DailySchedule(
+          id: 'R-factory-cr',
+          scheduleId: 'S-factory',
+          startDate: startDate,
+          interval: 5,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 12, minute: 30),
+          notificationRelativeTimes: const [RelativeTime(hour: 9, minute: 0)],
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 5),
+            targetHour: 10,
+            targetMinute: 0,
+          ),
+        );
+        final crTask = TaskSchedule(
+          id: 'S-factory',
+          title: 'Factory CR',
+          description: 'Desc',
+          schedules: [crRule],
+        );
+
+        final factory = SchedulerInstanceFactory(
+          generateId: () => 'fixed-id-1',
+          appVersion: '1.2.3',
+          platform: 'linux',
+        );
+        final inst = factory.createInstanceForRule(
+          task: crTask,
+          rule: crRule,
+          scheduledDate: spawnedDate,
+          now: now,
+          userId: 'U-1',
+        );
+
+        expect(inst.id, equals('fixed-id-1'));
+        expect(
+          inst.startRelativeTime,
+          equals(const RelativeTime(hour: 10, minute: 0)),
+        );
+        expect(
+          inst.dueRelativeTime,
+          equals(const RelativeTime(hour: 14, minute: 30)),
+        );
+        expect(
+          inst.notificationRelativeTimes,
+          equals([const RelativeTime(hour: 11, minute: 0)]),
+        );
+        expect(inst.lastModifiedByAppVersion, equals('1.2.3'));
+        expect(inst.lastModifiedByPlatform, equals('linux'));
+        expect(inst.lastModifiedByUserId, equals('U-1'));
+
+        final mealTask = TaskSchedule(
+          id: 'S-meal',
+          title: 'Dinner',
+          description: '',
+          workflowType: 'mealWorkflow',
+          schedules: [crRule],
+        );
+        final mealInst = factory.createInstanceForRule(
+          task: mealTask,
+          rule: crRule,
+          scheduledDate: spawnedDate,
+          now: now,
+        );
+        expect(
+          mealInst.workflowPayload?.workflowGroupId,
+          equals('S-meal-2026-6-15'),
+        );
+        expect(
+          mealInst.workflowPayload?.stage,
+          equals(WorkflowStage.selectMeal),
+        );
+      });
+
+      test(
+          'SchedulerOccurrenceProjector.computeNextCompletionRelativeDateTime unifies resolved instance clamping and lastSpawnedDate fallback',
+          () {
+        const startDate = CivilDay(year: 2026, month: 6, day: 10);
+        final crRule = DailySchedule(
+          id: 'R-anchor',
+          scheduleId: 'S-anchor',
+          startDate: startDate,
           interval: 2,
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 2),
@@ -847,1321 +2346,84 @@ void main() {
           ),
         );
         final crTask = TaskSchedule(
-          id: 'T-cr',
-          title: 'CR Task',
+          id: 'S-anchor',
+          title: 'Anchor Task',
           description: '',
-          schedules: [crDailyRule],
+          schedules: [crRule],
+          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 12),
         );
 
-        // Initial (startDate before fromDate -> clamps to fromDate)
-        expect(
-          engine.projectUpcomingOccurrences(
-            crTask,
-            crDailyRule,
-            fromDate,
-            count: 3,
-          ),
-          equals([
-            const CivilDay(year: 2026, month: 6, day: 10),
-            const CivilDay(year: 2026, month: 6, day: 12),
-            const CivilDay(year: 2026, month: 6, day: 14),
-          ]),
-        );
-
-        // Overdue pending instance (scheduledDate June 5 < fromDate June 10 -> clamps first upcoming to June 10)
-        final overduePending = TaskInstance(
-          id: 'I-overdue',
+        // 1. Falls back to lastSpawnedDate at 12:00 UTC when only capacity-skipped instances exist
+        final capSkipped = TaskInstance(
+          id: 'I-cap',
           scheduleId: crTask.id,
-          ruleId: crDailyRule.id,
+          ruleId: crRule.id,
           title: crTask.title,
-          description: crTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
-          startRelativeTime: crDailyRule.startRelativeTime,
-          dueRelativeTime: crDailyRule.dueRelativeTime,
-          status: TaskStatus.pending,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 12),
+          startRelativeTime: crRule.startRelativeTime,
+          dueRelativeTime: crRule.dueRelativeTime,
+          status: TaskStatus.skipped,
+          statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
+          updatedAt: DateTime.utc(2026, 6, 12, 10, 0),
         );
+        final fallbackAnchor =
+            SchedulerOccurrenceProjector.computeNextCompletionRelativeDateTime(
+          crTask,
+          crRule,
+          [capSkipped],
+          toWallClock: (dt) => dt.toUtc(),
+        );
+        expect(fallbackAnchor.resolvedDay, isNull);
         expect(
-          engine.projectUpcomingOccurrences(
-            crTask,
-            crDailyRule,
-            fromDate,
-            count: 3,
-            existingInstances: [overduePending],
-          ),
-          equals([
-            const CivilDay(year: 2026, month: 6, day: 10),
-            const CivilDay(year: 2026, month: 6, day: 12),
-            const CivilDay(year: 2026, month: 6, day: 14),
-          ]),
+          fallbackAnchor.nextSpawnTime,
+          equals(DateTime.utc(2026, 6, 14, 12, 0)),
         );
 
-        // Resolved instance whose next occurrence is in the past (completed June 1 + 2d = June 3 < June 10 -> clamps to June 10)
-        final oldResolved = TaskInstance(
-          id: 'I-resolved-old',
+        // 2. Clamps early completion before scheduledDate consistently across evaluate and projectUpcomingOccurrences
+        final earlyCompleted = TaskInstance(
+          id: 'I-early',
           scheduleId: crTask.id,
-          ruleId: crDailyRule.id,
+          ruleId: crRule.id,
           title: crTask.title,
-          description: crTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 1),
-          startRelativeTime: crDailyRule.startRelativeTime,
-          dueRelativeTime: crDailyRule.dueRelativeTime,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 20),
+          startRelativeTime: crRule.startRelativeTime,
+          dueRelativeTime: crRule.dueRelativeTime,
           status: TaskStatus.completed,
-          completedAt: DateTime(2026, 6, 1, 10, 0),
+          completedAt: DateTime.utc(2026, 6, 18, 21, 0),
+          updatedAt: DateTime.utc(2026, 6, 18, 21, 0),
+        );
+        final clampedAnchor =
+            SchedulerOccurrenceProjector.computeNextCompletionRelativeDateTime(
+          crTask,
+          crRule,
+          [earlyCompleted],
+          toWallClock: (dt) => dt.toUtc(),
         );
         expect(
-          engine.projectUpcomingOccurrences(
-            crTask,
-            crDailyRule,
-            fromDate,
-            count: 3,
-            existingInstances: [oldResolved],
-          ),
-          equals([
-            const CivilDay(year: 2026, month: 6, day: 10),
-            const CivilDay(year: 2026, month: 6, day: 12),
-            const CivilDay(year: 2026, month: 6, day: 14),
-          ]),
-        );
-
-        // Sub-day CompletionRelativePolicy interval deduplicates same CivilDay
-        final subDayRule = DailySchedule(
-          id: 'R-subday',
-          scheduleId: 'T-subday',
-          startDate: fromDate,
-          interval: 1,
-          schedulingPolicy: const CompletionRelativePolicy(
-            interval: Duration(hours: 6),
-            targetHour: 9,
-            targetMinute: 0,
-          ),
-        );
-        final subDayTask = TaskSchedule(
-          id: 'T-subday',
-          title: 'Sub-day CR',
-          description: '',
-          schedules: [subDayRule],
-        );
-        final projectedSubDay = engine.projectUpcomingOccurrences(
-          subDayTask,
-          subDayRule,
-          fromDate,
-          count: 3,
+          clampedAnchor.resolvedDay,
+          equals(const CivilDay(year: 2026, month: 6, day: 18)),
         );
         expect(
-          projectedSubDay,
-          equals([
-            const CivilDay(year: 2026, month: 6, day: 10),
-            const CivilDay(year: 2026, month: 6, day: 11),
-            const CivilDay(year: 2026, month: 6, day: 12),
-          ]),
-        );
-      },
-    );
-
-    test(
-      'fixed-calendar rule with >30 existing stacked past instances spawns new occurrences up to today and future lookahead',
-      () {
-        const engine = SchedulerEngine();
-        final evalNow = DateTime.utc(2026, 3, 15, 10, 0);
-        final startDate = const CivilDay(year: 2026, month: 2, day: 1);
-        final today = const CivilDay(year: 2026, month: 3, day: 15);
-
-        final rule = DailySchedule(
-          id: 'R-daily-stack',
-          scheduleId: 'S-daily-stack',
-          startDate: startDate,
-          interval: 1,
-          missedOccurrencePolicy: const MissedOccurrencePolicy(
-            policy: MissedPolicy.stack,
-          ),
-        );
-        final task = TaskSchedule(
-          id: 'S-daily-stack',
-          title: 'Stacked Daily Task',
-          description: '',
-          schedules: [rule],
+          clampedAnchor.nextSpawnTime,
+          equals(DateTime.utc(2026, 6, 22, 21, 0)),
         );
 
-        // Pre-populate 35 already-spawned pending instances from Feb 1 through Mar 7
-        final existingInstances = <TaskInstance>[];
-        var d = startDate;
-        for (var i = 0; i < 35; i++) {
-          existingInstances.add(
-            TaskInstance(
-              id: 'I-stack-$i',
-              scheduleId: task.id,
-              ruleId: rule.id,
-              title: task.title,
-              description: '',
-              scheduledDate: d,
-              startRelativeTime: rule.startRelativeTime,
-              dueRelativeTime: rule.dueRelativeTime,
-              status: TaskStatus.pending,
-            ),
-          );
-          d = d.addDays(1);
-        }
-
-        final action = engine.evaluate(
-          task,
-          existingInstances,
-          evalNow,
-          futureInstancesCount: 2,
+        final projected =
+            const SchedulerOccurrenceProjector().projectUpcomingOccurrences(
+          crTask,
+          crRule,
+          const CivilDay(year: 2026, month: 6, day: 19),
+          count: 1,
+          existingInstances: [earlyCompleted],
           utcOffset: Duration.zero,
         );
-        final spawnedDates =
-            action.instancesToSpawn.map((i) => i.scheduledDate).toSet();
-
-        // Should spawn remaining past dates up to today (Mar 15) plus 2 future occurrences (Mar 16, Mar 17)
-        expect(spawnedDates, contains(today));
         expect(
-          spawnedDates,
-          contains(const CivilDay(year: 2026, month: 3, day: 16)),
+          projected,
+          equals([const CivilDay(year: 2026, month: 6, day: 22)]),
         );
-        expect(
-          spawnedDates,
-          contains(const CivilDay(year: 2026, month: 3, day: 17)),
-        );
-      },
-    );
-
-    group('Timezone-Aware & Multi-Timezone Bounding-Box Evaluation', () {
-      const engine = SchedulerEngine();
-
-      test(
-        'utcOffset evaluates floating wall-clock start and autoDismiss relative to target timezone instead of UTC',
-        () {
-          const pdtOffset = Duration(hours: -7);
-          final rule = DailySchedule(
-            id: 'R-tz-daily',
-            scheduleId: 'T-tz-daily',
-            startDate: const CivilDay(year: 2026, month: 9, day: 10),
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 7, minute: 30),
-            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
-          );
-          final task = TaskSchedule(
-            id: 'T-tz-daily',
-            title: 'Daily Mass',
-            description: '',
-            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-              gracePeriod: Duration.zero,
-            ),
-            schedules: [rule],
-          );
-
-          // 1. At 2026-09-10 10:00 UTC (03:00 PDT): spawns for today with pending status, triggerTimes includes 07:30 PDT (14:30 UTC)
-          final beforeStart = engine.evaluate(
-            task,
-            [],
-            DateTime.utc(2026, 9, 10, 10, 0),
-            utcOffset: pdtOffset,
-          );
-          final sept10Inst = beforeStart.instancesToSpawn.firstWhere(
-            (i) =>
-                i.scheduledDate ==
-                const CivilDay(year: 2026, month: 9, day: 10),
-          );
-          expect(sept10Inst.status, equals(TaskStatus.pending));
-          expect(
-            beforeStart.triggerTimes,
-            contains(DateTime.utc(2026, 9, 10, 14, 30)),
-          );
-
-          // 2. At 2026-09-10 14:30 UTC (07:30 PDT): triggerTimes includes 20:00 PDT (03:00 UTC next day)
-          final atStart = engine.evaluate(
-            task,
-            beforeStart.instancesToSpawn,
-            DateTime.utc(2026, 9, 10, 14, 30),
-            utcOffset: pdtOffset,
-          );
-          expect(atStart.instancesToUpdate, isEmpty);
-          expect(
-            atStart.triggerTimes,
-            contains(DateTime.utc(2026, 9, 11, 3, 0)),
-          );
-
-          // 3. At 2026-09-10 21:00 UTC (14:00 PDT): past 20:00 UTC, but still 14:00 PDT -> MUST NOT auto-dismiss!
-          final midAfternoonPdt = engine.evaluate(
-            task,
-            beforeStart.instancesToSpawn,
-            DateTime.utc(2026, 9, 10, 21, 0),
-            utcOffset: pdtOffset,
-          );
-          expect(midAfternoonPdt.instancesToUpdate, isEmpty);
-
-          // 4. At 2026-09-11 03:01 UTC (20:01 PDT on Sep 10): past 20:00 PDT -> auto-dismisses Sep 10 instance!
-          final atDuePdt = engine.evaluate(
-            task,
-            beforeStart.instancesToSpawn,
-            DateTime.utc(2026, 9, 11, 3, 1),
-            utcOffset: pdtOffset,
-          );
-          expect(atDuePdt.instancesToUpdate, hasLength(1));
-          expect(
-            atDuePdt.instancesToUpdate.single.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 9, day: 10)),
-          );
-          expect(
-            atDuePdt.instancesToUpdate.single.status,
-            equals(TaskStatus.skipped),
-          );
-          expect(
-            atDuePdt.instancesToUpdate.single.statusReason,
-            equals(InstanceStatusReason.schedulerAutoDismiss.value),
-          );
-        },
-      );
-
-      test(
-        'earliestUtcOffset and latestUtcOffset implement Option 1 bounding-box window for multi-timezone families',
-        () {
-          const edtOffset = Duration(hours: -4); // Eastern member (earliest)
-          const pdtOffset = Duration(hours: -7); // Western member (latest)
-
-          final rule = DailySchedule(
-            id: 'R-family-tz',
-            scheduleId: 'T-family-tz',
-            startDate: const CivilDay(year: 2026, month: 9, day: 10),
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
-          );
-          final task = TaskSchedule(
-            id: 'T-family-tz',
-            title: 'Family Chore',
-            description: '',
-            isFamily: true,
-            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-              gracePeriod: Duration.zero,
-            ),
-            schedules: [rule],
-          );
-
-          // 1. At 2026-09-10 11:00 UTC (07:00 EDT / 04:00 PDT): triggerTimes includes 08:00 EDT (12:00 UTC)
-          final beforeEasternStart = engine.evaluate(
-            task,
-            [],
-            DateTime.utc(2026, 9, 10, 11, 0),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(
-            beforeEasternStart.triggerTimes,
-            contains(DateTime.utc(2026, 9, 10, 12, 0)),
-          );
-
-          // 2. At 2026-09-11 01:00 UTC (21:00 EDT / 18:00 PDT): past due in EDT, still active in PDT -> NOT dismissed!
-          final afterEasternDue = engine.evaluate(
-            task,
-            beforeEasternStart.instancesToSpawn,
-            DateTime.utc(2026, 9, 11, 1, 0),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(afterEasternDue.instancesToUpdate, isEmpty);
-          expect(
-            afterEasternDue.triggerTimes,
-            contains(DateTime.utc(2026, 9, 11, 3, 0)),
-          );
-
-          // 3. At 2026-09-11 03:01 UTC (23:01 EDT / 20:01 PDT): due in westernmost timezone -> dismissed
-          final atWesternDue = engine.evaluate(
-            task,
-            beforeEasternStart.instancesToSpawn,
-            DateTime.utc(2026, 9, 11, 3, 1),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(atWesternDue.instancesToUpdate, hasLength(1));
-          expect(
-            atWesternDue.instancesToUpdate.single.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 9, day: 10)),
-          );
-          expect(
-            atWesternDue.instancesToUpdate.single.status,
-            equals(TaskStatus.skipped),
-          );
-        },
-      );
-
-      test(
-        'CompletionRelativePolicy computes next scheduledDate in earliestUtcOffset local wall-clock time across UTC midnight',
-        () {
-          const pdtOffset = Duration(hours: -7);
-          final rule = DailySchedule(
-            id: 'R-cr-tz',
-            scheduleId: 'T-cr-tz',
-            startDate: const CivilDay(year: 2026, month: 9, day: 10),
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 1),
-              targetHour: 8,
-              targetMinute: 0,
-            ),
-          );
-          final task = TaskSchedule(
-            id: 'T-cr-tz',
-            title: 'Water Plants',
-            description: '',
-            schedules: [rule],
-          );
-
-          // Completed on 2026-09-10 at 20:00 PDT, which is 2026-09-11 03:00 UTC (next UTC day!)
-          final completedInstance = TaskInstance(
-            id: 'I-cr-1',
-            scheduleId: task.id,
-            ruleId: rule.id,
-            title: task.title,
-            description: task.description,
-            scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            status: TaskStatus.completed,
-            completedAt: DateTime.utc(2026, 9, 11, 3, 0),
-          );
-
-          // At 2026-09-12 03:00 UTC (2026-09-11 20:00 PDT): 24h after completion,
-          // local calendar day in PDT is Sep 11 (whereas in UTC it would be Sep 12).
-          final afterIntervalPdt = engine.evaluate(
-            task,
-            [completedInstance],
-            DateTime.utc(2026, 9, 12, 3, 0),
-            utcOffset: pdtOffset,
-          );
-          expect(afterIntervalPdt.instancesToSpawn, hasLength(1));
-          expect(
-            afterIntervalPdt.instancesToSpawn.single.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 9, day: 11)),
-          );
-
-          // Verify getNextOccurrenceToSpawn and projectUpcomingOccurrences also respect utcOffset
-          final nextToSpawn = engine.getNextOccurrenceToSpawn(
-            task,
-            completedInstance,
-            DateTime.utc(2026, 9, 11, 3, 0),
-            [completedInstance],
-            utcOffset: pdtOffset,
-          );
-          expect(
-            nextToSpawn?.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 9, day: 11)),
-          );
-          final projected = engine.projectUpcomingOccurrences(
-            task,
-            rule,
-            const CivilDay(year: 2026, month: 9, day: 10),
-            count: 2,
-            existingInstances: [completedInstance],
-            utcOffset: pdtOffset,
-          );
-          expect(
-            projected,
-            equals([
-              const CivilDay(year: 2026, month: 9, day: 11),
-              const CivilDay(year: 2026, month: 9, day: 12),
-            ]),
-          );
-        },
-      );
-
-      test(
-        'preferNewer and preferOlder wait until startRelativeTime in latestUtcOffset before skipping across multi-timezone bounding box',
-        () {
-          const edtOffset = Duration(hours: -4); // Eastern member (earliest)
-          const pdtOffset = Duration(hours: -7); // Western member (latest)
-
-          final rule = DailySchedule(
-            id: 'R-pref',
-            scheduleId: 'T-pref',
-            startDate: const CivilDay(year: 2026, month: 9, day: 10),
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
-          );
-
-          final preferNewerTask = TaskSchedule(
-            id: 'T-pref',
-            title: 'Prefer Newer Family Task',
-            description: '',
-            isFamily: true,
-            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
-            schedules: [rule],
-          );
-
-          final sept10Inst = TaskInstance(
-            id: 'I-sep10',
-            scheduleId: 'S-T-pref',
-            ruleId: 'R-pref',
-            title: 'Prefer Newer Family Task',
-            description: '',
-            isFamily: true,
-            scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            status: TaskStatus.pending,
-          );
-          final sept11Inst = TaskInstance(
-            id: 'I-sep11',
-            scheduleId: 'S-T-pref',
-            ruleId: 'R-pref',
-            title: 'Prefer Newer Family Task',
-            description: '',
-            isFamily: true,
-            scheduledDate: const CivilDay(year: 2026, month: 9, day: 11),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            status: TaskStatus.pending,
-          );
-
-          // 1. At 2026-09-11 13:00 UTC (09:00 EDT / 06:00 PDT):
-          // Sep 11 08:00 has started in EDT, but NOT yet in PDT (06:00 PDT < 08:00 PDT).
-          // Neither preferNewer nor preferOlder should skip yet!
-          final beforeWesternStartNewer = engine.evaluate(
-            preferNewerTask,
-            [sept10Inst, sept11Inst],
-            DateTime.utc(2026, 9, 11, 13, 0),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(beforeWesternStartNewer.instancesToUpdate, isEmpty);
-
-          final preferOlderTask = preferNewerTask.copyWith(
-            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
-          );
-          final beforeWesternStartOlder = engine.evaluate(
-            preferOlderTask,
-            [sept10Inst, sept11Inst],
-            DateTime.utc(2026, 9, 11, 13, 0),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(beforeWesternStartOlder.instancesToUpdate, isEmpty);
-
-          // 2. At 2026-09-11 15:01 UTC (11:01 EDT / 08:01 PDT):
-          // Sep 11 08:00 has now started in PDT (latestUtcOffset) as well!
-          final afterWesternStartNewer = engine.evaluate(
-            preferNewerTask,
-            [sept10Inst, sept11Inst],
-            DateTime.utc(2026, 9, 11, 15, 1),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(afterWesternStartNewer.instancesToUpdate, hasLength(1));
-          expect(
-            afterWesternStartNewer.instancesToUpdate.single.id,
-            equals('I-sep10'),
-          );
-          expect(
-            afterWesternStartNewer.instancesToUpdate.single.statusReason,
-            equals(InstanceStatusReason.schedulerPreferNewer.value),
-          );
-
-          final afterWesternStartOlder = engine.evaluate(
-            preferOlderTask,
-            [sept10Inst, sept11Inst],
-            DateTime.utc(2026, 9, 11, 15, 1),
-            earliestUtcOffset: edtOffset,
-            latestUtcOffset: pdtOffset,
-          );
-          expect(afterWesternStartOlder.instancesToUpdate, hasLength(1));
-          expect(
-            afterWesternStartOlder.instancesToUpdate.single.id,
-            equals('I-sep11'),
-          );
-          expect(
-            afterWesternStartOlder.instancesToUpdate.single.statusReason,
-            equals(InstanceStatusReason.schedulerPreferOlder.value),
-          );
-        },
-      );
-
-      test(
-        'shiftRelativeToStart preserves 1-day offset across spring-forward DST date (2026-03-08)',
-        () {
-          const dstStartDay = CivilDay(year: 2026, month: 3, day: 8);
-          final rule = DailySchedule(
-            id: 'R-dst',
-            scheduleId: 'S-dst',
-            startDate: const CivilDay(year: 2026, month: 3, day: 1),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 1,
-              hour: 8,
-              minute: 0,
-            ),
-          );
-          const policy = CompletionRelativePolicy(
-            interval: Duration(days: 1),
-            targetHour: 9,
-            targetMinute: 0,
-          );
-          final shifted = SchedulerEngine.shiftRelativeToStart(
-            rule.dueRelativeTime,
-            rule,
-            policy,
-            dstStartDay,
-          );
-          expect(shifted.dayOffset, equals(1));
-          expect(shifted.hour, equals(8));
-          expect(shifted.minute, equals(0));
-        },
-      );
-    });
-
-    group('Family Scope & Completion Mode Reconciliation', () {
-      test(
-        'reconciles stale isFamily and familyCompletionMode on existing pending, skipped, and completed instances for fixed-calendar, completion-relative, and one-off tasks',
-        () {
-          const engine = SchedulerEngine(
-            appVersion: 'v1.9.10',
-            platform: 'test',
-          );
-          final now = DateTime.utc(2026, 10, 21, 10, 0);
-
-          final rule = WeeklySchedule(
-            id: 'R-trash',
-            scheduleId: 'S-trash',
-            startDate: const CivilDay(year: 2026, month: 10, day: 1),
-            interval: 1,
-            daysOfWeek: const {DateTime.friday},
-            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
-          );
-
-          final personalTask = TaskSchedule(
-            id: 'S-trash',
-            title: 'Take in the trash',
-            description: '',
-            isFamily: false,
-            familyCompletionMode: FamilyCompletionMode.anyone,
-            schedules: [rule],
-          );
-
-          final staleCompleted = TaskInstance(
-            id: 'I-completed-fam',
-            scheduleId: 'S-trash',
-            ruleId: 'R-trash',
-            title: 'Take in the trash',
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 10, day: 9),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            isFamily: true,
-            familyCompletionMode: FamilyCompletionMode.individual,
-            status: TaskStatus.completed,
-            completedAt: DateTime.utc(2026, 10, 9, 18, 0),
-          );
-
-          final staleMissedPending = TaskInstance(
-            id: 'I-missed-fam',
-            scheduleId: 'S-trash',
-            ruleId: 'R-trash',
-            title: 'Take in the trash',
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 10, day: 16),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            isFamily: true,
-            status: TaskStatus.pending,
-          );
-
-          final staleFuturePending = [
-            for (final day in [
-              const CivilDay(year: 2026, month: 10, day: 23),
-              const CivilDay(year: 2026, month: 10, day: 30),
-              const CivilDay(year: 2026, month: 11, day: 6),
-              const CivilDay(year: 2026, month: 11, day: 13),
-              const CivilDay(year: 2026, month: 11, day: 20),
-            ])
-              TaskInstance(
-                id: 'I-future-$day',
-                scheduleId: 'S-trash',
-                ruleId: 'R-trash',
-                title: 'Take in the trash',
-                description: '',
-                scheduledDate: day,
-                startRelativeTime: rule.startRelativeTime,
-                dueRelativeTime: rule.dueRelativeTime,
-                isFamily: true,
-                status: TaskStatus.pending,
-              ),
-          ];
-
-          final action = engine.evaluate(
-            personalTask.copyWith(
-              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-                gracePeriod: Duration(days: 1),
-              ),
-            ),
-            [staleCompleted, staleMissedPending, ...staleFuturePending],
-            now,
-            userId: 'user-1',
-          );
-
-          // All 7 existing instances (1 completed, 1 newly skipped, 5 future pending)
-          // must be returned in instancesToUpdate with isFamily: false.
-          expect(action.instancesToUpdate, hasLength(7));
-          for (final updated in action.instancesToUpdate) {
-            expect(updated.isFamily, isFalse);
-            expect(updated.familyCompletionMode, FamilyCompletionMode.anyone);
-            expect(updated.lastModifiedByUserId, 'user-1');
-            expect(updated.lastModifiedByAppVersion, 'v1.9.10');
-            expect(updated.lastModifiedByPlatform, 'test');
-          }
-
-          final updatedMissed = action.instancesToUpdate.firstWhere(
-            (i) => i.id == 'I-missed-fam',
-          );
-          expect(updatedMissed.status, TaskStatus.skipped);
-          expect(updatedMissed.isFamily, isFalse);
-
-          // One-off task with stale isFamily on existing instance
-          final oneOffRule = OneOffSchedule(
-            id: 'R-oneoff',
-            scheduleId: 'S-oneoff',
-            date: const CivilDay(year: 2026, month: 10, day: 25),
-          );
-          final oneOffTask = TaskSchedule(
-            id: 'S-oneoff',
-            title: 'One-Off Personal',
-            description: '',
-            isFamily: false,
-            schedules: [oneOffRule],
-          );
-          final staleOneOffInst = TaskInstance(
-            id: 'I-oneoff',
-            scheduleId: 'S-oneoff',
-            ruleId: 'R-oneoff',
-            title: 'One-Off Personal',
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
-            startRelativeTime: oneOffRule.startRelativeTime,
-            dueRelativeTime: oneOffRule.dueRelativeTime,
-            isFamily: true,
-            status: TaskStatus.pending,
-          );
-          final oneOffAction = engine.evaluate(
-            oneOffTask,
-            [staleOneOffInst],
-            now,
-          );
-          expect(oneOffAction.instancesToSpawn, isEmpty);
-          expect(oneOffAction.instancesToUpdate, hasLength(1));
-          expect(oneOffAction.instancesToUpdate.single.isFamily, isFalse);
-          expect(oneOffAction.instancesToUpdate.single.updatedAt, now.toUtc());
-        },
-      );
-
-      test(
-        'bumps updatedAt to now.toUtc() and sets lastModifiedBy metadata on spawned instances, updated instances, updatedSchedule, and getNextOccurrenceToSpawn',
-        () {
-          const engine = SchedulerEngine(
-            appVersion: 'v1.9.10',
-            platform: 'linux',
-          );
-          final oldTimestamp = DateTime.utc(2026, 9, 1, 0, 0);
-          final evalNow = DateTime.utc(2026, 10, 21, 9, 30);
-
-          final rule = DailySchedule(
-            id: 'R-daily',
-            scheduleId: 'S-daily',
-            startDate: const CivilDay(year: 2026, month: 10, day: 19),
-            interval: 1,
-            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
-            dueRelativeTime: const RelativeTime(hour: 10, minute: 0),
-            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-              gracePeriod: Duration(hours: 2),
-            ),
-          );
-          final task = TaskSchedule(
-            id: 'S-daily',
-            title: 'Daily Task',
-            description: '',
-            schedules: [rule],
-            updatedAt: oldTimestamp,
-          );
-
-          final expiredInst = TaskInstance(
-            id: 'I-oct19',
-            scheduleId: 'S-daily',
-            ruleId: 'R-daily',
-            title: 'Daily Task',
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 10, day: 19),
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            status: TaskStatus.pending,
-            updatedAt: oldTimestamp,
-          );
-
-          final action = engine.evaluate(
-            task,
-            [expiredInst],
-            evalNow,
-            userId: 'user-meta',
-          );
-
-          expect(action.updatedSchedule, isNotNull);
-          expect(action.updatedSchedule!.updatedAt, equals(evalNow));
-
-          expect(action.instancesToUpdate, isNotEmpty);
-          for (final updated in action.instancesToUpdate) {
-            expect(updated.updatedAt, equals(evalNow));
-            expect(updated.lastModifiedByUserId, equals('user-meta'));
-            expect(updated.lastModifiedByAppVersion, equals('v1.9.10'));
-            expect(updated.lastModifiedByPlatform, equals('linux'));
-          }
-
-          expect(action.instancesToSpawn, isNotEmpty);
-          for (final spawned in action.instancesToSpawn) {
-            expect(spawned.updatedAt, equals(evalNow));
-            expect(spawned.lastModifiedByUserId, equals('user-meta'));
-            expect(spawned.lastModifiedByAppVersion, equals('v1.9.10'));
-            expect(spawned.lastModifiedByPlatform, equals('linux'));
-          }
-
-          final nextSpawned = engine.getNextOccurrenceToSpawn(
-            task,
-            expiredInst.copyWith(status: TaskStatus.completed),
-            evalNow,
-            const [],
-            userId: 'user-meta',
-          );
-          expect(nextSpawned, isNotNull);
-          expect(nextSpawned!.updatedAt, equals(evalNow));
-          expect(nextSpawned.lastModifiedByUserId, equals('user-meta'));
-          expect(nextSpawned.lastModifiedByAppVersion, equals('v1.9.10'));
-          expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
-        },
-      );
-
-      test(
-        'respects lastSpawnedDate after history cleanup deletes old resolved instances for OneOff, FixedCalendar, and CompletionRelative rules',
-        () {
-          const engine = SchedulerEngine();
-          final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
-
-          // 1. OneOffSchedule whose resolved instance was purged by 90-day history cleanup
-          final oneOffRule = OneOffSchedule(
-            id: 'R-oneoff',
-            scheduleId: 'S-oneoff',
-            date: const CivilDay(year: 2026, month: 1, day: 10),
-          );
-          final oneOffTask = TaskSchedule(
-            id: 'S-oneoff',
-            title: 'One-off Task',
-            description: '',
-            schedules: [oneOffRule],
-            lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 10),
-          );
-          final oneOffAction = engine.evaluate(oneOffTask, const [], evalNow);
-          expect(oneOffAction.instancesToSpawn, isEmpty);
-
-          // Also verify initial spawn of OneOffSchedule sets lastSpawnedDate on updatedSchedule
-          final freshOneOffTask = TaskSchedule(
-            id: 'S-oneoff-fresh',
-            title: 'Fresh One-off Task',
-            description: '',
-            schedules: [oneOffRule],
-          );
-          final freshOneOffAction = engine.evaluate(
-            freshOneOffTask,
-            const [],
-            evalNow,
-          );
-          expect(freshOneOffAction.instancesToSpawn, hasLength(1));
-          expect(
-            freshOneOffAction.updatedSchedule?.lastSpawnedDate,
-            equals(const CivilDay(year: 2026, month: 1, day: 10)),
-          );
-
-          // 2. FixedCalendarPolicy (MissedPolicy.stack) whose resolved instances up to March 1 were purged
-          final fixedRule = MonthlySchedule(
-            id: 'R-monthly',
-            scheduleId: 'S-monthly',
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfMonth: 1,
-            missedOccurrencePolicy: const MissedOccurrencePolicy(
-              policy: MissedPolicy.stack,
-            ),
-          );
-          final fixedTask = TaskSchedule(
-            id: 'S-monthly',
-            title: 'Monthly Stack Task',
-            description: '',
-            schedules: [fixedRule],
-            lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 1),
-          );
-          final fixedAction = engine.evaluate(fixedTask, const [], evalNow);
-          final spawnedDates =
-              fixedAction.instancesToSpawn.map((i) => i.scheduledDate).toList();
-          // Should not resurrect Jan 1, Feb 1, or Mar 1; should start from Apr 1
-          expect(
-            spawnedDates,
-            isNot(contains(const CivilDay(year: 2026, month: 1, day: 1))),
-          );
-          expect(
-            spawnedDates,
-            isNot(contains(const CivilDay(year: 2026, month: 2, day: 1))),
-          );
-          expect(
-            spawnedDates,
-            isNot(contains(const CivilDay(year: 2026, month: 3, day: 1))),
-          );
-          expect(
-            spawnedDates.first,
-            equals(const CivilDay(year: 2026, month: 4, day: 1)),
-          );
-
-          // 3. CompletionRelativePolicy whose resolved instance on March 1 was purged, with 180-day interval
-          final crRule = DailySchedule(
-            id: 'R-cr',
-            scheduleId: 'S-cr',
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 180,
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 180),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-          );
-          final crTaskBeforePurge = TaskSchedule(
-            id: 'S-cr',
-            title: 'CR Long Interval Task',
-            description: '',
-            schedules: [crRule],
-            lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 1),
-          );
-          final completedCrInst = TaskInstance(
-            id: 'I-cr-mar1',
-            scheduleId: 'S-cr',
-            ruleId: 'R-cr',
-            title: 'CR Long Interval Task',
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 1, day: 1),
-            startRelativeTime: crRule.startRelativeTime,
-            dueRelativeTime: crRule.dueRelativeTime,
-            status: TaskStatus.completed,
-            completedAt: DateTime.utc(2026, 3, 1, 14, 0),
-          );
-          // Evaluating while the resolved instance still exists records the completion date (March 1) in lastSpawnedDate even though dateToSpawn is still in the future
-          final crActionWithResolved = engine.evaluate(
-            crTaskBeforePurge,
-            [completedCrInst],
-            DateTime.utc(2026, 3, 2, 10, 0),
-          );
-          expect(crActionWithResolved.instancesToSpawn, isEmpty);
-          expect(
-            crActionWithResolved.updatedSchedule?.lastSpawnedDate,
-            equals(const CivilDay(year: 2026, month: 3, day: 1)),
-          );
-
-          // At June 15 (106 days after March 1), after the resolved instance is purged, 180 days have not elapsed yet, so it waits the full interval from March 1
-          final crAction = engine.evaluate(
-            crActionWithResolved.updatedSchedule!,
-            const [],
-            evalNow,
-          );
-          expect(crAction.instancesToSpawn, isEmpty);
-
-          // Once 180 days from March 1 have elapsed (Aug 28, 2026), it spawns the next occurrence
-          final afterIntervalAction = engine.evaluate(
-            crActionWithResolved.updatedSchedule!,
-            const [],
-            DateTime.utc(2026, 8, 29, 10, 0),
-          );
-          expect(afterIntervalAction.instancesToSpawn, hasLength(1));
-          expect(
-            afterIntervalAction.instancesToSpawn.single.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 8, day: 28)),
-          );
-        },
-      );
-
-      test(
-        'CompletionRelativePolicy applies autoDismiss to expired pending instance and does not treat capacity-skipped instances as resolved',
-        () {
-          const engine = SchedulerEngine();
-          final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
-
-          final crRule = DailySchedule(
-            id: 'R-cr-autodismiss',
-            scheduleId: 'S-cr-autodismiss',
-            startDate: const CivilDay(year: 2026, month: 6, day: 1),
-            interval: 2,
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 2),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-            missedOccurrencePolicy: const MissedOccurrencePolicy(
-              policy: MissedPolicy.autoDismiss,
-              gracePeriod: Duration(hours: 2),
-            ),
-          );
-          final crTask = TaskSchedule(
-            id: 'S-cr-autodismiss',
-            title: 'CR AutoDismiss Task',
-            description: '',
-            schedules: [crRule],
-            skipIfNoCapacity: true,
-            estimatedDuration: const Duration(hours: 2),
-          );
-
-          // 1. Expired pending instance on June 5 is auto-dismissed at June 10 12:00 UTC
-          final expiredPending = TaskInstance(
-            id: 'I-cr-june5',
-            scheduleId: crTask.id,
-            ruleId: crRule.id,
-            title: crTask.title,
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
-            startRelativeTime: crRule.startRelativeTime,
-            dueRelativeTime: crRule.dueRelativeTime,
-            status: TaskStatus.pending,
-          );
-
-          final action = engine.evaluate(
-            crTask,
-            [expiredPending],
-            evalNow,
-            applyCapacityLimits: false,
-          );
-          expect(action.instancesToUpdate, hasLength(1));
-          expect(
-            action.instancesToUpdate.first.status,
-            equals(TaskStatus.skipped),
-          );
-          expect(
-            action.instancesToUpdate.first.statusReason,
-            equals(InstanceStatusReason.schedulerAutoDismiss.value),
-          );
-
-          // 2. Capacity-skipped instance on today (June 10) is not treated as a completed/resolved occurrence
-          // and is revived when capacity is available instead of spawning June 12
-          final capacitySkippedToday = TaskInstance(
-            id: 'I-cr-cap-june10',
-            scheduleId: crTask.id,
-            ruleId: crRule.id,
-            title: crTask.title,
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 15,
-              minute: 0,
-            ),
-            dueRelativeTime: crRule.dueRelativeTime,
-            status: TaskStatus.skipped,
-            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
-            updatedAt: DateTime.utc(2026, 6, 10, 8, 0),
-          );
-
-          final capAction = engine.evaluate(
-            crTask,
-            [capacitySkippedToday],
-            evalNow,
-            dayPlannedHours: const {},
-          );
-          expect(capAction.instancesToSpawn, isEmpty);
-          expect(capAction.instancesToUpdate, hasLength(1));
-          expect(
-            capAction.instancesToUpdate.first.id,
-            equals('I-cr-cap-june10'),
-          );
-          expect(
-            capAction.instancesToUpdate.first.status,
-            equals(TaskStatus.pending),
-          );
-        },
-      );
-
-      test(
-        'CompletionRelativePolicy does not advance lastSpawnedDate when spawning a pending instance, and multi-rule OneOffSchedule spawns newly added rule on same date',
-        () {
-          const engine = SchedulerEngine();
-          final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
-          const today = CivilDay(year: 2026, month: 6, day: 15);
-
-          // 1. Spawning the initial pending instance for a CompletionRelativePolicy rule does not set lastSpawnedDate
-          final crRule = DailySchedule(
-            id: 'R-cr-init',
-            scheduleId: 'S-cr-init',
-            startDate: today,
-            interval: 7,
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 7),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-          );
-          final crTask = TaskSchedule(
-            id: 'S-cr-init',
-            title: 'CR Task',
-            description: '',
-            schedules: [crRule],
-          );
-          final crInitialAction = engine.evaluate(crTask, const [], evalNow);
-          expect(crInitialAction.instancesToSpawn, hasLength(1));
-          expect(
-            crInitialAction.instancesToSpawn.first.scheduledDate,
-            equals(today),
-          );
-          expect(crInitialAction.updatedSchedule?.lastSpawnedDate, isNull);
-
-          // 2. Multi-rule OneOffSchedule where rule 1 already spawned on today (setting lastSpawnedDate = today)
-          // still spawns newly added rule 2 on today
-          final oneOff1 = OneOffSchedule(
-            id: 'R-oneoff-1',
-            scheduleId: 'S-multi-oneoff',
-            date: today,
-          );
-          final oneOff2 = OneOffSchedule(
-            id: 'R-oneoff-2',
-            scheduleId: 'S-multi-oneoff',
-            date: today,
-          );
-          final multiOneOffTask = TaskSchedule(
-            id: 'S-multi-oneoff',
-            title: 'Multi One-Off',
-            description: '',
-            schedules: [oneOff1, oneOff2],
-            lastSpawnedDate: today,
-          );
-          final existingRule1Instance = TaskInstance(
-            id: 'I-oneoff-1',
-            scheduleId: 'S-multi-oneoff',
-            ruleId: 'R-oneoff-1',
-            title: 'Multi One-Off',
-            description: '',
-            scheduledDate: today,
-            startRelativeTime: oneOff1.startRelativeTime,
-            dueRelativeTime: oneOff1.dueRelativeTime,
-            status: TaskStatus.pending,
-          );
-          final multiAction = engine.evaluate(
-            multiOneOffTask,
-            [existingRule1Instance],
-            evalNow,
-          );
-          expect(multiAction.instancesToSpawn, hasLength(1));
-          expect(
-            multiAction.instancesToSpawn.single.ruleId,
-            equals('R-oneoff-2'),
-          );
-        },
-      );
-
-      test(
-        'FixedCalendarPolicy and projectUpcomingOccurrences do not treat capacity-skipped instances as resolved',
-        () {
-          const engine = SchedulerEngine();
-          final evalNow = DateTime.utc(2026, 6, 10, 12, 0);
-          const today = CivilDay(year: 2026, month: 10, day: 10);
-          final fixedNow = DateTime.utc(2026, 10, 10, 12, 0);
-
-          final dailyRule = DailySchedule(
-            id: 'R-daily-cap',
-            scheduleId: 'S-daily-cap',
-            startDate: today,
-            interval: 1,
-          );
-          final dailyTask = TaskSchedule(
-            id: 'S-daily-cap',
-            title: 'Daily Cap Task',
-            description: '',
-            schedules: [dailyRule],
-            skipIfNoCapacity: true,
-            estimatedDuration: const Duration(hours: 2),
-          );
-
-          final completedToday = TaskInstance(
-            id: 'I-daily-today',
-            scheduleId: dailyTask.id,
-            ruleId: dailyRule.id,
-            title: dailyTask.title,
-            description: '',
-            scheduledDate: today,
-            startRelativeTime: dailyRule.startRelativeTime,
-            dueRelativeTime: dailyRule.dueRelativeTime,
-            status: TaskStatus.completed,
-            completedAt: fixedNow,
-          );
-          final capacitySkippedTomorrow = TaskInstance(
-            id: 'I-daily-tomorrow',
-            scheduleId: dailyTask.id,
-            ruleId: dailyRule.id,
-            title: dailyTask.title,
-            description: '',
-            scheduledDate: today.addDays(1),
-            startRelativeTime: dailyRule.startRelativeTime,
-            dueRelativeTime: dailyRule.dueRelativeTime,
-            status: TaskStatus.skipped,
-            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
-            updatedAt: fixedNow,
-          );
-
-          // When tomorrow (Oct 11) is capacity-skipped and at capacity, FixedCalendarPolicy
-          // should count Oct 11 toward futureInstancesCount=1 and NOT spawn Oct 12
-          final action = engine.evaluate(
-            dailyTask,
-            [completedToday, capacitySkippedTomorrow],
-            fixedNow,
-            futureInstancesCount: 1,
-            userSettings: const UserSettings(hoursAvailable: 2.0),
-            dayPlannedHours: {today.addDays(1): 2.0},
-          );
-          expect(action.instancesToSpawn, isEmpty);
-
-          // And projectUpcomingOccurrences for CompletionRelativePolicy ignores capacity-skipped instances
-          // and respects lastSpawnedDate when resolved instances were purged
-          final crRule = DailySchedule(
-            id: 'R-cr-proj',
-            scheduleId: 'S-cr-proj',
-            startDate: const CivilDay(year: 2026, month: 6, day: 10),
-            interval: 5,
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 5),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-          );
-          final crTask = TaskSchedule(
-            id: 'S-cr-proj',
-            title: 'CR Proj Task',
-            description: '',
-            schedules: [crRule],
-          );
-          final capSkippedCr = TaskInstance(
-            id: 'I-cr-cap',
-            scheduleId: crTask.id,
-            ruleId: crRule.id,
-            title: crTask.title,
-            description: '',
-            scheduledDate: const CivilDay(year: 2026, month: 6, day: 10),
-            startRelativeTime: crRule.startRelativeTime,
-            dueRelativeTime: crRule.dueRelativeTime,
-            status: TaskStatus.skipped,
-            statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
-            updatedAt: evalNow,
-          );
-          final projected = engine.projectUpcomingOccurrences(
-            crTask,
-            crRule,
-            const CivilDay(year: 2026, month: 6, day: 10),
-            count: 2,
-            existingInstances: [capSkippedCr],
-          );
-          expect(
-            projected.first,
-            equals(const CivilDay(year: 2026, month: 6, day: 10)),
-          );
-
-          final crTaskWithLastSpawned = crTask.copyWith(
-            lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 10),
-          );
-          final projectedFromLastSpawned = engine.projectUpcomingOccurrences(
-            crTaskWithLastSpawned,
-            crRule,
-            const CivilDay(year: 2026, month: 6, day: 11),
-            count: 1,
-            existingInstances: const [],
-          );
-          expect(
-            projectedFromLastSpawned.first,
-            equals(const CivilDay(year: 2026, month: 6, day: 15)),
-          );
-        },
-      );
-
-      test(
-        'CompletionRelativePolicy early completion of future-scheduled instance and sub-day interval do not spawn on already-resolved dates',
-        () {
-          const engine = SchedulerEngine();
-          const today = CivilDay(year: 2026, month: 6, day: 19);
-          const tomorrow = CivilDay(year: 2026, month: 6, day: 20);
-          final tonight = DateTime.utc(2026, 6, 19, 21, 0);
-
-          final crDailyRule = DailySchedule(
-            id: 'R-cr-early',
-            scheduleId: 'S-cr-early',
-            startDate: today,
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: -1,
-              hour: 20,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 1),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-          );
-          final crDailyTask = TaskSchedule(
-            id: 'S-cr-early',
-            title: 'Early Complete CR Task',
-            description: '',
-            schedules: [crDailyRule],
-          );
-
-          final completedTomorrowInst = TaskInstance(
-            id: 'I-tomorrow-early',
-            scheduleId: crDailyTask.id,
-            ruleId: crDailyRule.id,
-            title: crDailyTask.title,
-            description: '',
-            scheduledDate: tomorrow,
-            startRelativeTime: crDailyRule.startRelativeTime,
-            dueRelativeTime: crDailyRule.dueRelativeTime,
-            status: TaskStatus.completed,
-            completedAt: tonight,
-            updatedAt: tonight,
-          );
-
-          final spawnedNext = engine.getNextOccurrenceToSpawn(
-            crDailyTask,
-            completedTomorrowInst,
-            tonight,
-            [completedTomorrowInst],
-            utcOffset: Duration.zero,
-          );
-          expect(spawnedNext, isNotNull);
-          expect(
-            spawnedNext!.scheduledDate,
-            equals(const CivilDay(year: 2026, month: 6, day: 21)),
-          );
-
-          // And evaluate() does not delete spawnedNext or spawn a duplicate on tomorrow
-          final evalAction = engine.evaluate(
-            crDailyTask,
-            [completedTomorrowInst, spawnedNext],
-            tonight,
-            utcOffset: Duration.zero,
-          );
-          expect(evalAction.instancesToDelete, isEmpty);
-          expect(evalAction.instancesToSpawn, isEmpty);
-        },
-      );
+      });
     });
   });
 }

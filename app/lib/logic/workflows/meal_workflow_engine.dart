@@ -16,7 +16,10 @@ class MealWorkflowEngine {
     final config = schedule.mealWorkflowConfig ?? const MealWorkflowConfig();
     final groupId =
         selectInstance.workflowPayload?.workflowGroupId ??
-        '${schedule.id}-${selectInstance.scheduledDate.year}-${selectInstance.scheduledDate.month}-${selectInstance.scheduledDate.day}';
+        WorkflowInstancePayload.generateGroupId(
+          schedule.id,
+          selectInstance.scheduledDate,
+        );
 
     final resultingInstances = <TaskInstance>[];
 

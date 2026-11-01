@@ -77,13 +77,10 @@ class SchedulerMissedPolicyEvaluator {
       final inst = workingInstances[date]!;
       if (!_isOriginalResolved(inst, canonicalInstances) &&
           inst.status != TaskStatus.pending) {
-        workingInstances[date] = inst.copyWith(
+        workingInstances[date] = context.stampModified(
+          inst,
           status: TaskStatus.pending,
           clearStatusReason: true,
-          lastModifiedByAppVersion: appVersion,
-          lastModifiedByPlatform: platform,
-          lastModifiedByUserId: context.userId,
-          updatedAt: context.now.toUtc(),
         );
       }
     }
@@ -97,7 +94,6 @@ class SchedulerMissedPolicyEvaluator {
     SchedulerEvaluationContext context,
   ) {
     final now = context.now;
-    final userId = context.userId;
     final task = context.task;
     bool hasNewSkipped = false;
     for (final date in targetDates) {
@@ -114,9 +110,8 @@ class SchedulerMissedPolicyEvaluator {
         workingInstances,
         date,
         nextStatus,
-        now: now,
+        context: context,
         statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
-        userId: userId,
         logMessage:
             'autoDismiss: expired instance skipped for "${task.title}" ($date)',
       )) {
@@ -134,7 +129,6 @@ class SchedulerMissedPolicyEvaluator {
   ) {
     final now = context.now;
     final latestToday = context.latestToday;
-    final userId = context.userId;
     final task = context.task;
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
@@ -163,9 +157,8 @@ class SchedulerMissedPolicyEvaluator {
         workingInstances,
         date,
         nextStatus,
-        now: now,
+        context: context,
         statusReason: InstanceStatusReason.schedulerPreferNewer.value,
-        userId: userId,
         logMessage:
             'preferNewer: older instance skipped for "${task.title}" ($date in favor of $latestStartedDate)',
       )) {
@@ -184,7 +177,6 @@ class SchedulerMissedPolicyEvaluator {
     final now = context.now;
     final today = context.today;
     final latestToday = context.latestToday;
-    final userId = context.userId;
     final task = context.task;
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
@@ -218,9 +210,8 @@ class SchedulerMissedPolicyEvaluator {
         workingInstances,
         date,
         nextStatus,
-        now: now,
+        context: context,
         statusReason: InstanceStatusReason.schedulerPreferOlder.value,
-        userId: userId,
         logMessage:
             'preferOlder: subsequent instance skipped for "${task.title}" ($date, keeping $earliestStartedDate active)',
       )) {
@@ -234,21 +225,17 @@ class SchedulerMissedPolicyEvaluator {
     Map<CivilDay, TaskInstance> workingInstances,
     CivilDay date,
     TaskStatus nextStatus, {
-    required DateTime now,
+    required SchedulerEvaluationContext context,
     String? statusReason,
-    String? userId,
     String? logMessage,
   }) {
     final inst = workingInstances[date]!;
     if (inst.status != nextStatus) {
-      workingInstances[date] = inst.copyWith(
+      workingInstances[date] = context.stampModified(
+        inst,
         status: nextStatus,
         statusReason: nextStatus == TaskStatus.skipped ? statusReason : null,
         clearStatusReason: nextStatus != TaskStatus.skipped,
-        lastModifiedByAppVersion: appVersion,
-        lastModifiedByPlatform: platform,
-        lastModifiedByUserId: userId,
-        updatedAt: now.toUtc(),
       );
       if (nextStatus == TaskStatus.skipped) {
         if (logMessage != null) {
