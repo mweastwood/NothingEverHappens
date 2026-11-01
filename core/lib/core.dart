@@ -29,4 +29,6 @@ export 'src/logic/scheduler_engine.dart';
 export 'src/logic/scheduler_missed_policy_evaluator.dart';
 export 'src/logic/scheduler_capacity_filter.dart';
 export 'src/logic/scheduler_occurrence_projector.dart';
+export 'src/logic/scheduler_instance_deduplicator.dart';
+export 'src/logic/scheduler_instance_factory.dart';
 export 'src/logic/core_clock.dart';

@@ -7,6 +7,8 @@ import '../models/task_instance.dart';
 import '../models/relative_time.dart';
 import '../models/user_settings.dart';
 import 'scheduler_capacity_filter.dart';
+import 'scheduler_instance_deduplicator.dart';
+import 'scheduler_instance_factory.dart';
 import 'scheduler_missed_policy_evaluator.dart';
 import 'scheduler_occurrence_projector.dart';
 
@@ -37,6 +39,8 @@ class SchedulerEvaluationContext {
   final bool applyCapacityLimits;
   final int? futureInstancesCount;
   final String? userId;
+  final String? appVersion;
+  final String? platform;
   final Duration? earliestUtcOffset;
   final Duration? latestUtcOffset;
 
@@ -51,6 +55,8 @@ class SchedulerEvaluationContext {
     this.applyCapacityLimits = true,
     this.futureInstancesCount,
     this.userId,
+    this.appVersion,
+    this.platform,
     this.earliestUtcOffset,
     this.latestUtcOffset,
   }) : latestToday = latestToday ?? today;
@@ -64,6 +70,27 @@ class SchedulerEvaluationContext {
   DateTime toEarliestWallClock(DateTime instant) => earliestUtcOffset != null
       ? instant.toUtc().add(earliestUtcOffset!)
       : (now.isUtc ? instant.toUtc() : instant.toLocal());
+
+  TaskInstance stampModified(
+    TaskInstance inst, {
+    TaskStatus? status,
+    String? statusReason,
+    bool clearStatusReason = false,
+    bool? isFamily,
+    FamilyCompletionMode? familyCompletionMode,
+  }) {
+    return inst.copyWith(
+      status: status,
+      statusReason: statusReason,
+      clearStatusReason: clearStatusReason,
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
+      lastModifiedByAppVersion: appVersion,
+      lastModifiedByPlatform: platform,
+      lastModifiedByUserId: userId,
+      updatedAt: now.toUtc(),
+    );
+  }
 }
 
 class SchedulerEngine {
@@ -95,7 +122,11 @@ class SchedulerEngine {
         platform: platform,
       );
 
-  SchedulerCapacityFilter get _capacityFilter => SchedulerCapacityFilter(
+  SchedulerCapacityFilter get _capacityFilter =>
+      SchedulerCapacityFilter(appVersion: appVersion, platform: platform);
+
+  SchedulerInstanceFactory get _instanceFactory => SchedulerInstanceFactory(
+        generateId: generateId,
         appVersion: appVersion,
         platform: platform,
       );
@@ -143,6 +174,8 @@ class SchedulerEngine {
       applyCapacityLimits: applyCapacityLimits,
       futureInstancesCount: futureInstancesCount,
       userId: userId,
+      appVersion: appVersion,
+      platform: platform,
       earliestUtcOffset: resolvedEarliestOffset,
       latestUtcOffset: resolvedLatestOffset,
     );
@@ -199,21 +232,17 @@ class SchedulerEngine {
 
   TaskInstance _reconcileInstanceFamilyScope(
     TaskInstance inst,
-    TaskSchedule task, {
-    required DateTime now,
-    String? userId,
-  }) {
+    TaskSchedule task,
+    SchedulerEvaluationContext context,
+  ) {
     if (inst.isFamily == task.isFamily &&
         inst.familyCompletionMode == task.familyCompletionMode) {
       return inst;
     }
-    return inst.copyWith(
+    return context.stampModified(
+      inst,
       isFamily: task.isFamily,
       familyCompletionMode: task.familyCompletionMode,
-      lastModifiedByAppVersion: appVersion,
-      lastModifiedByPlatform: platform,
-      lastModifiedByUserId: userId,
-      updatedAt: now.toUtc(),
     );
   }
 
@@ -227,12 +256,7 @@ class SchedulerEngine {
     final reconciled = <TaskInstance>[
       for (final inst in toUpdate)
         if (!toDeleteSet.contains(inst.id))
-          _reconcileInstanceFamilyScope(
-            inst,
-            task,
-            now: context.now,
-            userId: context.userId,
-          ),
+          _reconcileInstanceFamilyScope(inst, task, context),
     ];
     final updatedIds = {for (final inst in reconciled) inst.id};
 
@@ -245,109 +269,11 @@ class SchedulerEngine {
       }
       if (inst.isFamily != task.isFamily ||
           inst.familyCompletionMode != task.familyCompletionMode) {
-        reconciled.add(
-          _reconcileInstanceFamilyScope(
-            inst,
-            task,
-            now: context.now,
-            userId: context.userId,
-          ),
-        );
+        reconciled.add(_reconcileInstanceFamilyScope(inst, task, context));
         updatedIds.add(inst.id);
       }
     }
     return reconciled;
-  }
-
-  static TaskInstance _selectCanonicalInstance(List<TaskInstance> instances) {
-    assert(instances.isNotEmpty);
-    if (instances.length == 1) return instances.first;
-
-    final sorted = List<TaskInstance>.from(instances);
-    sorted.sort((a, b) {
-      int score(TaskInstance inst) {
-        if (inst.status == TaskStatus.completed || inst.completedAt != null) {
-          return 2;
-        }
-        if (inst.status != TaskStatus.pending) {
-          return 1;
-        }
-        return 0;
-      }
-
-      final scoreA = score(a);
-      final scoreB = score(b);
-      if (scoreA != scoreB) {
-        return scoreB.compareTo(scoreA);
-      }
-      final timeComp = b.updatedAt.compareTo(a.updatedAt);
-      if (timeComp != 0) return timeComp;
-      return b.id.compareTo(a.id);
-    });
-
-    return sorted.first;
-  }
-
-  Map<CivilDay, TaskInstance> _deduplicateRuleInstancesByDate(
-    List<TaskInstance> ruleInstances,
-    List<String> toDelete,
-  ) {
-    final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
-    for (final inst in ruleInstances) {
-      instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
-    }
-
-    final Map<CivilDay, TaskInstance> canonicalByDate = {};
-    for (final entry in instancesByDate.entries) {
-      final insts = entry.value;
-      if (insts.length > 1) {
-        final Map<WorkflowStage?, List<TaskInstance>> instancesByStage = {};
-        for (final inst in insts) {
-          instancesByStage
-              .putIfAbsent(inst.workflowPayload?.stage, () => [])
-              .add(inst);
-        }
-
-        final List<TaskInstance> stageCanonicals = [];
-        for (final stageInsts in instancesByStage.values) {
-          if (stageInsts.length > 1) {
-            final stageCanonical = _selectCanonicalInstance(stageInsts);
-            stageCanonicals.add(stageCanonical);
-            for (final inst in stageInsts) {
-              if (inst.id != stageCanonical.id && !toDelete.contains(inst.id)) {
-                toDelete.add(inst.id);
-              }
-            }
-          } else {
-            stageCanonicals.add(stageInsts.first);
-          }
-        }
-        if (stageCanonicals.length > 1) {
-          final pendingStages = stageCanonicals
-              .where((inst) => inst.status == TaskStatus.pending)
-              .toList();
-          if (pendingStages.isNotEmpty) {
-            pendingStages.sort((a, b) {
-              final stageA = a.workflowPayload?.stage.index ?? 0;
-              final stageB = b.workflowPayload?.stage.index ?? 0;
-              return stageA.compareTo(stageB);
-            });
-            canonicalByDate[entry.key] = pendingStages.first;
-          } else {
-            canonicalByDate[entry.key] = _selectCanonicalInstance(
-              stageCanonicals,
-            );
-          }
-        } else {
-          canonicalByDate[entry.key] = _selectCanonicalInstance(
-            stageCanonicals,
-          );
-        }
-      } else {
-        canonicalByDate[entry.key] = insts.first;
-      }
-    }
-    return canonicalByDate;
   }
 
   ({
@@ -411,7 +337,10 @@ class SchedulerEngine {
         .toList();
 
     final canonicalByDate =
-        _deduplicateRuleInstancesByDate(ruleInstances, toDelete);
+        SchedulerInstanceDeduplicator.deduplicateRuleInstancesByDate(
+      ruleInstances,
+      toDelete,
+    );
     final canonicalInstances = canonicalByDate.values.toList();
     final deduplicatedRuleInstances =
         ruleInstances.where((inst) => !toDelete.contains(inst.id)).toList();
@@ -450,18 +379,16 @@ class SchedulerEngine {
         }
       }
       for (final activePending in expiredPending) {
-        final skippedInst = activePending.copyWith(
+        final skippedInst = context.stampModified(
+          activePending,
           status: TaskStatus.skipped,
           statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
-          lastModifiedByAppVersion: appVersion,
-          lastModifiedByPlatform: platform,
-          lastModifiedByUserId: context.userId,
-          updatedAt: now.toUtc(),
         );
         toUpdate.add(skippedInst);
         canonicalByDate[skippedInst.scheduledDate] = skippedInst;
-        final idx =
-            canonicalInstances.indexWhere((x) => x.id == skippedInst.id);
+        final idx = canonicalInstances.indexWhere(
+          (x) => x.id == skippedInst.id,
+        );
         if (idx >= 0) {
           canonicalInstances[idx] = skippedInst;
         }
@@ -485,68 +412,29 @@ class SchedulerEngine {
 
     if (pendingForSchedule.isEmpty && !hasCurrentOrFutureCapacitySkipped) {
       CivilDay? dateToSpawn;
-      final resolved = deduplicatedRuleInstances
-          .where(
-            (inst) =>
-                inst.status != TaskStatus.pending &&
-                inst.statusReason !=
-                    InstanceStatusReason.schedulerCapacityLimit.value,
-          )
-          .toList()
-        ..sort(
-          (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
-            a.completedAt ?? a.updatedAt,
-          ),
-        );
+      final anchor =
+          SchedulerOccurrenceProjector.computeNextCompletionRelativeDateTime(
+        task,
+        s,
+        deduplicatedRuleInstances,
+        toWallClock: context.toEarliestWallClock,
+      );
 
-      if (resolved.isEmpty) {
-        if (task.lastSpawnedDate != null &&
-            task.lastSpawnedDate!.compareTo(s.scheduledDate) >= 0) {
-          final lastSpawned = task.lastSpawnedDate!;
-          final approxCompletedWallClock = DateTime.utc(
-            lastSpawned.year,
-            lastSpawned.month,
-            lastSpawned.day,
-            12,
-          );
-          final currentWallClock = context.toEarliestWallClock(now);
-          final nextSpawnTime = s.nextCompletionRelativeDateTime(
-            approxCompletedWallClock,
-          );
-          if (!currentWallClock.isBefore(nextSpawnTime)) {
-            dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
-          }
-        } else {
-          dateToSpawn = s.scheduledDate;
+      if (anchor.resolvedDay != null &&
+          anchor.resolvedDay!.compareTo(today) <= 0) {
+        if (maxSpawned == null ||
+            anchor.resolvedDay!.compareTo(maxSpawned) > 0) {
+          maxSpawned = anchor.resolvedDay;
+        }
+      }
+
+      if (anchor.nextSpawnTime != null) {
+        final currentWallClock = context.toEarliestWallClock(now);
+        if (!currentWallClock.isBefore(anchor.nextSpawnTime!)) {
+          dateToSpawn = CivilDay.fromDateTime(anchor.nextSpawnTime!);
         }
       } else {
-        final latest = resolved.first;
-        final completedAtTime = latest.completedAt ?? latest.updatedAt;
-        final referenceTime = context.toEarliestWallClock(completedAtTime);
-        final resolvedDay = CivilDay.fromDateTime(referenceTime);
-        if (resolvedDay.compareTo(today) <= 0) {
-          if (maxSpawned == null || resolvedDay.compareTo(maxSpawned) > 0) {
-            maxSpawned = resolvedDay;
-          }
-        }
-        final effectiveReferenceTime =
-            resolvedDay.isBefore(latest.scheduledDate)
-                ? DateTime.utc(
-                    latest.scheduledDate.year,
-                    latest.scheduledDate.month,
-                    latest.scheduledDate.day,
-                    referenceTime.hour,
-                    referenceTime.minute,
-                    referenceTime.second,
-                  )
-                : referenceTime;
-        final currentWallClock = context.toEarliestWallClock(now);
-        final nextSpawnTime = s.nextCompletionRelativeDateTime(
-          effectiveReferenceTime,
-        );
-        if (!currentWallClock.isBefore(nextSpawnTime)) {
-          dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
-        }
+        dateToSpawn = s.scheduledDate;
       }
 
       if (dateToSpawn != null && canonicalByDate.containsKey(dateToSpawn)) {
@@ -576,7 +464,7 @@ class SchedulerEngine {
 
       if (dateToSpawn != null) {
         toSpawn.add(
-          _createInstanceForRule(
+          _instanceFactory.createInstanceForRule(
             task: task,
             rule: s,
             scheduledDate: dateToSpawn,
@@ -608,7 +496,10 @@ class SchedulerEngine {
         .toList();
 
     final Map<CivilDay, TaskInstance> workingInstances =
-        _deduplicateRuleInstancesByDate(ruleInstances, toDelete);
+        SchedulerInstanceDeduplicator.deduplicateRuleInstancesByDate(
+      ruleInstances,
+      toDelete,
+    );
 
     final canonicalInstances = workingInstances.values.toList();
     final pending = canonicalInstances
@@ -743,7 +634,7 @@ class SchedulerEngine {
 
       for (final date in targetDates) {
         if (!workingInstances.containsKey(date)) {
-          workingInstances[date] = _createInstanceForRule(
+          workingInstances[date] = _instanceFactory.createInstanceForRule(
             task: task,
             rule: s,
             scheduledDate: date,
@@ -819,13 +710,10 @@ class SchedulerEngine {
                       );
               if (shouldSkipSibling) {
                 toUpdate.add(
-                  sibling.copyWith(
+                  context.stampModified(
+                    sibling,
                     status: TaskStatus.skipped,
                     statusReason: inst.statusReason,
-                    lastModifiedByAppVersion: appVersion,
-                    lastModifiedByPlatform: platform,
-                    lastModifiedByUserId: context.userId,
-                    updatedAt: context.now.toUtc(),
                   ),
                 );
               }
@@ -954,7 +842,7 @@ class SchedulerEngine {
             s.scheduledDate.compareTo(task.lastSpawnedDate!) <= 0;
         if (!exists && !alreadySpawned) {
           toSpawn.add(
-            _createInstanceForRule(
+            _instanceFactory.createInstanceForRule(
               task: task,
               rule: s,
               scheduledDate: s.scheduledDate,
@@ -1010,131 +898,18 @@ class SchedulerEngine {
     );
   }
 
-  TaskInstance _createInstanceForRule({
-    required TaskSchedule task,
-    required TaskScheduleRule rule,
-    required CivilDay scheduledDate,
-    DateTime? now,
-    String? userId,
-  }) {
-    final instId = generateId();
-    RelativeTime startRelative = rule.startRelativeTime;
-    RelativeTime dueRelative = rule.dueRelativeTime;
-    List<RelativeTime> notifRelative = rule.notificationRelativeTimes;
-    WorkflowInstancePayload? workflowPayload;
-
-    if (rule.schedulingPolicy is CompletionRelativePolicy) {
-      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
-      startRelative = RelativeTime(
-        dayOffset: 0,
-        hour: policy.targetHour,
-        minute: policy.targetMinute,
-      );
-      dueRelative = _getCompletionRelativeDue(rule, policy, scheduledDate);
-      notifRelative = _getCompletionRelativeNotifications(
-        rule,
-        policy,
-        scheduledDate,
-      );
-    }
-
-    if (task.workflowType == 'mealWorkflow') {
-      final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
-      startRelative = cfg.selectTime;
-      dueRelative = cfg.selectTime;
-      workflowPayload = WorkflowInstancePayload(
-        workflowType: 'mealWorkflow',
-        stage: WorkflowStage.selectMeal,
-        workflowGroupId:
-            '${task.id}-${scheduledDate.year}-${scheduledDate.month}-${scheduledDate.day}',
-      );
-    }
-
-    return TaskInstance(
-      id: instId,
-      scheduleId: task.id,
-      ruleId: rule.id,
-      title: task.title,
-      description: task.description,
-      scheduledDate: scheduledDate,
-      startRelativeTime: startRelative,
-      dueRelativeTime: dueRelative,
-      notificationRelativeTimes: notifRelative,
-      isFamily: task.isFamily,
-      familyCompletionMode: task.familyCompletionMode,
-      priority: task.priority,
-      cycleId: task.cycleId,
-      assignedUserId: task.assignedUserId,
-      workflowPayload: workflowPayload,
-      status: TaskStatus.pending,
-      labelIds: task.labelIds,
-      lastModifiedByUserId: userId,
-      lastModifiedByAppVersion: appVersion,
-      lastModifiedByPlatform: platform,
-      updatedAt: (now ?? DateTime.now()).toUtc(),
-    );
-  }
-
   static RelativeTime shiftRelativeToStart(
     RelativeTime targetRel,
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
-  ) {
-    final originalStartRef = rule.startRelativeTime.referenceTo(
-      rule.scheduledDate,
-      utcOffset: Duration.zero,
-    );
-    final originalTargetRef = targetRel.referenceTo(
-      rule.scheduledDate,
-      utcOffset: Duration.zero,
-    );
-    final duration = originalTargetRef.difference(originalStartRef);
-
-    final newStartRef = DateTime.utc(
-      newScheduledDate.year,
-      newScheduledDate.month,
-      newScheduledDate.day,
-      policy.targetHour,
-      policy.targetMinute,
-    );
-    final newTargetRef = newStartRef.add(duration);
-    final targetDay = CivilDay.fromDateTime(newTargetRef);
-    return RelativeTime(
-      dayOffset: targetDay
-          .toUtcDateTime()
-          .difference(newScheduledDate.toUtcDateTime())
-          .inDays,
-      hour: newTargetRef.hour,
-      minute: newTargetRef.minute,
-    );
-  }
-
-  RelativeTime _getCompletionRelativeDue(
-    TaskScheduleRule rule,
-    CompletionRelativePolicy policy,
-    CivilDay newScheduledDate,
-  ) {
-    return shiftRelativeToStart(
-      rule.dueRelativeTime,
-      rule,
-      policy,
-      newScheduledDate,
-    );
-  }
-
-  List<RelativeTime> _getCompletionRelativeNotifications(
-    TaskScheduleRule rule,
-    CompletionRelativePolicy policy,
-    CivilDay newScheduledDate,
-  ) {
-    return rule.notificationRelativeTimes
-        .map(
-          (notifRel) =>
-              shiftRelativeToStart(notifRel, rule, policy, newScheduledDate),
-        )
-        .toList();
-  }
+  ) =>
+      SchedulerInstanceFactory.shiftRelativeToStart(
+        targetRel,
+        rule,
+        policy,
+        newScheduledDate,
+      );
 
   TaskInstance? getNextOccurrenceToSpawn(
     TaskSchedule task,
@@ -1149,7 +924,7 @@ class SchedulerEngine {
         completedInstance,
         now,
         taskInstances,
-        createInstanceForRule: _createInstanceForRule,
+        createInstanceForRule: _instanceFactory.createInstanceForRule,
         utcOffset: utcOffset,
         userId: userId,
       );
