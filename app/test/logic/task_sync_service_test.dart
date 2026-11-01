@@ -3907,6 +3907,79 @@ void main() {
           expect(savedInst.hasPendingWrites, isFalse);
         },
       );
+
+      test(
+        'sync() restores authoritative remote family task and clears recipe hasPendingWrites when permission-denied is thrown',
+        () async {
+          final failingFirestore = _PushFailingFirestore();
+          await failingFirestore.collection('users').doc('user1').set({
+            'familyId': 'fam-1',
+            'familyRole': 'non-parent',
+          });
+          await failingFirestore
+              .collection('families')
+              .doc('fam-1')
+              .collection('tasks')
+              .doc('S-fam-auth')
+              .set({
+                'id': 'S-fam-auth',
+                'title': 'Authoritative Parent Title',
+                'description': 'Parent description',
+                'isFamily': true,
+                'schedules': <Map<String, dynamic>>[],
+                'updatedAt': DateTime.utc(2026, 10, 25, 9, 0).toIso8601String(),
+              });
+
+          failingFirestore
+            ..failPush = true
+            ..failCode = 'permission-denied';
+
+          final service = TaskSyncService(
+            firestore: failingFirestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final now = DateTime.utc(2026, 10, 25, 10, 0);
+          final rejectedLocalEdit = TaskSchedule(
+            id: 'S-fam-auth',
+            title: 'Rejected Non-Parent Edit',
+            description: 'Non-parent tried to edit',
+            isFamily: true,
+            hasPendingWrites: true,
+            updatedAt: now,
+          );
+          final rejectedLocalRecipe = Recipe(
+            id: 'R-perm-denied',
+            title: 'Unauthorized Recipe',
+            isFamily: true,
+            hasPendingWrites: true,
+            updatedAt: now,
+          );
+
+          await localDataSource.saveTask(rejectedLocalEdit);
+          await localDataSource.markDirty(rejectedLocalEdit.id);
+          await localDataSource.saveRecipe(rejectedLocalRecipe);
+          await localDataSource.markDirty(rejectedLocalRecipe.id);
+
+          await service.sync();
+
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+
+          final reconciledTask = localDataSource.getTasks().firstWhere(
+            (t) => t.id == 'S-fam-auth',
+          );
+          expect(reconciledTask.title, equals('Authoritative Parent Title'));
+          expect(reconciledTask.hasPendingWrites, isFalse);
+
+          final savedRecipe = localDataSource.getRecipes().firstWhere(
+            (r) => r.id == 'R-perm-denied',
+          );
+          expect(savedRecipe.hasPendingWrites, isFalse);
+        },
+      );
     });
 
     test(
