@@ -71,6 +71,34 @@ void main() {
       expect(validateTaskEvent(null).valid, isFalse);
       expect(validateTaskEvent('string').valid, isFalse);
     });
+
+    test('rejects invalid timestamp format when timestamp is provided', () {
+      final invalidStringPayload = {
+        'userId': 'user_123',
+        'providerId': 'twelve_stars',
+        'entityType': 'prayer',
+        'externalId': 'rosary',
+        'date': '2026-08-30',
+        'action': 'completed',
+        'timestamp': 'not-a-timestamp',
+      };
+      final res1 = validateTaskEvent(invalidStringPayload);
+      expect(res1.valid, isFalse);
+      expect(res1.error, contains('timestamp'));
+
+      final nonStringTimestampPayload = {
+        'userId': 'user_123',
+        'providerId': 'twelve_stars',
+        'entityType': 'prayer',
+        'externalId': 'rosary',
+        'date': '2026-08-30',
+        'action': 'completed',
+        'timestamp': 12345,
+      };
+      final res2 = validateTaskEvent(nonStringTimestampPayload);
+      expect(res2.valid, isFalse);
+      expect(res2.error, contains('timestamp'));
+    });
   });
 
   group('authenticateTaskEventRequest', () {
@@ -288,6 +316,52 @@ void main() {
       final updateData = existingDoc.updateCalls.first;
       expect(updateData['status'], equals('skipped'));
       expect(updateData['statusReason'], equals('user_dismissed'));
+      expect(updateData['completedAt'], isA<DateTime>());
+      expect(updateData['completedByUserId'], equals('user_123'));
+      expect(updateData['updatedAt'], isA<DateTime>());
+    });
+
+    test(
+        'preserves completion status for remaining family members on individual completion mode when one user marks uncompleted',
+        () async {
+      final mockDb = MockFirestoreDatabase();
+      final instancesCol =
+          mockDb.collection('users').doc('user_123').collection('instances');
+      final existingDoc = instancesCol.doc('inst_family_ind_123');
+      final priorCompletedAt = DateTime.utc(2026, 8, 30, 10, 0);
+      existingDoc.docData = {
+        'scheduledDate': const CivilDay(year: 2026, month: 8, day: 30).toJson(),
+        'status': 'completed',
+        'statusReason': 'user_completed',
+        'familyCompletionMode': 'individual',
+        'completedAt': priorCompletedAt,
+        'completedByUserId': 'user_123',
+        'completedByUserIds': ['user_123', 'family_member_2'],
+      };
+
+      instancesCol.cannedDocs = [
+        MockDocumentSnapshot(
+            'inst_family_ind_123', existingDoc.docData, true, existingDoc)
+      ];
+
+      const event = ExternalTaskEvent(
+        userId: 'user_123',
+        providerId: 'petal_count',
+        entityType: 'supplement',
+        externalId: 'preset_prenatal_morning',
+        date: '2026-08-30',
+        action: 'uncompleted',
+      );
+
+      final result = await processExternalTaskEvent(mockDb, event);
+      expect(result.success, isTrue);
+      final updateData = existingDoc.updateCalls.first;
+      expect(updateData['status'], equals('completed'));
+      expect(updateData['statusReason'], equals('user_completed'));
+      expect(updateData['completedAt'], equals(priorCompletedAt));
+      expect(updateData['completedByUserId'], equals('family_member_2'));
+      expect(updateData['completedByUserIds'], equals(['family_member_2']));
+      expect(updateData['updatedAt'], isA<DateTime>());
     });
 
     test('creates a new TaskInstance (JIT) when no existing instance matches',

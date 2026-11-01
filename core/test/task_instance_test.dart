@@ -457,5 +457,33 @@ void main() {
       );
       expect(inst.isRevivableByCapacity, isFalse);
     });
+
+    test('preserves integrationBinding across fromMap, toMap, and copyWith',
+        () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Bound Instance',
+        'integrationBinding': {
+          'providerId': 'petal_count',
+          'entityType': 'supplement',
+          'externalId': 'preset_prenatal_morning',
+          'bidirectional': true,
+        },
+      }, id: 'I-bound-1');
+      expect(inst.integrationBinding, isNotNull);
+      expect(inst.integrationBinding!['providerId'], equals('petal_count'));
+      expect(
+        inst.toMap()['integrationBinding'],
+        equals(inst.integrationBinding),
+      );
+
+      final updated = inst.copyWith(title: 'Updated Title');
+      expect(updated.integrationBinding, equals(inst.integrationBinding));
+
+      final cleared = inst.copyWith(clearIntegrationBinding: true);
+      expect(cleared.integrationBinding, isNull);
+      expect(cleared.toMap().containsKey('integrationBinding'), isFalse);
+    });
   });
 }
