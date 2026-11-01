@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy_dev_backend:
-    name: Deploy Backend (Firestore Rules, Indexes & Cloud Functions)
+    name: Deploy Backend (Firestore Rules & Indexes)
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
@@ -26,10 +26,6 @@ jobs:
             echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV is empty or not configured in GitHub Secrets!"
             exit 1
           fi
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -44,17 +40,6 @@ jobs:
           echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
           npx --yes firebase-tools@15.31.0 deploy --only firestore:rules,firestore:indexes --project nothing-ever-happens-dev
-          rm -f service-account.json
-
-      - name: Deploy Cloud Functions
-        working-directory: ./backend
-        env:
-          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}
-        run: |
-          npm --prefix functions ci
-          echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.31.0 deploy --only functions --force --project nothing-ever-happens-dev
           rm -f service-account.json
 
   deploy_dev_firebase_web:
