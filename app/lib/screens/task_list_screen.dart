@@ -185,7 +185,11 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 inst.isCompletedForUser(currentUserId)) {
               return false;
             }
-            if (inst.isFamily &&
+            final sched =
+                scheduleMap[inst.scheduleId] ??
+                scheduleMap['S-${inst.scheduleId}'];
+            final isFamilyTask = inst.isFamily || (sched?.isFamily ?? false);
+            if (isFamilyTask &&
                 inst.assignedUserId != null &&
                 inst.assignedUserId != currentUserId &&
                 (familyMembers == null ||
@@ -193,7 +197,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               return false;
             }
 
-            final sched = scheduleMap[inst.scheduleId];
             if (!filterState.matches(
               instance: inst,
               schedule: sched,

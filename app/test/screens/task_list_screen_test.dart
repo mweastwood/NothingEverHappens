@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
@@ -6,10 +7,13 @@ import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rxdart/rxdart.dart';
+
 import '../test_helper.dart';
 
 import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
@@ -25,6 +29,7 @@ import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/logic/label_repository.dart';
 import 'package:nothing_ever_happens/logic/task_label.dart';
+
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -1861,6 +1866,174 @@ void main() {
       expect(find.text('Unassigned Family Task'), findsOneWidget);
       expect(find.text('My Assigned Family Task'), findsOneWidget);
       expect(find.text('Other Member Family Task'), findsNothing);
+
+      tasksSubject.close();
+      instancesSubject.close();
+    },
+  );
+
+  testWidgets(
+    'TaskListScreen displays personal tasks with stale assignedUserId and family tasks assigned to orphaned members',
+    (WidgetTester tester) async {
+      final mockUserSettingsRepository =
+          home_mocks.MockUserSettingsRepository();
+      final tasksSubject = BehaviorSubject<List<TaskSchedule>>();
+      final instancesSubject = BehaviorSubject<List<TaskInstance>>();
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.getTasks(),
+      ).thenAnswer((_) => tasksSubject.stream);
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => instancesSubject.stream);
+      when(mockUserSettingsRepository.getSettings()).thenAnswer(
+        (_) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+      );
+
+      final taskSchedules = [
+        TaskSchedule(
+          id: 'task-personal',
+          title: 'Personal Task With Stale Assignee',
+          description: '',
+          schedules: [],
+          isFamily: false,
+          assignedUserId: 'user-departed',
+        ),
+        TaskSchedule(
+          id: 'task-orphaned',
+          title: 'Orphaned Member Family Task',
+          description: '',
+          schedules: [],
+          isFamily: true,
+          assignedUserId: 'user-departed',
+        ),
+        TaskSchedule(
+          id: 'task-active',
+          title: 'Active Member Family Task',
+          description: '',
+          schedules: [],
+          isFamily: true,
+          assignedUserId: 'user-active',
+        ),
+      ];
+
+      final instances = [
+        TaskInstance(
+          id: 'inst-personal',
+          scheduleId: 'task-personal',
+          ruleId: 'rule-personal',
+          title: 'Personal Task With Stale Assignee',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          isFamily: false,
+          assignedUserId: 'user-departed',
+        ),
+        TaskInstance(
+          id: 'inst-orphaned',
+          scheduleId: 'task-orphaned',
+          ruleId: 'rule-orphaned',
+          title: 'Orphaned Member Family Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          isFamily: true,
+          assignedUserId: 'user-departed',
+        ),
+        TaskInstance(
+          id: 'inst-active',
+          scheduleId: 'task-active',
+          ruleId: 'rule-active',
+          title: 'Active Member Family Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          isFamily: true,
+          assignedUserId: 'user-active',
+        ),
+      ];
+
+      tasksSubject.add(taskSchedules);
+      instancesSubject.add(instances);
+
+      const family = Family(
+        id: 'fam-1',
+        name: 'Test Family',
+        members: {
+          'user-me': FamilyMember(
+            userId: 'user-me',
+            displayName: 'Me',
+            email: 'me@example.com',
+            role: FamilyRole.parent,
+          ),
+          'user-active': FamilyMember(
+            userId: 'user-active',
+            displayName: 'Active Member',
+            email: 'active@example.com',
+            role: FamilyRole.parent,
+          ),
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsRepositoryProvider.overrideWithValue(
+              mockUserSettingsRepository,
+            ),
+            authStateProvider.overrideWith(
+              (ref) => Stream.value(_TestUser('user-me')),
+            ),
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam-1', familyRole: 'parent'),
+              ),
+            ),
+            familyStreamProvider(
+              'fam-1',
+            ).overrideWith((ref) => Stream.value(family)),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Personal Task With Stale Assignee'), findsOneWidget);
+      expect(find.text('Orphaned Member Family Task'), findsOneWidget);
+      expect(find.text('Active Member Family Task'), findsNothing);
 
       tasksSubject.close();
       instancesSubject.close();
