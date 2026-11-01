@@ -58,17 +58,36 @@ Future<AccountDeletionResult> deleteUserAccountData(
     if (familyDoc.exists) {
       final familyData = familyDoc.data() ?? {};
       final members = (familyData['members'] as Map?) ?? {};
-      final remainingMemberIds =
-          members.keys.where((mId) => mId != userId).toList();
+      final remainingMemberIds = members.keys
+          .where((mId) => mId != userId)
+          .toList();
 
       if (remainingMemberIds.isEmpty) {
         // Sole member: recursively delete the family document and all subcollections
         await db.recursiveDelete(familyRef);
       } else {
-        // Multi-member family: remove user from members map
-        await familyRef.update({
+        // Multi-member family: remove user from members map and promote a successor parent if needed
+        final updates = <String, dynamic>{
           'members.$userId': FieldValue.delete(),
-        });
+        };
+        final departingMember = members[userId] as Map?;
+        final isDepartingParent = departingMember?['role'] == 'parent';
+        if (isDepartingParent) {
+          final hasOtherParent = remainingMemberIds.any((mId) {
+            final member = members[mId] as Map?;
+            return member?['role'] == 'parent';
+          });
+          if (!hasOtherParent) {
+            final nextParentId = remainingMemberIds.first.toString();
+            updates['members.$nextParentId.role'] = 'parent';
+            final nextParentUserRef = db.collection('users').doc(nextParentId);
+            final nextParentUserDoc = await nextParentUserRef.get();
+            if (nextParentUserDoc.exists) {
+              await nextParentUserRef.update({'familyRole': 'parent'});
+            }
+          }
+        }
+        await familyRef.update(updates);
       }
     }
   }
@@ -131,17 +150,20 @@ Future<void> handleDeleteUserAccount(
   AuthService? auth,
 }) async {
   if (req.method != 'POST' && req.method != 'DELETE') {
-    res.status(405).json(
-        {'success': false, 'error': 'Method Not Allowed. Use POST or DELETE.'});
+    res.status(405).json({
+      'success': false,
+      'error': 'Method Not Allowed. Use POST or DELETE.',
+    });
     return;
   }
 
   final authResult = await authenticateUserRequest(req.headers, auth: auth);
   if (!authResult.authenticated || authResult.user == null) {
     logWarn('Unauthorized account deletion attempt: ${authResult.error}');
-    res
-        .status(authResult.status ?? 401)
-        .json({'success': false, 'error': authResult.error});
+    res.status(authResult.status ?? 401).json({
+      'success': false,
+      'error': authResult.error,
+    });
     return;
   }
 
