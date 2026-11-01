@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'user_settings.dart';
 import 'firestore_paths.dart';
 import 'auth_repository.dart';
@@ -42,6 +44,9 @@ class UserSettingsRepository {
   final TelemetryService? _telemetryService;
   final CrashlyticsService? _crashlyticsService;
   StreamSubscription? _remoteSettingsSub;
+  bool _isDisposed = false;
+  int _snapshotSeq = 0;
+  Future<void> _snapshotQueue = Future.value();
 
   UserSettingsRepository({
     FirebaseFirestore? firestore,
@@ -76,28 +81,37 @@ class UserSettingsRepository {
 
     _remoteSettingsSub?.cancel();
     _remoteSettingsSub = docRef.snapshots().listen(
-      (snapshot) async {
-        if (snapshot.exists && snapshot.data() != null) {
-          final rawData = Map<String, dynamic>.from(snapshot.data()!);
-          final remoteData = UserSettings.fromJson(rawData);
-          await _localDataSource.saveSettings(remoteData);
-          await _telemetryService?.setTelemetryEnabled(
-            remoteData.telemetryEnabled,
-          );
-          await _crashlyticsService?.setCrashlyticsCollectionEnabled(
-            remoteData.crashReportingEnabled,
-          );
-        } else if (!snapshot.metadata.isFromCache) {
-          const defaultSettings = UserSettings(hoursAvailable: 8.0);
-          await _localDataSource.saveRawSettings(const {});
-          await _localDataSource.saveSettings(defaultSettings);
-          await _telemetryService?.setTelemetryEnabled(
-            defaultSettings.telemetryEnabled,
-          );
-          await _crashlyticsService?.setCrashlyticsCollectionEnabled(
-            defaultSettings.crashReportingEnabled,
-          );
-        }
+      (snapshot) {
+        final seq = ++_snapshotSeq;
+        _snapshotQueue = _snapshotQueue.then((_) async {
+          if (_isDisposed || seq != _snapshotSeq) return;
+          if (snapshot.exists && snapshot.data() != null) {
+            final rawData = Map<String, dynamic>.from(snapshot.data()!);
+            final remoteData = UserSettings.fromJson(rawData);
+            await _localDataSource.saveSettings(remoteData);
+            if (_isDisposed || seq != _snapshotSeq) return;
+            await _telemetryService?.setTelemetryEnabled(
+              remoteData.telemetryEnabled,
+            );
+            if (_isDisposed || seq != _snapshotSeq) return;
+            await _crashlyticsService?.setCrashlyticsCollectionEnabled(
+              remoteData.crashReportingEnabled,
+            );
+          } else if (!snapshot.metadata.isFromCache) {
+            const defaultSettings = UserSettings(hoursAvailable: 8.0);
+            await _localDataSource.saveRawSettings(const {});
+            if (_isDisposed || seq != _snapshotSeq) return;
+            await _localDataSource.saveSettings(defaultSettings);
+            if (_isDisposed || seq != _snapshotSeq) return;
+            await _telemetryService?.setTelemetryEnabled(
+              defaultSettings.telemetryEnabled,
+            );
+            if (_isDisposed || seq != _snapshotSeq) return;
+            await _crashlyticsService?.setCrashlyticsCollectionEnabled(
+              defaultSettings.crashReportingEnabled,
+            );
+          }
+        });
       },
       onError: (_) {
         // Silent error handler for remote settings stream
@@ -106,6 +120,8 @@ class UserSettingsRepository {
   }
 
   void dispose() {
+    _isDisposed = true;
+    ++_snapshotSeq;
     _remoteSettingsSub?.cancel();
   }
 
@@ -128,6 +144,7 @@ class UserSettingsRepository {
   }
 
   Future<void> updateSettings(UserSettings settings) async {
+    ++_snapshotSeq;
     await _localDataSource.saveSettings(settings);
     await _telemetryService?.setTelemetryEnabled(settings.telemetryEnabled);
     await _crashlyticsService?.setCrashlyticsCollectionEnabled(
