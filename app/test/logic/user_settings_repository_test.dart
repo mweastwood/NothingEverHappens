@@ -116,5 +116,35 @@ void main() {
         expect(clearedOverrides, isEmpty);
       },
     );
+
+    test(
+      'resets local settings to defaults when remote settings doc does not exist',
+      () async {
+        repository.dispose();
+        await localDataSource.saveSettings(
+          const UserSettings(
+            hoursAvailable: 3.5,
+            dailyCapacityOverrides: {'2026-07-10': 2.0},
+          ),
+        );
+        expect(localDataSource.getSettings().hoursAvailable, 3.5);
+
+        final newRepo = UserSettingsRepository(
+          firestore: FakeFirebaseFirestore(),
+          userId: 'new-user-without-settings',
+          isActivePremium: true,
+          localDataSource: localDataSource,
+        );
+        addTearDown(newRepo.dispose);
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          localDataSource.getSettings().hoursAvailable,
+          const UserSettings(hoursAvailable: 8.0).hoursAvailable,
+        );
+        expect(localDataSource.getSettings().dailyCapacityOverrides, isNull);
+      },
+    );
   });
 }

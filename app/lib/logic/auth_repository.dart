@@ -132,11 +132,12 @@ class AuthRepository {
 
   Future<void> signOut() async {
     _logger?.info('auth', 'User signing out');
+    await _localDataSource?.resetAllData();
+    await _notificationService?.cancelAllNotifications();
     await _firebaseAuth.signOut();
     if (!kIsWeb) {
       await _googleSignIn.signOut();
     }
     await _localDataSource?.resetAllData();
-    await _notificationService?.cancelAllNotifications();
   }
 }
