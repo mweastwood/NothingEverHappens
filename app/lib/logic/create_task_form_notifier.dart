@@ -127,11 +127,7 @@ class CreateTaskFormState {
           hour: now.hour,
           minute: now.minute,
         );
-        const defaultDue = RelativeTime(
-          dayOffset: 0,
-          hour: 17,
-          minute: 0,
-        );
+        const defaultDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
         schedules = [
           DailySchedule(
             id: TaskScheduleRule.generateId(),
