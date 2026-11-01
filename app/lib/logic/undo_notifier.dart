@@ -52,11 +52,35 @@ class UndoEditTaskScheduleAction extends UndoableAction {
 
   @override
   Future<void> undo(TaskRepository repo) async {
+    final prevSchedulesJson = previousSchedule.schedules
+        .map((s) => s.toJson())
+        .toList();
+    final currSchedulesJson = currentSchedule.schedules
+        .map((s) => s.toJson())
+        .toList();
+    final schedulesChanged =
+        prevSchedulesJson.toString() != currSchedulesJson.toString();
+
     final modification = (
       newTask: previousSchedule,
-      changes: {
+      changes: <String, dynamic>{
+        if (previousSchedule.title != currentSchedule.title)
+          'title': previousSchedule.title,
+        if (previousSchedule.description != currentSchedule.description)
+          'description': previousSchedule.description,
+        if (schedulesChanged) 'schedules': prevSchedulesJson,
+        if (previousSchedule.priority != currentSchedule.priority)
+          'priority': previousSchedule.priority.name,
         if (previousSchedule.isFamily != currentSchedule.isFamily)
           'isFamily': previousSchedule.isFamily,
+        if (previousSchedule.familyCompletionMode !=
+            currentSchedule.familyCompletionMode)
+          'familyCompletionMode': previousSchedule.familyCompletionMode.name,
+        if (previousSchedule.assignedUserId != currentSchedule.assignedUserId)
+          'assignedUserId': previousSchedule.assignedUserId,
+        if (previousSchedule.labelIds.toString() !=
+            currentSchedule.labelIds.toString())
+          'labelIds': previousSchedule.labelIds,
       },
     );
     await repo.updateTaskSchedule(modification);
