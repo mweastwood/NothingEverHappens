@@ -35,7 +35,16 @@ class InitialFirebaseMigrationService {
     bool force = false,
     bool? isActivePremium,
   }) async {
+    final activeUser = _localDataSource.getActiveUserId();
+    final isDifferentUser =
+        activeUser != null && activeUser.isNotEmpty && activeUser != _userId;
+
     if (!(isActivePremium ?? this.isActivePremium)) {
+      if (isDifferentUser) {
+        await _localDataSource.resetAllData();
+      }
+      await _localDataSource.setActiveUserId(_userId);
+      await _localDataSource.setIsActivePremium(false);
       _logger?.info(
         'sync',
         'Skipping initial Firebase migration for non-premium user',
@@ -44,9 +53,6 @@ class InitialFirebaseMigrationService {
       return;
     }
 
-    final activeUser = _localDataSource.getActiveUserId();
-    final isDifferentUser =
-        activeUser != null && activeUser.isNotEmpty && activeUser != _userId;
     final shouldForce = force || isDifferentUser;
 
     if (!shouldForce && _localDataSource.isMigrationCompleted()) {
@@ -265,14 +271,56 @@ class InitialFirebaseMigrationService {
         );
       }
 
-      if (!isDifferentUser) {
+      final dirtyIdsToPreserve = <String>{};
+      final wasFreeTier = _localDataSource.getIsActivePremium() == false;
+
+      if (!isDifferentUser && !force) {
+        final tasksMap = {for (final t in tasksToMigrate) t.id: t};
+        for (final localTask in _localDataSource.getTasks()) {
+          if (wasFreeTier || localTask.hasPendingWrites) {
+            final remoteTask = tasksMap[localTask.id];
+            if (remoteTask == null ||
+                !remoteTask.updatedAt.isAfter(localTask.updatedAt)) {
+              tasksMap[localTask.id] = localTask.copyWith(
+                hasPendingWrites: true,
+              );
+              dirtyIdsToPreserve.add(localTask.id);
+            }
+          }
+        }
+        tasksToMigrate
+          ..clear()
+          ..addAll(tasksMap.values);
+
+        final instancesMap = {for (final i in instancesToMigrate) i.id: i};
+        for (final localInst in _localDataSource.getInstances()) {
+          if (wasFreeTier || localInst.hasPendingWrites) {
+            final remoteInst = instancesMap[localInst.id];
+            if (remoteInst == null ||
+                !remoteInst.updatedAt.isAfter(localInst.updatedAt)) {
+              instancesMap[localInst.id] = localInst.copyWith(
+                hasPendingWrites: true,
+              );
+              dirtyIdsToPreserve.add(localInst.id);
+            }
+          }
+        }
+        instancesToMigrate
+          ..clear()
+          ..addAll(instancesMap.values);
+      }
+
+      if (!isDifferentUser && !force) {
         final localRecipes = _localDataSource.getRecipes();
         for (final localRecipe in localRecipes) {
           final remoteRecipe = recipesToMigrate[localRecipe.id];
           if (remoteRecipe == null ||
               localRecipe.hasPendingWrites ||
               localRecipe.updatedAt.isAfter(remoteRecipe.updatedAt)) {
-            recipesToMigrate[localRecipe.id] = localRecipe;
+            recipesToMigrate[localRecipe.id] = localRecipe.copyWith(
+              hasPendingWrites: true,
+            );
+            dirtyIdsToPreserve.add(localRecipe.id);
           }
         }
       }
@@ -282,6 +330,13 @@ class InitialFirebaseMigrationService {
       _logger?.debug('sync', '[Migration 4/5] Clearing local Hive data...');
       final clearWatch = Stopwatch()..start();
       await _localDataSource.clearAllTasksAndInstances();
+      final existingRecipeIds = _localDataSource
+          .getRecipes()
+          .map((r) => r.id)
+          .toList();
+      if (existingRecipeIds.isNotEmpty) {
+        await _localDataSource.deleteRecipes(existingRecipeIds);
+      }
       await _localDataSource.clearAllDirty();
       _logger?.info(
         'sync',
@@ -297,8 +352,12 @@ class InitialFirebaseMigrationService {
       for (final recipe in recipesToMigrate.values) {
         await _localDataSource.saveRecipe(recipe);
       }
+      for (final id in dirtyIdsToPreserve) {
+        await _localDataSource.markDirty(id);
+      }
 
       await _localDataSource.setActiveUserId(_userId);
+      await _localDataSource.setIsActivePremium(true);
       await _localDataSource.setMigrationCompleted(true);
       _logger?.info(
         'sync',
