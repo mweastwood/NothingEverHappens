@@ -24,11 +24,23 @@ service cloud.firestore {
     // User Profile: Users can read/write their own profile, and family members can read
     match /users/{userId} {
       allow read: if isUser(userId) || areInSameFamily(userId);
-      allow write: if isUser(userId) || (
+      allow create: if isUser(userId) && (
+        !('subscriptionTier' in request.resource.data) ||
+        request.resource.data.subscriptionTier in ['free', 'standard', 'family']
+      );
+      allow update: if (
+        isUser(userId) && (
+          !('subscriptionTier' in request.resource.data) ||
+          request.resource.data.subscriptionTier in ['free', 'standard', 'family']
+        )
+      ) || (
         resource != null &&
         resource.data.familyId != null &&
-        isParentOfFamily(resource.data.familyId)
+        isParentOfFamily(resource.data.familyId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyRole', 'updatedAt']) &&
+        request.resource.data.familyRole in ['parent', 'non-parent']
       );
+      allow delete: if isUser(userId);
 
       // Private Tasks: Users can read/write their own tasks, and family members can read
       match /tasks/{taskId} {
@@ -96,7 +108,9 @@ service cloud.firestore {
           !(request.auth.uid in resource.data.members) &&
           request.auth.uid in request.resource.data.members &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
-          request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+          request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.members[request.auth.uid].role in ['parent', 'non-parent'] &&
+          (!('userId' in request.resource.data.members[request.auth.uid]) || request.resource.data.members[request.auth.uid].userId == request.auth.uid)
         )
       );
       allow delete: if request.auth != null &&
@@ -128,12 +142,17 @@ service cloud.firestore {
       match /tasks/{taskId} {
         allow read: if isFamilyMember();
         allow create: if isFamilyParent();
-        allow delete: if isFamilyParent() || isSoleFamilyMember() || (isFamilyMember() && resource.data.schedules[0].type == 'oneOff');
+        allow delete: if isFamilyParent() || isSoleFamilyMember() || (isFamilyMember() && ('schedules' in resource.data) && resource.data.schedules is list && resource.data.schedules.size() > 0 && resource.data.schedules[0].type == 'oneOff');
         allow update: if isFamilyParent() || (
           isFamilyMember() &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'cycleId', 'labelIds'
-          ])
+            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'cycleId', 'labelIds',
+            'schedules', 'familyCompletionMode', 'skipIfNoCapacity', 'workflowType', 'mealWorkflowConfig', 'appLaunchUrl'
+          ]) &&
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['assignedUserId']) ||
+            (resource.data.assignedUserId == request.auth.uid && request.resource.data.assignedUserId == null)
+          )
         );
       }
 

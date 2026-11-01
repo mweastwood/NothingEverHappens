@@ -51,7 +51,7 @@ describe('Firestore Security Rules', () => {
       }));
     });
 
-    it('allows a family parent to update a member\'s profile in the same family', async () => {
+    it('allows a family parent to update familyRole on a member\'s profile, but denies deleting or modifying other fields', async () => {
       await seedData(async (context) => {
         const db = context.firestore();
         await db.collection('families').doc('fam-1').set({
@@ -64,16 +64,30 @@ describe('Firestore Security Rules', () => {
         await db.collection('users').doc('bob').set({
           displayName: 'Bob',
           familyId: 'fam-1',
-          familyRole: 'non-parent'
+          familyRole: 'non-parent',
+          subscriptionTier: 'free'
         });
       });
 
       const aliceContext = testEnv.authenticatedContext('alice');
       const db = aliceContext.firestore();
 
+      // Parent can update familyRole (and updatedAt)
       await assertSucceeds(db.collection('users').doc('bob').update({
         familyRole: 'parent'
       }));
+
+      // Parent cannot modify displayName or subscriptionTier on another member's profile
+      await assertFails(db.collection('users').doc('bob').update({
+        displayName: 'Hacked Bob'
+      }));
+
+      await assertFails(db.collection('users').doc('bob').update({
+        subscriptionTier: 'family'
+      }));
+
+      // Parent cannot delete another member's profile document
+      await assertFails(db.collection('users').doc('bob').delete());
     });
   });
 
@@ -624,6 +638,77 @@ describe('Firestore Security Rules', () => {
       await assertFails(unauthenticatedDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
         labelIds: ['label-chore', 'label-urgent']
       }));
+    });
+
+    it('denies non-parents from modifying restricted fields or reassigning tasks, while allowing clearing own assignedUserId', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('tasks').doc('task-1').set({
+          title: 'Clean garage',
+          description: 'Sweep and organize',
+          isFamily: true,
+          schedules: [{ type: 'recurring', daysOfWeek: [1] }],
+          workflowType: 'standard',
+          skipIfNoCapacity: false,
+          assignedUserId: 'bob'
+        });
+      });
+
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Non-parent cannot modify schedules, workflowType, or skipIfNoCapacity
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        schedules: [{ type: 'oneOff' }]
+      }));
+
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        workflowType: 'meal'
+      }));
+
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        skipIfNoCapacity: true
+      }));
+
+      // Non-parent cannot reassign task to someone else
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        assignedUserId: 'alice'
+      }));
+
+      // Departing non-parent CAN clear their own assignedUserId (assignedUserId: null)
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        assignedUserId: null
+      }));
+    });
+
+    it('safely denies deleting a family task with an empty schedules array for a non-parent', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('tasks').doc('task-empty-sched').set({
+          title: 'Task without schedules',
+          isFamily: true,
+          schedules: []
+        });
+      });
+
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-empty-sched').delete());
     });
   });
 });
