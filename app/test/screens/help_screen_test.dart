@@ -867,6 +867,51 @@ void main() {
       );
     });
 
+    testWidgets(
+      'does not mutate AppClock or notify AppClock.timeNotifier when mounted, stepped, reset, or disposed',
+      (WidgetTester tester) async {
+        setLargeScreenSize(tester);
+        AppClock.reset();
+        expect(AppClock.isMockActive, isFalse);
+
+        int clockNotifications = 0;
+        void listener() => clockNotifications++;
+        AppClock.timeNotifier.addListener(listener);
+        addTearDown(() => AppClock.timeNotifier.removeListener(listener));
+
+        await tester.pumpWidget(
+          buildTestWidget(const MissedPoliciesPlaygroundTab()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+        // Task due badge still reflects the playground's simulated time (June 1, 9:00 AM -> Due in 8h)
+        expect(find.text('Due in 8h'), findsOneWidget);
+
+        // Advance simulated time by 24 Hours
+        await tester.tap(find.text('24 Hours'));
+        await tester.pumpAndSettle();
+
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+
+        // Reset simulation
+        await tester.tap(find.text('Reset Simulation'));
+        await tester.pumpAndSettle();
+
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+
+        // Dispose widget
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+      },
+    );
+
     testGoldens('MissedPoliciesPlaygroundTab renders correctly', (
       WidgetTester tester,
     ) async {
@@ -917,6 +962,46 @@ void main() {
         expect(find.byType(MissedPoliciesPlaygroundTab), findsOneWidget);
         expect(find.byType(SchedulingPlaygroundTab), findsNothing);
         expect(find.byType(BasicTaskCompletionTab), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'switching to Missed Policies tab, advancing time, and switching tabs does not trigger AppClock.timeNotifier or leave AppClock mocked',
+      (WidgetTester tester) async {
+        setLargeScreenSize(tester);
+        AppClock.reset();
+        expect(AppClock.isMockActive, isFalse);
+
+        int clockNotifications = 0;
+        void listener() => clockNotifications++;
+        AppClock.timeNotifier.addListener(listener);
+        addTearDown(() => AppClock.timeNotifier.removeListener(listener));
+
+        await tester.pumpWidget(buildTestWidget(const HelpScreen()));
+        await tester.pumpAndSettle();
+
+        // Switch to Missed Policies tab
+        await tester.tap(find.text('Missed Policies'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MissedPoliciesPlaygroundTab), findsOneWidget);
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+
+        // Step time in the playground
+        await tester.tap(find.text('24 Hours'));
+        await tester.pumpAndSettle();
+
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
+
+        // Switch back to Basic Task Completion tab
+        await tester.tap(find.text('Basic Task Completion'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BasicTaskCompletionTab), findsOneWidget);
+        expect(clockNotifications, equals(0));
+        expect(AppClock.isMockActive, isFalse);
       },
     );
 

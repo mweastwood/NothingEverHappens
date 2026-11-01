@@ -8,7 +8,6 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/scheduler_engine.dart';
-import '../logic/app_clock.dart';
 import 'missed_occurrence_policy_selector.dart';
 import 'playground_fake_task_repository.dart';
 import 'task_widget.dart';
@@ -43,12 +42,6 @@ class _MissedPoliciesPlaygroundTabState
       onDismiss: _handleDeleteTask,
     );
     _reset();
-  }
-
-  @override
-  void dispose() {
-    AppClock.reset();
-    super.dispose();
   }
 
   void _reset() {
@@ -125,12 +118,6 @@ class _MissedPoliciesPlaygroundTabState
         "Simulation started at ${_formatDateTimeLog(_simulatedNow)}.",
         "Configured: $presetStr task with $policyStr policy.",
       ];
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        AppClock.setMockTime(_simulatedNow);
-      }
     });
 
     _runEvaluation(logChanges: false);
@@ -223,7 +210,6 @@ class _MissedPoliciesPlaygroundTabState
   void _advanceTime(Duration duration) {
     setState(() {
       _simulatedNow = _simulatedNow.add(duration);
-      AppClock.setMockTime(_simulatedNow);
     });
     _runEvaluation();
   }
@@ -559,6 +545,7 @@ class _MissedPoliciesPlaygroundTabState
                     instance: inst,
                     schedule: _taskSchedule,
                     showEditOption: false,
+                    referenceTime: _simulatedNow,
                   );
                 }),
               const SizedBox(height: 24),

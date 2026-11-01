@@ -40,6 +40,7 @@ class TaskWidget extends ConsumerStatefulWidget {
   final TaskSchedule? schedule;
   final bool showEditOption;
   final List<TaskLabel>? labels;
+  final DateTime? referenceTime;
 
   const TaskWidget({
     super.key,
@@ -47,6 +48,7 @@ class TaskWidget extends ConsumerStatefulWidget {
     this.schedule,
     this.showEditOption = true,
     this.labels,
+    this.referenceTime,
   });
 
   @override
@@ -55,6 +57,7 @@ class TaskWidget extends ConsumerStatefulWidget {
 
 class _TaskWidgetState extends ConsumerState<TaskWidget>
     with SingleTickerProviderStateMixin {
+  DateTime get _effectiveNow => widget.referenceTime ?? AppClock.now;
   late AnimationController _controller;
   late Animation<double> _scaleYAnimation;
   late Animation<double> _scaleXAnimation;
@@ -274,7 +277,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   }
 
   Widget _buildDueDateBadge(BuildContext context) {
-    final now = AppClock.now;
+    final now = _effectiveNow;
     final dueDateTime = widget.instance.dueRelativeTime.referenceTo(
       widget.instance.scheduledDate,
     );
@@ -375,7 +378,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     final startDateTime = widget.instance.startRelativeTime.referenceTo(
       widget.instance.scheduledDate,
     );
-    final isFuturePending = AppClock.now.isBefore(startDateTime);
+    final isFuturePending = _effectiveNow.isBefore(startDateTime);
     final labels = _resolveLabels();
     final labelColors = labels
         .map((l) => LabelPalette.getColor(l.colorKey, context))
