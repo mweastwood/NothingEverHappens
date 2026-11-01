@@ -93,8 +93,9 @@ void main() {
         },
       );
 
-      final labelWithoutOrder =
-          TaskLabel.fromFirestore(fakeSnapshotWithoutOrder);
+      final labelWithoutOrder = TaskLabel.fromFirestore(
+        fakeSnapshotWithoutOrder,
+      );
       expect(labelWithoutOrder.order, equals(0));
     });
 
@@ -156,13 +157,38 @@ void main() {
     });
 
     test('TaskLabelScope.fromString fallbacks gracefully', () {
-      expect(TaskLabelScope.fromString('personal'),
-          equals(TaskLabelScope.personal));
       expect(
-          TaskLabelScope.fromString('family'), equals(TaskLabelScope.family));
-      expect(TaskLabelScope.fromString('unknown'),
-          equals(TaskLabelScope.personal));
+        TaskLabelScope.fromString('personal'),
+        equals(TaskLabelScope.personal),
+      );
+      expect(
+        TaskLabelScope.fromString('family'),
+        equals(TaskLabelScope.family),
+      );
+      expect(
+        TaskLabelScope.fromString('unknown'),
+        equals(TaskLabelScope.personal),
+      );
       expect(TaskLabelScope.fromString(null), equals(TaskLabelScope.personal));
+    });
+
+    test('fromMap parses flexible date formats via parseFlexibleDateTime', () {
+      final label = TaskLabel.fromMap({
+        'id': 'L-flex',
+        'name': 'Flex Date',
+        'colorKey': 'coral',
+        'iconKey': 'tag',
+        'createdAt': {'_seconds': 1700000000, '_nanoseconds': 0},
+        'updatedAt': '20260915',
+      });
+
+      expect(
+        label.createdAt,
+        equals(
+          DateTime.fromMillisecondsSinceEpoch(1700000000 * 1000, isUtc: true),
+        ),
+      );
+      expect(label.updatedAt, equals(DateTime(2026, 9, 15)));
     });
   });
 }

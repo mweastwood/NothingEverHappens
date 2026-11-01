@@ -345,51 +345,49 @@ void main() {
       const testDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
       test(
-        'DailySchedule occursOn works across Spring forward DST boundary (March 9, 2026)',
-        () {
-          const start = CivilDay(year: 2026, month: 3, day: 8);
-          final schedule = DailySchedule(
-            startDate: start,
-            interval: 2,
-            startRelativeTime: testStart,
-            dueRelativeTime: testDue,
-          );
+          'DailySchedule occursOn works across Spring forward DST boundary (March 9, 2026)',
+          () {
+        const start = CivilDay(year: 2026, month: 3, day: 8);
+        final schedule = DailySchedule(
+          startDate: start,
+          interval: 2,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
-          expect(schedule.occursOn(start), isTrue);
-          expect(
-            schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
-            isFalse,
-          );
-          expect(
-            schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 10)),
-            isTrue,
-          );
-        },
-      );
+        expect(schedule.occursOn(start), isTrue);
+        expect(
+          schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
+          isFalse,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 10)),
+          isTrue,
+        );
+      });
 
       test(
-        'WeeklySchedule occursOn works across Spring forward DST boundary (March 9, 2026)',
-        () {
-          const start = CivilDay(year: 2026, month: 3, day: 2);
-          final schedule = WeeklySchedule(
-            startDate: start,
-            interval: 2,
-            daysOfWeek: const {1},
-            startRelativeTime: testStart,
-            dueRelativeTime: testDue,
-          );
+          'WeeklySchedule occursOn works across Spring forward DST boundary (March 9, 2026)',
+          () {
+        const start = CivilDay(year: 2026, month: 3, day: 2);
+        final schedule = WeeklySchedule(
+          startDate: start,
+          interval: 2,
+          daysOfWeek: const {1},
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
-          expect(schedule.occursOn(start), isTrue);
-          expect(
-            schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
-            isFalse,
-          );
-          expect(
-            schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 16)),
-            isTrue,
-          );
-        },
-      );
+        expect(schedule.occursOn(start), isTrue);
+        expect(
+          schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
+          isFalse,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 16)),
+          isTrue,
+        );
+      });
 
       test('MonthlySchedule asserts dayOfMonth ranges correctly', () {
         const start = CivilDay(year: 2024, month: 1, day: 1);
@@ -493,66 +491,61 @@ void main() {
       });
 
       test(
-        'MonthlySchedule occursOn and nextOccurrenceAfter negative dayOfMonth boundary tests',
-        () {
-          const start = CivilDay(year: 2026, month: 1, day: 1);
-          final scheduleLast = MonthlySchedule(
-            startDate: start,
-            interval: 1,
-            dayOfMonth: -1,
-            startRelativeTime: testStart,
-            dueRelativeTime: testDue,
-          );
+          'MonthlySchedule occursOn and nextOccurrenceAfter negative dayOfMonth boundary tests',
+          () {
+        const start = CivilDay(year: 2026, month: 1, day: 1);
+        final scheduleLast = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -1,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
-          expect(
-            scheduleLast
-                .occursOn(const CivilDay(year: 2026, month: 1, day: 31)),
-            isTrue,
-          );
-          expect(
-            scheduleLast
-                .occursOn(const CivilDay(year: 2026, month: 2, day: 28)),
-            isTrue,
-          );
-          expect(
-            scheduleLast
-                .occursOn(const CivilDay(year: 2026, month: 2, day: 29)),
-            isFalse,
-          );
-          expect(
-            scheduleLast
-                .occursOn(const CivilDay(year: 2028, month: 2, day: 29)),
-            isTrue,
-          );
+        expect(
+          scheduleLast.occursOn(const CivilDay(year: 2026, month: 1, day: 31)),
+          isTrue,
+        );
+        expect(
+          scheduleLast.occursOn(const CivilDay(year: 2026, month: 2, day: 28)),
+          isTrue,
+        );
+        expect(
+          scheduleLast.occursOn(const CivilDay(year: 2026, month: 2, day: 29)),
+          isFalse,
+        );
+        expect(
+          scheduleLast.occursOn(const CivilDay(year: 2028, month: 2, day: 29)),
+          isTrue,
+        );
 
-          final scheduleMinus28 = MonthlySchedule(
-            startDate: start,
-            interval: 1,
-            dayOfMonth: -28,
-            startRelativeTime: testStart,
-            dueRelativeTime: testDue,
-          );
+        final scheduleMinus28 = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -28,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
-          expect(
-            scheduleMinus28.occursOn(
-              const CivilDay(year: 2026, month: 1, day: 4),
-            ),
-            isTrue,
-          );
-          expect(
-            scheduleMinus28.occursOn(
-              const CivilDay(year: 2026, month: 2, day: 1),
-            ),
-            isTrue,
-          );
-          expect(
-            scheduleLast.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 1, day: 31),
-            ),
-            const CivilDay(year: 2026, month: 2, day: 28),
-          );
-        },
-      );
+        expect(
+          scheduleMinus28.occursOn(
+            const CivilDay(year: 2026, month: 1, day: 4),
+          ),
+          isTrue,
+        );
+        expect(
+          scheduleMinus28.occursOn(
+            const CivilDay(year: 2026, month: 2, day: 1),
+          ),
+          isTrue,
+        );
+        expect(
+          scheduleLast.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 1, day: 31),
+          ),
+          const CivilDay(year: 2026, month: 2, day: 28),
+        );
+      });
 
       test('MonthlySchedule occursOn nthDayOfWeek 5th weekday tests', () {
         const start = CivilDay(year: 2026, month: 1, day: 1);
@@ -588,45 +581,44 @@ void main() {
 
     group('CompletionRelativePolicy Sync Tests', () {
       test(
-        'DailySchedule copyWithTiming updates CompletionRelativePolicy targetTime',
-        () {
-          final schedule = DailySchedule(
-            startDate: const CivilDay(year: 2024, month: 1, day: 1),
-            interval: 5,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-            schedulingPolicy: const CompletionRelativePolicy(
-              interval: Duration(days: 5),
-              targetHour: 9,
-              targetMinute: 0,
-            ),
-          );
+          'DailySchedule copyWithTiming updates CompletionRelativePolicy targetTime',
+          () {
+        final schedule = DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 5,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 5),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
 
-          final updated = schedule.copyWithTiming(
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 11,
-              minute: 30,
-            ),
-          ) as DailySchedule;
+        final updated = schedule.copyWithTiming(
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 30,
+          ),
+        ) as DailySchedule;
 
-          expect(updated.startRelativeTime.hour, 11);
-          expect(updated.startRelativeTime.minute, 30);
-          expect(updated.schedulingPolicy, isA<CompletionRelativePolicy>());
-          final policy = updated.schedulingPolicy as CompletionRelativePolicy;
-          expect(policy.targetHour, 11);
-          expect(policy.targetMinute, 30);
-          expect(policy.interval, const Duration(days: 5));
-        },
-      );
+        expect(updated.startRelativeTime.hour, 11);
+        expect(updated.startRelativeTime.minute, 30);
+        expect(updated.schedulingPolicy, isA<CompletionRelativePolicy>());
+        final policy = updated.schedulingPolicy as CompletionRelativePolicy;
+        expect(policy.targetHour, 11);
+        expect(policy.targetMinute, 30);
+        expect(policy.interval, const Duration(days: 5));
+      });
     });
 
     group('hasSameRecurrence Tests across all TaskScheduleRule subclasses', () {
@@ -729,82 +721,81 @@ void main() {
       );
 
       test(
-        'MonthlySchedule hasSameRecurrence compares recurrence rules accurately',
-        () {
-          final sDay15A = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfMonth: 15,
-          );
-          final sDay15B = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 4, day: 15),
-            interval: 1,
-            dayOfMonth: 15,
-          );
-          final sDay16 = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfMonth: 16,
-          );
-          final sDay15Interval2 = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 2,
-            dayOfMonth: 15,
-          );
-          final sLastDayA = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfMonth: -1,
-          );
-          final sLastDayB = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 7, day: 1),
-            interval: 1,
-            dayOfMonth: -1,
-          );
-          final s2ndTuesdayA = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfWeek: 2,
-            occurrence: 2,
-          );
-          final s2ndTuesdayB = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 1),
-            interval: 1,
-            dayOfWeek: 2,
-            occurrence: 2,
-          );
-          final s3rdTuesday = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfWeek: 2,
-            occurrence: 3,
-          );
-          final s2ndWednesday = MonthlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            dayOfWeek: 3,
-            occurrence: 2,
-          );
+          'MonthlySchedule hasSameRecurrence compares recurrence rules accurately',
+          () {
+        final sDay15A = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 15,
+        );
+        final sDay15B = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 4, day: 15),
+          interval: 1,
+          dayOfMonth: 15,
+        );
+        final sDay16 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 16,
+        );
+        final sDay15Interval2 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 2,
+          dayOfMonth: 15,
+        );
+        final sLastDayA = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: -1,
+        );
+        final sLastDayB = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 7, day: 1),
+          interval: 1,
+          dayOfMonth: -1,
+        );
+        final s2ndTuesdayA = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 2,
+        );
+        final s2ndTuesdayB = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 2,
+        );
+        final s3rdTuesday = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 3,
+        );
+        final s2ndWednesday = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 3,
+          occurrence: 2,
+        );
 
-          expect(sDay15A.hasSameRecurrence(sDay15B), isTrue);
-          expect(sDay15A.hasSameRecurrence(sDay16), isFalse);
-          expect(sDay15A.hasSameRecurrence(sDay15Interval2), isFalse);
-          expect(sLastDayA.hasSameRecurrence(sLastDayB), isTrue);
-          expect(sLastDayA.hasSameRecurrence(sDay15A), isFalse);
-          expect(s2ndTuesdayA.hasSameRecurrence(s2ndTuesdayB), isTrue);
-          expect(s2ndTuesdayA.hasSameRecurrence(s3rdTuesday), isFalse);
-          expect(s2ndTuesdayA.hasSameRecurrence(s2ndWednesday), isFalse);
-          expect(s2ndTuesdayA.hasSameRecurrence(sDay15A), isFalse);
+        expect(sDay15A.hasSameRecurrence(sDay15B), isTrue);
+        expect(sDay15A.hasSameRecurrence(sDay16), isFalse);
+        expect(sDay15A.hasSameRecurrence(sDay15Interval2), isFalse);
+        expect(sLastDayA.hasSameRecurrence(sLastDayB), isTrue);
+        expect(sLastDayA.hasSameRecurrence(sDay15A), isFalse);
+        expect(s2ndTuesdayA.hasSameRecurrence(s2ndTuesdayB), isTrue);
+        expect(s2ndTuesdayA.hasSameRecurrence(s3rdTuesday), isFalse);
+        expect(s2ndTuesdayA.hasSameRecurrence(s2ndWednesday), isFalse);
+        expect(s2ndTuesdayA.hasSameRecurrence(sDay15A), isFalse);
 
-          final sDifferentType = YearlySchedule(
-            startDate: const CivilDay(year: 2026, month: 1, day: 1),
-            interval: 1,
-            month: 1,
-            day: 15,
-          );
-          expect(sDay15A.hasSameRecurrence(sDifferentType), isFalse);
-        },
-      );
+        final sDifferentType = YearlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          month: 1,
+          day: 15,
+        );
+        expect(sDay15A.hasSameRecurrence(sDifferentType), isFalse);
+      });
 
       test(
         'YearlySchedule hasSameRecurrence compares interval, month, and day',
@@ -856,87 +847,84 @@ void main() {
 
     group('Mathematical nextOccurrenceAfter edge case and boundary tests', () {
       test(
-        'WeeklySchedule nextOccurrenceAfter jumps across multi-week gaps directly',
-        () {
-          const start = CivilDay(year: 2026, month: 6, day: 2);
-          final schedule = WeeklySchedule(
-            startDate: start,
-            interval: 4,
-            daysOfWeek: const {2, 4},
-          );
+          'WeeklySchedule nextOccurrenceAfter jumps across multi-week gaps directly',
+          () {
+        const start = CivilDay(year: 2026, month: 6, day: 2);
+        final schedule = WeeklySchedule(
+          startDate: start,
+          interval: 4,
+          daysOfWeek: const {2, 4},
+        );
 
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 6, day: 2),
-            ),
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 6, day: 2),
+          ),
+          const CivilDay(year: 2026, month: 6, day: 4),
+        );
+        expect(
+          schedule.nextOccurrenceAfter(
             const CivilDay(year: 2026, month: 6, day: 4),
-          );
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 6, day: 4),
-            ),
-            const CivilDay(year: 2026, month: 6, day: 30),
-          );
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 6, day: 15),
-            ),
-            const CivilDay(year: 2026, month: 6, day: 30),
-          );
-        },
-      );
+          ),
+          const CivilDay(year: 2026, month: 6, day: 30),
+        );
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 6, day: 15),
+          ),
+          const CivilDay(year: 2026, month: 6, day: 30),
+        );
+      });
 
       test(
-        'MonthlySchedule nextOccurrenceAfter handles nth weekday and year wrap accurately',
-        () {
-          const start = CivilDay(year: 2026, month: 11, day: 1);
-          final schedule = MonthlySchedule(
-            startDate: start,
-            interval: 1,
-            dayOfWeek: 1,
-            occurrence: 1,
-          );
+          'MonthlySchedule nextOccurrenceAfter handles nth weekday and year wrap accurately',
+          () {
+        const start = CivilDay(year: 2026, month: 11, day: 1);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfWeek: 1,
+          occurrence: 1,
+        );
 
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 10, day: 31),
-            ),
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 10, day: 31),
+          ),
+          const CivilDay(year: 2026, month: 11, day: 2),
+        );
+        expect(
+          schedule.nextOccurrenceAfter(
             const CivilDay(year: 2026, month: 11, day: 2),
-          );
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 11, day: 2),
-            ),
+          ),
+          const CivilDay(year: 2026, month: 12, day: 7),
+        );
+        expect(
+          schedule.nextOccurrenceAfter(
             const CivilDay(year: 2026, month: 12, day: 7),
-          );
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2026, month: 12, day: 7),
-            ),
-            const CivilDay(year: 2027, month: 1, day: 4),
-          );
-        },
-      );
+          ),
+          const CivilDay(year: 2027, month: 1, day: 4),
+        );
+      });
 
       test(
-        'YearlySchedule nextOccurrenceAfter handles leap day correctly across century non-leap years',
-        () {
-          const start = CivilDay(year: 2096, month: 2, day: 29);
-          final schedule = YearlySchedule(
-            startDate: start,
-            interval: 1,
-            month: 2,
-            day: 29,
-          );
+          'YearlySchedule nextOccurrenceAfter handles leap day correctly across century non-leap years',
+          () {
+        const start = CivilDay(year: 2096, month: 2, day: 29);
+        final schedule = YearlySchedule(
+          startDate: start,
+          interval: 1,
+          month: 2,
+          day: 29,
+        );
 
-          expect(
-            schedule.nextOccurrenceAfter(
-              const CivilDay(year: 2096, month: 2, day: 29),
-            ),
-            const CivilDay(year: 2104, month: 2, day: 29),
-          );
-        },
-      );
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2096, month: 2, day: 29),
+          ),
+          const CivilDay(year: 2104, month: 2, day: 29),
+        );
+      });
     });
 
     group('Zero and Negative Interval Handling (Issue #623)', () {
@@ -1057,6 +1045,138 @@ void main() {
           });
           expect(jsonSchedule.interval, equals(1));
           expect(jsonSchedule.occursOn(start), isTrue);
+        },
+      );
+    });
+
+    group('Polymorphic futureInstancesCount, interval, and JSON helpers', () {
+      const start = CivilDay(year: 2026, month: 9, day: 15);
+      const customNotif = RelativeTime(dayOffset: 0, hour: 8, minute: 30);
+      const customPolicy = CompletionRelativePolicy(
+        interval: Duration(days: 3),
+        targetHour: 9,
+        targetMinute: 0,
+      );
+      const customMissed = MissedOccurrencePolicy.autoDismiss(
+        gracePeriod: Duration(hours: 6),
+      );
+
+      test(
+        'futureInstancesCount and interval getters return expected values',
+        () {
+          final List<TaskScheduleRule> rules = [
+            OneOffSchedule(date: start),
+            DailySchedule(startDate: start, interval: 4),
+            WeeklySchedule(
+              startDate: start,
+              interval: 2,
+              daysOfWeek: const {1},
+            ),
+            MonthlySchedule(startDate: start, interval: 3, dayOfMonth: 15),
+            YearlySchedule(startDate: start, interval: 5, month: 9, day: 15),
+          ];
+
+          expect(rules[0].futureInstancesCount, equals(1));
+          expect(rules[0].interval, isNull);
+
+          expect(rules[1].futureInstancesCount, equals(10));
+          expect(rules[1].interval, equals(4));
+
+          expect(rules[2].futureInstancesCount, equals(5));
+          expect(rules[2].interval, equals(2));
+
+          expect(rules[3].futureInstancesCount, equals(3));
+          expect(rules[3].interval, equals(3));
+
+          expect(rules[4].futureInstancesCount, equals(2));
+          expect(rules[4].interval, equals(5));
+        },
+      );
+
+      test(
+        'full JSON round-tripping and copyWithTiming across all 5 rule types',
+        () {
+          final List<TaskScheduleRule> rules = [
+            OneOffSchedule(
+              id: 'R-oneoff',
+              scheduleId: 'S-1',
+              date: start,
+              startRelativeTime: defaultStart,
+              dueRelativeTime: defaultDue,
+              notificationRelativeTimes: const [customNotif],
+              schedulingPolicy: customPolicy,
+              missedOccurrencePolicy: customMissed,
+            ),
+            DailySchedule(
+              id: 'R-daily',
+              scheduleId: 'S-1',
+              startDate: start,
+              interval: 2,
+              startRelativeTime: defaultStart,
+              dueRelativeTime: defaultDue,
+              notificationRelativeTimes: const [customNotif],
+              schedulingPolicy: customPolicy,
+              missedOccurrencePolicy: customMissed,
+            ),
+            WeeklySchedule(
+              id: 'R-weekly',
+              scheduleId: 'S-1',
+              startDate: start,
+              interval: 3,
+              daysOfWeek: const {2, 4},
+              startRelativeTime: defaultStart,
+              dueRelativeTime: defaultDue,
+              notificationRelativeTimes: const [customNotif],
+              schedulingPolicy: customPolicy,
+              missedOccurrencePolicy: customMissed,
+            ),
+            MonthlySchedule(
+              id: 'R-monthly',
+              scheduleId: 'S-1',
+              startDate: start,
+              interval: 2,
+              dayOfWeek: 2,
+              occurrence: 3,
+              startRelativeTime: defaultStart,
+              dueRelativeTime: defaultDue,
+              notificationRelativeTimes: const [customNotif],
+              schedulingPolicy: customPolicy,
+              missedOccurrencePolicy: customMissed,
+            ),
+            YearlySchedule(
+              id: 'R-yearly',
+              scheduleId: 'S-1',
+              startDate: start,
+              interval: 1,
+              month: 9,
+              day: 15,
+              startRelativeTime: defaultStart,
+              dueRelativeTime: defaultDue,
+              notificationRelativeTimes: const [customNotif],
+              schedulingPolicy: customPolicy,
+              missedOccurrencePolicy: customMissed,
+            ),
+          ];
+
+          const updatedStart = RelativeTime(dayOffset: 0, hour: 14, minute: 45);
+          for (final rule in rules) {
+            final json = rule.toJson();
+            final roundTripped = TaskScheduleRule.fromJson(json);
+            expect(roundTripped.toJson(), equals(json));
+            expect(
+              roundTripped.futureInstancesCount,
+              equals(rule.futureInstancesCount),
+            );
+            expect(roundTripped.interval, equals(rule.interval));
+
+            final retimed = rule.copyWithTiming(
+              startRelativeTime: updatedStart,
+            );
+            expect(retimed.startRelativeTime, equals(updatedStart));
+            final policy = retimed.schedulingPolicy as CompletionRelativePolicy;
+            expect(policy.targetHour, equals(14));
+            expect(policy.targetMinute, equals(45));
+          }
         },
       );
     });

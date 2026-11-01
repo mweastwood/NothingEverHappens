@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
+
 import 'civil_day.dart';
 import 'date_time_parser.dart';
 import 'task_priority.dart';
@@ -119,18 +120,7 @@ class TaskSchedule {
     }
     int maxCount = 1;
     for (final schedule in schedules) {
-      int count = 1;
-      if (schedule is DailySchedule) {
-        count = 10;
-      } else if (schedule is WeeklySchedule) {
-        count = 5;
-      } else if (schedule is MonthlySchedule) {
-        count = 3;
-      } else if (schedule is YearlySchedule) {
-        count = 2;
-      } else if (schedule is OneOffSchedule) {
-        count = 1;
-      }
+      final count = schedule.futureInstancesCount;
       if (count > maxCount) {
         maxCount = count;
       }
@@ -187,7 +177,8 @@ class TaskSchedule {
     return schedules.map((s) {
       final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
       final mPolicy = missedOccurrencePolicy ??
-          (missedPolicy != null
+          (missedPolicy != null &&
+                  s.missedOccurrencePolicy.policy != missedPolicy
               ? (missedPolicy == MissedPolicy.autoDismiss
                   ? const MissedOccurrencePolicy.autoDismiss(
                       gracePeriod: Duration(days: 1),
@@ -252,9 +243,8 @@ class TaskSchedule {
     );
     final cycleId = data['cycleId'] as String?;
     final preferredByRaw = data['preferredBy'] as Map? ?? {};
-    final preferredBy = Map<String, dynamic>.from(
-      preferredByRaw,
-    ).map((k, v) => MapEntry(k.toString(), v == true));
+    final preferredBy = Map<String, dynamic>.from(preferredByRaw)
+        .map((k, v) => MapEntry(k.toString(), v == true));
     final assignedUserId = data['assignedUserId'] as String?;
     final appLaunchUrl = data['appLaunchUrl'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
@@ -371,33 +361,13 @@ class TaskSchedule {
     final resolvedSkip = newSkipIfNoCapacity ?? skipIfNoCapacity;
     final resolvedFamilyCompletionMode =
         newFamilyCompletionMode ?? familyCompletionMode;
-    final resolvedSchedules = newSchedules.map((s) {
-      final sPolicy = newSchedulingPolicy ?? s.schedulingPolicy;
-      MissedOccurrencePolicy mPolicy;
-      if (newMissedOccurrencePolicy != null) {
-        mPolicy = newMissedOccurrencePolicy;
-      } else {
-        final resolvedNewPolicy = newMissedPolicy;
-        final legacyMatchesNew =
-            s.missedOccurrencePolicy.policy == resolvedNewPolicy;
-
-        if (legacyMatchesNew) {
-          mPolicy = s.missedOccurrencePolicy;
-        } else {
-          mPolicy = newMissedPolicy == MissedPolicy.autoDismiss
-              ? const MissedOccurrencePolicy.autoDismiss(
-                  gracePeriod: Duration(days: 1),
-                )
-              : MissedOccurrencePolicy(policy: newMissedPolicy);
-        }
-      }
-      return s.copyWithTiming(
-        id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
-        scheduleId: id,
-        schedulingPolicy: sPolicy,
-        missedOccurrencePolicy: mPolicy,
-      );
-    }).toList();
+    final resolvedSchedules = _normalizeSchedules(
+      newSchedules,
+      id,
+      schedulingPolicy: newSchedulingPolicy,
+      missedOccurrencePolicy: newMissedOccurrencePolicy,
+      missedPolicy: newMissedPolicy,
+    );
 
     final trimmedTitle = newTitle.trim();
     final trimmedDescription = newDescription.trim();

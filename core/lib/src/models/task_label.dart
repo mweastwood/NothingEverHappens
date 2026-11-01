@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import 'date_time_parser.dart';
+
 enum TaskLabelScope {
   personal,
   family;
@@ -68,18 +70,8 @@ class TaskLabel {
   }
 
   factory TaskLabel.fromMap(Map<String, dynamic> data, {String? id}) {
-    DateTime parseDate(dynamic val) {
-      if (val is DateTime) return val;
-      if (val is String)
-        return DateTime.tryParse(val) ?? DateTime.now().toUtc();
-      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
-      if (val != null) {
-        try {
-          return (val as dynamic).toDate() as DateTime;
-        } catch (_) {}
-      }
-      return DateTime.now().toUtc();
-    }
+    DateTime parseDate(dynamic val) =>
+        parseFlexibleDateTime(val) ?? DateTime.now().toUtc();
 
     return TaskLabel(
       id: id ?? (data['id'] as String? ?? ''),
@@ -110,10 +102,7 @@ class TaskLabel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      ...toMap(),
-    };
+    return {'id': id, ...toMap()};
   }
 
   Map<String, dynamic> toFirestore() => toMap();

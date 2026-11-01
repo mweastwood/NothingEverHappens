@@ -2,6 +2,7 @@ library core;
 
 // Models
 export 'src/models/civil_day.dart';
+export 'src/models/date_time_parser.dart';
 export 'src/models/relative_time.dart';
 export 'src/models/task_priority.dart';
 export 'src/models/task_status.dart';

@@ -9,6 +9,9 @@ class OneOffSchedule extends TaskScheduleRule {
   /// The specific date the task occurs.
   CivilDay date;
 
+  @override
+  int get futureInstancesCount => 1;
+
   OneOffSchedule({
     String? id,
     String? scheduleId,
@@ -27,45 +30,17 @@ class OneOffSchedule extends TaskScheduleRule {
   CivilDay get scheduledDate => date;
 
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
-    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
-    final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map?;
-    final dueJson = json['dueRelativeTime'] as Map?;
-    final start = startJson != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
-        : const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
-        : const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          );
-
-    final notifs = parseNotificationRelativeTimes(json);
-
-    final schedulingPolicy = json['schedulingPolicy'] != null
-        ? SchedulingPolicy.fromJson(
-            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
-          )
-        : const FixedCalendarPolicy();
-
-    final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
-        ? MissedOccurrencePolicy.fromJson(
-            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
-          )
-        : const MissedOccurrencePolicy.stack();
+    final base = TaskScheduleRule.parseBaseJson(json);
 
     return OneOffSchedule(
-      id: id,
-      scheduleId: scheduleId,
+      id: base.id,
+      scheduleId: base.scheduleId,
       date: CivilDay.fromJson(Map<String, dynamic>.from(json['date'] as Map)),
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTimes: notifs,
-      schedulingPolicy: schedulingPolicy,
-      missedOccurrencePolicy: missedOccurrencePolicy,
+      startRelativeTime: base.startRelativeTime,
+      dueRelativeTime: base.dueRelativeTime,
+      notificationRelativeTimes: base.notificationRelativeTimes,
+      schedulingPolicy: base.schedulingPolicy,
+      missedOccurrencePolicy: base.missedOccurrencePolicy,
     );
   }
 
@@ -114,7 +89,11 @@ class OneOffSchedule extends TaskScheduleRule {
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
+      schedulingPolicy: TaskScheduleRule.resolveUpdatedSchedulingPolicy(
+        schedulingPolicy,
+        this.schedulingPolicy,
+        startRelativeTime,
+      ),
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
@@ -127,19 +106,6 @@ class OneOffSchedule extends TaskScheduleRule {
   }
 
   @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'scheduleId': scheduleId,
-      'type': 'oneOff',
-      'date': date.toJson(),
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      'schedulingPolicy': schedulingPolicy.toJson(),
-      'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTimes.isNotEmpty)
-        'notificationRelativeTimes':
-            notificationRelativeTimes.map((t) => t.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() =>
+      baseToJson('oneOff', {'date': date.toJson()});
 }

@@ -69,8 +69,9 @@ TaskScheduleRule convertRuleToKind(
 
   if (kind != HierarchicalRecurrenceKind.oneOff) {
     final currentNow = now ?? CoreClock.now;
-    final tomorrow =
-        CivilDay.fromDateTime(currentNow.add(const Duration(days: 1)));
+    final tomorrow = CivilDay.fromDateTime(
+      currentNow.add(const Duration(days: 1)),
+    );
     if (existingRule is OneOffSchedule &&
         scheduledDate == tomorrow &&
         startRelativeTime.dayOffset == -1) {
@@ -93,17 +94,7 @@ TaskScheduleRule convertRuleToKind(
   }
 
   // Read existing interval if possible, default to 1
-  int interval = 1;
-  final self = existingRule;
-  if (self is DailySchedule) {
-    interval = self.interval;
-  } else if (self is WeeklySchedule) {
-    interval = self.interval;
-  } else if (self is MonthlySchedule) {
-    interval = self.interval;
-  } else if (self is YearlySchedule) {
-    interval = self.interval;
-  }
+  final interval = existingRule.interval ?? 1;
 
   switch (kind) {
     case HierarchicalRecurrenceKind.oneOff:
