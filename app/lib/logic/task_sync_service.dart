@@ -591,34 +591,14 @@ class TaskSyncService {
               if (task != null) {
                 canClearDirty = await _pushTaskToRemote(task);
               } else {
-                // Deleted locally, remove from remote:
-                // 1. Delete from personal user collection first
-                await _firestore
-                    .collection(FirestorePaths.users)
-                    .doc(_userId)
-                    .collection(FirestorePaths.tasks)
-                    .doc(taskId)
-                    .delete();
-                // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
-                if (familyId != null && familyId.isNotEmpty) {
-                  try {
-                    await _firestore
-                        .collection(FirestorePaths.families)
-                        .doc(familyId)
-                        .collection(FirestorePaths.tasks)
-                        .doc(taskId)
-                        .delete();
-                  } catch (e) {
-                    if (e is! FirebaseException ||
-                        e.code != 'permission-denied') {
-                      rethrow;
-                    }
-                  }
-                }
-                if (_localDataSource.getTasks().any((t) => t.id == taskId)) {
-                  canClearDirty = false;
-                  _hasQueuedSync = true;
-                }
+                canClearDirty = await _deleteEntityFromRemote(
+                  id: taskId,
+                  collectionName: FirestorePaths.tasks,
+                  familyId: familyId,
+                  requireParentForFamilyDelete: false,
+                  existsLocally: () =>
+                      _localDataSource.getTasks().any((t) => t.id == taskId),
+                );
               }
             } else if (taskId.startsWith('I-') ||
                 !taskId.startsWith('S-') && !taskId.startsWith('R-')) {
@@ -626,39 +606,15 @@ class TaskSyncService {
               if (inst != null) {
                 canClearDirty = await _pushInstanceToRemote(inst);
               } else {
-                // Deleted locally, remove from remote:
-                // 1. Delete from personal user collection first
-                await _firestore
-                    .collection(FirestorePaths.users)
-                    .doc(_userId)
-                    .collection(FirestorePaths.instances)
-                    .doc(taskId)
-                    .delete();
-                // 2. Only parents can delete from family instances
-                if (familyId != null && familyId.isNotEmpty) {
-                  final isParent = await _isFamilyParent();
-                  if (isParent) {
-                    try {
-                      await _firestore
-                          .collection(FirestorePaths.families)
-                          .doc(familyId)
-                          .collection(FirestorePaths.instances)
-                          .doc(taskId)
-                          .delete();
-                    } catch (e) {
-                      if (e is! FirebaseException ||
-                          e.code != 'permission-denied') {
-                        rethrow;
-                      }
-                    }
-                  }
-                }
-                if (_localDataSource.getInstances().any(
-                  (i) => i.id == taskId,
-                )) {
-                  canClearDirty = false;
-                  _hasQueuedSync = true;
-                }
+                canClearDirty = await _deleteEntityFromRemote(
+                  id: taskId,
+                  collectionName: FirestorePaths.instances,
+                  familyId: familyId,
+                  requireParentForFamilyDelete: true,
+                  existsLocally: () => _localDataSource.getInstances().any(
+                    (i) => i.id == taskId,
+                  ),
+                );
               }
             } else if (taskId.startsWith('R-') ||
                 recipesMap.containsKey(taskId)) {
@@ -666,34 +622,14 @@ class TaskSyncService {
               if (recipe != null) {
                 canClearDirty = await _pushRecipeToRemote(recipe);
               } else {
-                // Deleted locally, remove from remote:
-                // 1. Delete from personal user collection first
-                await _firestore
-                    .collection(FirestorePaths.users)
-                    .doc(_userId)
-                    .collection(FirestorePaths.recipes)
-                    .doc(taskId)
-                    .delete();
-                // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
-                if (familyId != null && familyId.isNotEmpty) {
-                  try {
-                    await _firestore
-                        .collection(FirestorePaths.families)
-                        .doc(familyId)
-                        .collection(FirestorePaths.recipes)
-                        .doc(taskId)
-                        .delete();
-                  } catch (e) {
-                    if (e is! FirebaseException ||
-                        e.code != 'permission-denied') {
-                      rethrow;
-                    }
-                  }
-                }
-                if (_localDataSource.getRecipes().any((r) => r.id == taskId)) {
-                  canClearDirty = false;
-                  _hasQueuedSync = true;
-                }
+                canClearDirty = await _deleteEntityFromRemote(
+                  id: taskId,
+                  collectionName: FirestorePaths.recipes,
+                  familyId: familyId,
+                  requireParentForFamilyDelete: false,
+                  existsLocally: () =>
+                      _localDataSource.getRecipes().any((r) => r.id == taskId),
+                );
               }
             }
             if (_isDisposed) break;
@@ -730,145 +666,216 @@ class TaskSyncService {
     }
   }
 
+  Future<bool> _deleteEntityFromRemote({
+    required String id,
+    required String collectionName,
+    required String? familyId,
+    required bool requireParentForFamilyDelete,
+    required bool Function() existsLocally,
+  }) async {
+    // 1. Delete from personal user collection first
+    await _firestore
+        .collection(FirestorePaths.users)
+        .doc(_userId)
+        .collection(collectionName)
+        .doc(id)
+        .delete();
+    // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
+    if (familyId != null && familyId.isNotEmpty) {
+      final canDeleteFamily =
+          !requireParentForFamilyDelete || await _isFamilyParent();
+      if (canDeleteFamily) {
+        try {
+          await _firestore
+              .collection(FirestorePaths.families)
+              .doc(familyId)
+              .collection(collectionName)
+              .doc(id)
+              .delete();
+        } catch (e) {
+          if (e is! FirebaseException || e.code != 'permission-denied') {
+            rethrow;
+          }
+        }
+      }
+    }
+    if (existsLocally()) {
+      _hasQueuedSync = true;
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _reconcilePermissionDeniedEntity(String entityId) async {
     final familyId = await _getFamilyId();
     if (entityId.startsWith('S-')) {
-      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
-      try {
-        if (familyId != null && familyId.isNotEmpty) {
-          final famDoc = await _firestore
-              .collection(FirestorePaths.families)
-              .doc(familyId)
-              .collection(FirestorePaths.tasks)
-              .doc(entityId)
-              .get();
-          if (famDoc.exists && famDoc.data() != null) {
-            remoteDoc = famDoc;
-          }
-        }
-        if (remoteDoc == null) {
-          final userDoc = await _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.tasks)
-              .doc(entityId)
-              .get();
-          if (userDoc.exists && userDoc.data() != null) {
-            remoteDoc = userDoc;
-          }
-        }
-      } catch (_) {}
-
-      if (remoteDoc != null && remoteDoc.data() != null) {
-        final remoteTask = TaskSchedule.fromFirestore(
-          remoteDoc,
-        ).copyWith(hasPendingWrites: false, isFromCache: false);
-        await _localDataSource.saveTask(remoteTask);
-        return;
-      }
-
-      final localTask = _localDataSource
-          .getTasks()
-          .where((t) => t.id == entityId)
-          .firstOrNull;
-      if (localTask != null && localTask.hasPendingWrites) {
-        await _localDataSource.saveTask(
-          localTask.copyWith(hasPendingWrites: false),
-        );
-      }
+      await _reconcilePermissionDenied<TaskSchedule>(
+        id: entityId,
+        collectionName: FirestorePaths.tasks,
+        familyId: familyId,
+        getLocal: (id) =>
+            _localDataSource.getTasks().where((t) => t.id == id).firstOrNull,
+        saveLocal: _localDataSource.saveTask,
+        fromFirestore: (doc) => TaskSchedule.fromFirestore(
+          doc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false),
+        clearPendingWrites: (task) => task.hasPendingWrites
+            ? task.copyWith(hasPendingWrites: false)
+            : null,
+      );
     } else if (entityId.startsWith('I-')) {
-      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
-      try {
-        if (familyId != null && familyId.isNotEmpty) {
-          final famDoc = await _firestore
-              .collection(FirestorePaths.families)
-              .doc(familyId)
-              .collection(FirestorePaths.instances)
-              .doc(entityId)
-              .get();
-          if (famDoc.exists && famDoc.data() != null) {
-            remoteDoc = famDoc;
-          }
-        }
-        if (remoteDoc == null) {
-          final userDoc = await _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.instances)
-              .doc(entityId)
-              .get();
-          if (userDoc.exists && userDoc.data() != null) {
-            remoteDoc = userDoc;
-          }
-        }
-      } catch (_) {}
-
-      if (remoteDoc != null && remoteDoc.data() != null) {
-        final remoteInst = TaskInstance.fromFirestore(
-          remoteDoc,
-        ).copyWith(hasPendingWrites: false, isFromCache: false);
-        await _localDataSource.saveInstance(remoteInst);
-        return;
-      }
-
-      final localInst = _localDataSource
-          .getInstances()
-          .where((i) => i.id == entityId)
-          .firstOrNull;
-      if (localInst != null && localInst.hasPendingWrites) {
-        await _localDataSource.saveInstance(
-          localInst.copyWith(hasPendingWrites: false),
-        );
-      }
+      await _reconcilePermissionDenied<TaskInstance>(
+        id: entityId,
+        collectionName: FirestorePaths.instances,
+        familyId: familyId,
+        getLocal: (id) => _localDataSource
+            .getInstances()
+            .where((i) => i.id == id)
+            .firstOrNull,
+        saveLocal: _localDataSource.saveInstance,
+        fromFirestore: (doc) => TaskInstance.fromFirestore(
+          doc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false),
+        clearPendingWrites: (inst) => inst.hasPendingWrites
+            ? inst.copyWith(hasPendingWrites: false)
+            : null,
+      );
     } else if (entityId.startsWith('R-')) {
-      DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
-      try {
-        if (familyId != null && familyId.isNotEmpty) {
-          final famDoc = await _firestore
-              .collection(FirestorePaths.families)
-              .doc(familyId)
-              .collection(FirestorePaths.recipes)
-              .doc(entityId)
-              .get();
-          if (famDoc.exists && famDoc.data() != null) {
-            remoteDoc = famDoc;
-          }
-        }
-        if (remoteDoc == null) {
-          final userDoc = await _firestore
-              .collection(FirestorePaths.users)
-              .doc(_userId)
-              .collection(FirestorePaths.recipes)
-              .doc(entityId)
-              .get();
-          if (userDoc.exists && userDoc.data() != null) {
-            remoteDoc = userDoc;
-          }
-        }
-      } catch (_) {}
+      await _reconcilePermissionDenied<Recipe>(
+        id: entityId,
+        collectionName: FirestorePaths.recipes,
+        familyId: familyId,
+        getLocal: (id) =>
+            _localDataSource.getRecipes().where((r) => r.id == id).firstOrNull,
+        saveLocal: _localDataSource.saveRecipe,
+        fromFirestore: (doc) => Recipe.fromFirestore(
+          doc,
+        ).copyWith(hasPendingWrites: false, isFromCache: false),
+        clearPendingWrites: (recipe) => recipe.hasPendingWrites
+            ? recipe.copyWith(hasPendingWrites: false)
+            : null,
+      );
+    }
+  }
 
-      if (remoteDoc != null && remoteDoc.data() != null) {
-        final remoteRecipe = Recipe.fromFirestore(
-          remoteDoc,
-        ).copyWith(hasPendingWrites: false, isFromCache: false);
-        await _localDataSource.saveRecipe(remoteRecipe);
-        return;
+  Future<void> _reconcilePermissionDenied<T>({
+    required String id,
+    required String collectionName,
+    required String? familyId,
+    required T? Function(String id) getLocal,
+    required Future<void> Function(T entity) saveLocal,
+    required T Function(DocumentSnapshot<Map<String, dynamic>> doc)
+    fromFirestore,
+    required T? Function(T entity) clearPendingWrites,
+  }) async {
+    DocumentSnapshot<Map<String, dynamic>>? remoteDoc;
+    try {
+      if (familyId != null && familyId.isNotEmpty) {
+        final famDoc = await _firestore
+            .collection(FirestorePaths.families)
+            .doc(familyId)
+            .collection(collectionName)
+            .doc(id)
+            .get();
+        if (famDoc.exists && famDoc.data() != null) {
+          remoteDoc = famDoc;
+        }
       }
+      if (remoteDoc == null) {
+        final userDoc = await _firestore
+            .collection(FirestorePaths.users)
+            .doc(_userId)
+            .collection(collectionName)
+            .doc(id)
+            .get();
+        if (userDoc.exists && userDoc.data() != null) {
+          remoteDoc = userDoc;
+        }
+      }
+    } catch (_) {}
 
-      final localRecipe = _localDataSource
-          .getRecipes()
-          .where((r) => r.id == entityId)
-          .firstOrNull;
-      if (localRecipe != null && localRecipe.hasPendingWrites) {
-        await _localDataSource.saveRecipe(
-          localRecipe.copyWith(hasPendingWrites: false),
-        );
+    if (remoteDoc != null && remoteDoc.data() != null) {
+      await saveLocal(fromFirestore(remoteDoc));
+      return;
+    }
+
+    final local = getLocal(id);
+    if (local != null) {
+      final cleared = clearPendingWrites(local);
+      if (cleared != null) {
+        await saveLocal(cleared);
       }
     }
   }
 
-  Future<bool> _pushTaskToRemote(TaskSchedule task) async {
+  Future<bool> _pushEntityToRemote<T>({
+    required String id,
+    required bool isFamily,
+    required DateTime updatedAt,
+    required String collectionName,
+    required String entityLabel,
+    required Map<String, dynamic> data,
+    required bool requireParentForFamilyDelete,
+    required T? Function(String id) getLocal,
+    required DateTime Function(T entity) getUpdatedAt,
+    required T? Function(T entity) clearPendingAndCacheFlags,
+    required Future<void> Function(T entity) saveLocal,
+  }) async {
     final familyId = await _getFamilyId();
+    if (isFamily && familyId != null && familyId.isNotEmpty) {
+      await _firestore
+          .collection(FirestorePaths.families)
+          .doc(familyId)
+          .collection(collectionName)
+          .doc(id)
+          .set(data, SetOptions(merge: true));
+      await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .collection(collectionName)
+          .doc(id)
+          .delete();
+    } else {
+      await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .collection(collectionName)
+          .doc(id)
+          .set(data, SetOptions(merge: true));
+      if (familyId != null && familyId.isNotEmpty) {
+        final canDeleteFamily =
+            !requireParentForFamilyDelete || await _isFamilyParent();
+        if (canDeleteFamily) {
+          try {
+            await _firestore
+                .collection(FirestorePaths.families)
+                .doc(familyId)
+                .collection(collectionName)
+                .doc(id)
+                .delete();
+          } catch (e) {
+            logger?.debug(
+              'sync',
+              'Silent error deleting $entityLabel from family: $e',
+            );
+          }
+        }
+      }
+    }
+
+    final localCurrent = getLocal(id);
+    if (localCurrent == null || getUpdatedAt(localCurrent) != updatedAt) {
+      _hasQueuedSync = true;
+      return false;
+    }
+    final cleaned = clearPendingAndCacheFlags(localCurrent);
+    if (cleaned != null) {
+      await saveLocal(cleaned);
+    }
+    return true;
+  }
+
+  Future<bool> _pushTaskToRemote(TaskSchedule task) async {
     final taskData = <String, dynamic>{
       ...task.toFirestore(),
       'lastSpawnedDate': task.lastSpawnedDate?.toJson(),
@@ -879,61 +886,25 @@ class TaskSyncService {
       'workflowType': task.workflowType,
       'mealWorkflowConfig': task.mealWorkflowConfig?.toJson(),
     };
-    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
-      await _firestore
-          .collection(FirestorePaths.families)
-          .doc(familyId)
-          .collection(FirestorePaths.tasks)
-          .doc(task.id)
-          .set(taskData, SetOptions(merge: true));
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.tasks)
-          .doc(task.id)
-          .delete();
-    } else {
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.tasks)
-          .doc(task.id)
-          .set(taskData, SetOptions(merge: true));
-      if (familyId != null && familyId.isNotEmpty) {
-        final isParent = await _isFamilyParent();
-        if (isParent) {
-          try {
-            await _firestore
-                .collection(FirestorePaths.families)
-                .doc(familyId)
-                .collection(FirestorePaths.tasks)
-                .doc(task.id)
-                .delete();
-          } catch (e) {
-            logger?.debug('sync', 'Silent error deleting task from family: $e');
-          }
-        }
-      }
-    }
-
-    final localCurrent = _localDataSource
-        .getTasks()
-        .where((t) => t.id == task.id)
-        .firstOrNull;
-    if (localCurrent == null || localCurrent.updatedAt != task.updatedAt) {
-      _hasQueuedSync = true;
-      return false;
-    }
-    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
-      await _localDataSource.saveTask(
-        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
-      );
-    }
-    return true;
+    return _pushEntityToRemote<TaskSchedule>(
+      id: task.id,
+      isFamily: task.isFamily,
+      updatedAt: task.updatedAt,
+      collectionName: FirestorePaths.tasks,
+      entityLabel: 'task',
+      data: taskData,
+      requireParentForFamilyDelete: true,
+      getLocal: (id) =>
+          _localDataSource.getTasks().where((t) => t.id == id).firstOrNull,
+      getUpdatedAt: (t) => t.updatedAt,
+      clearPendingAndCacheFlags: (t) => (t.hasPendingWrites || t.isFromCache)
+          ? t.copyWith(hasPendingWrites: false, isFromCache: false)
+          : null,
+      saveLocal: _localDataSource.saveTask,
+    );
   }
 
   Future<bool> _pushInstanceToRemote(TaskInstance inst) async {
-    final familyId = await _getFamilyId();
     final instData = <String, dynamic>{
       ...inst.toFirestore(),
       'notificationRelativeTimes': inst.notificationRelativeTimes
@@ -952,113 +923,41 @@ class TaskSyncService {
       if (inst.integrationBinding != null)
         'integrationBinding': inst.integrationBinding,
     };
-    if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
-      await _firestore
-          .collection(FirestorePaths.families)
-          .doc(familyId)
-          .collection(FirestorePaths.instances)
-          .doc(inst.id)
-          .set(instData, SetOptions(merge: true));
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.instances)
-          .doc(inst.id)
-          .delete();
-    } else {
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.instances)
-          .doc(inst.id)
-          .set(instData, SetOptions(merge: true));
-      if (familyId != null && familyId.isNotEmpty) {
-        final isParent = await _isFamilyParent();
-        if (isParent) {
-          try {
-            await _firestore
-                .collection(FirestorePaths.families)
-                .doc(familyId)
-                .collection(FirestorePaths.instances)
-                .doc(inst.id)
-                .delete();
-          } catch (e) {
-            logger?.debug(
-              'sync',
-              'Silent error deleting instance from family: $e',
-            );
-          }
-        }
-      }
-    }
-
-    final localCurrent = _localDataSource
-        .getInstances()
-        .where((i) => i.id == inst.id)
-        .firstOrNull;
-    if (localCurrent == null || localCurrent.updatedAt != inst.updatedAt) {
-      _hasQueuedSync = true;
-      return false;
-    }
-    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
-      await _localDataSource.saveInstance(
-        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
-      );
-    }
-    return true;
+    return _pushEntityToRemote<TaskInstance>(
+      id: inst.id,
+      isFamily: inst.isFamily,
+      updatedAt: inst.updatedAt,
+      collectionName: FirestorePaths.instances,
+      entityLabel: 'instance',
+      data: instData,
+      requireParentForFamilyDelete: true,
+      getLocal: (id) =>
+          _localDataSource.getInstances().where((i) => i.id == id).firstOrNull,
+      getUpdatedAt: (i) => i.updatedAt,
+      clearPendingAndCacheFlags: (i) => (i.hasPendingWrites || i.isFromCache)
+          ? i.copyWith(hasPendingWrites: false, isFromCache: false)
+          : null,
+      saveLocal: _localDataSource.saveInstance,
+    );
   }
 
   Future<bool> _pushRecipeToRemote(Recipe recipe) async {
-    final familyId = await _getFamilyId();
-    final recipeData = recipe.toFirestore();
-    if (recipe.isFamily && familyId != null && familyId.isNotEmpty) {
-      await _firestore
-          .collection(FirestorePaths.families)
-          .doc(familyId)
-          .collection(FirestorePaths.recipes)
-          .doc(recipe.id)
-          .set(recipeData, SetOptions(merge: true));
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.recipes)
-          .doc(recipe.id)
-          .delete();
-    } else {
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(_userId)
-          .collection(FirestorePaths.recipes)
-          .doc(recipe.id)
-          .set(recipeData, SetOptions(merge: true));
-      if (familyId != null && familyId.isNotEmpty) {
-        try {
-          await _firestore
-              .collection(FirestorePaths.families)
-              .doc(familyId)
-              .collection(FirestorePaths.recipes)
-              .doc(recipe.id)
-              .delete();
-        } catch (e) {
-          logger?.debug('sync', 'Silent error deleting recipe from family: $e');
-        }
-      }
-    }
-
-    final localCurrent = _localDataSource
-        .getRecipes()
-        .where((r) => r.id == recipe.id)
-        .firstOrNull;
-    if (localCurrent == null || localCurrent.updatedAt != recipe.updatedAt) {
-      _hasQueuedSync = true;
-      return false;
-    }
-    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
-      await _localDataSource.saveRecipe(
-        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
-      );
-    }
-    return true;
+    return _pushEntityToRemote<Recipe>(
+      id: recipe.id,
+      isFamily: recipe.isFamily,
+      updatedAt: recipe.updatedAt,
+      collectionName: FirestorePaths.recipes,
+      entityLabel: 'recipe',
+      data: recipe.toFirestore(),
+      requireParentForFamilyDelete: false,
+      getLocal: (id) =>
+          _localDataSource.getRecipes().where((r) => r.id == id).firstOrNull,
+      getUpdatedAt: (r) => r.updatedAt,
+      clearPendingAndCacheFlags: (r) => (r.hasPendingWrites || r.isFromCache)
+          ? r.copyWith(hasPendingWrites: false, isFromCache: false)
+          : null,
+      saveLocal: _localDataSource.saveRecipe,
+    );
   }
 
   Future<void> updateClientMetadata() async {

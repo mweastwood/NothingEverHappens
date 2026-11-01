@@ -37,6 +37,95 @@ class RemoteSnapshotReconciler {
        _pushInstanceToRemote = pushInstanceToRemote,
        _logger = logger;
 
+  bool Function(String id) _createLazyDirtyChecker() {
+    Set<String>? dirtyIds;
+    return (String id) =>
+        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
+  }
+
+  static bool _matchesSnapshotScope(bool? itemIsFamily, bool snapshotIsFamily) {
+    if (itemIsFamily == null) return true;
+    return snapshotIsFamily ? itemIsFamily : !itemIsFamily;
+  }
+
+  static void _clearStaleCacheFlags<T>({
+    required bool isCache,
+    required bool isFamily,
+    required Map<String, T> localMap,
+    required List<T> toSave,
+    required bool Function(String id) isDirty,
+    required Set<String> excludedIds,
+    required String Function(T item) getId,
+    required bool Function(T item) getIsFamily,
+    required bool Function(T item) getIsFromCache,
+    required bool Function(T item) getHasPendingWrites,
+    required T Function(T item) clearCacheFlag,
+  }) {
+    if (isCache || localMap.isEmpty) return;
+    for (final localItem in localMap.values) {
+      final id = getId(localItem);
+      if (_matchesSnapshotScope(getIsFamily(localItem), isFamily) &&
+          getIsFromCache(localItem) &&
+          !getHasPendingWrites(localItem) &&
+          !isDirty(id) &&
+          !excludedIds.contains(id)) {
+        final updated = clearCacheFlag(localItem);
+        toSave.add(updated);
+        localMap[id] = updated;
+      }
+    }
+  }
+
+  Future<void> _applyBatchLocalUpdates<T>({
+    required List<String> toDelete,
+    required List<T> toSave,
+    required Iterable<String> dirtyIdsToClear,
+    required Future<void> Function(List<String> ids) deleteBatch,
+    required Future<void> Function(List<T> items) saveBatch,
+    bool clearDeletedDirtyIds = true,
+  }) async {
+    if (toDelete.isNotEmpty) {
+      await deleteBatch(toDelete);
+      if (clearDeletedDirtyIds) {
+        await _localDataSource.clearDirtyBatch(toDelete);
+      }
+    }
+    if (toSave.isNotEmpty) {
+      await saveBatch(toSave);
+    }
+    if (dirtyIdsToClear.isNotEmpty) {
+      await _localDataSource.clearDirtyBatch(dirtyIdsToClear.toList());
+    }
+  }
+
+  Future<void> _pushLocalWinners<T>({
+    required List<T> toPush,
+    required String Function(T item) getId,
+    required Future<bool> Function(T item) pushToRemote,
+    required String entityLabel,
+  }) async {
+    final pushedIds = <String>{};
+    for (final item in toPush) {
+      final id = getId(item);
+      if (!pushedIds.add(id)) continue;
+      await _localDataSource.markDirty(id);
+      try {
+        final canClearDirty = await pushToRemote(item);
+        if (canClearDirty) {
+          await _localDataSource.clearDirty(id);
+        }
+      } catch (e, st) {
+        // Keep dirty flag so the next sync retries pushing this item.
+        _logger?.error(
+          'sync',
+          'Failed to push $entityLabel $id to remote',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    }
+  }
+
   Future<void> handleRemoteTasksSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
@@ -44,9 +133,7 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localTasks = _localDataSource.getTasks();
     final localMap = {for (final t in localTasks) t.id: t};
-    Set<String>? dirtyIds;
-    bool isDirty(String id) =>
-        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
+    final isDirty = _createLazyDirtyChecker();
 
     final toSave = <TaskSchedule>[];
     final remoteSavedIds = <String>{};
@@ -57,8 +144,7 @@ class RemoteSnapshotReconciler {
       final docId = change.doc.id;
       if (change.type == DocumentChangeType.removed) {
         final localTask = localMap[docId];
-        if (localTask == null ||
-            (isFamily ? localTask.isFamily : !localTask.isFamily)) {
+        if (_matchesSnapshotScope(localTask?.isFamily, isFamily)) {
           toDelete.add(docId);
           localMap.remove(docId);
           toSave.removeWhere((t) => t.id == docId);
@@ -94,51 +180,34 @@ class RemoteSnapshotReconciler {
       }
     }
 
-    final toPushIds = {for (final t in toPush) t.id};
-    if (!isCache && localMap.isNotEmpty) {
-      for (final localTask in localMap.values) {
-        if ((isFamily ? localTask.isFamily : !localTask.isFamily) &&
-            localTask.isFromCache &&
-            !localTask.hasPendingWrites &&
-            !isDirty(localTask.id) &&
-            !toPushIds.contains(localTask.id)) {
-          final updated = localTask.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localTask.id] = updated;
-        }
-      }
-    }
+    _clearStaleCacheFlags<TaskSchedule>(
+      isCache: isCache,
+      isFamily: isFamily,
+      localMap: localMap,
+      toSave: toSave,
+      isDirty: isDirty,
+      excludedIds: {for (final t in toPush) t.id},
+      getId: (t) => t.id,
+      getIsFamily: (t) => t.isFamily,
+      getIsFromCache: (t) => t.isFromCache,
+      getHasPendingWrites: (t) => t.hasPendingWrites,
+      clearCacheFlag: (t) => t.copyWith(isFromCache: false),
+    );
 
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteTasks(toDelete);
-      await _localDataSource.clearDirtyBatch(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveTasks(toSave);
-    }
-    if (remoteSavedIds.isNotEmpty) {
-      await _localDataSource.clearDirtyBatch(remoteSavedIds.toList());
-    }
+    await _applyBatchLocalUpdates<TaskSchedule>(
+      toDelete: toDelete,
+      toSave: toSave,
+      dirtyIdsToClear: remoteSavedIds,
+      deleteBatch: _localDataSource.deleteTasks,
+      saveBatch: _localDataSource.saveTasks,
+    );
 
-    final pushedTaskIds = <String>{};
-    for (final task in toPush) {
-      if (!pushedTaskIds.add(task.id)) continue;
-      await _localDataSource.markDirty(task.id);
-      try {
-        final canClearDirty = await _pushTaskToRemote(task);
-        if (canClearDirty) {
-          await _localDataSource.clearDirty(task.id);
-        }
-      } catch (e, st) {
-        // Keep dirty flag so the next sync retries pushing this task.
-        _logger?.error(
-          'sync',
-          'Failed to push task ${task.id} to remote',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
+    await _pushLocalWinners<TaskSchedule>(
+      toPush: toPush,
+      getId: (t) => t.id,
+      pushToRemote: _pushTaskToRemote,
+      entityLabel: 'task',
+    );
   }
 
   Future<void> handleRemoteInstancesSnapshot(
@@ -148,9 +217,7 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localInsts = _localDataSource.getInstances();
     final localMap = {for (final inst in localInsts) inst.id: inst};
-    Set<String>? dirtyIds;
-    bool isDirty(String id) =>
-        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
+    final isDirty = _createLazyDirtyChecker();
     final localSlotMap = {
       for (final inst in localInsts)
         '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}_${inst.workflowPayload?.stage.name ?? ""}':
@@ -170,8 +237,7 @@ class RemoteSnapshotReconciler {
       final docId = change.doc.id;
       if (change.type == DocumentChangeType.removed) {
         final localInst = localMap[docId];
-        if (localInst == null ||
-            (isFamily ? localInst.isFamily : !localInst.isFamily)) {
+        if (_matchesSnapshotScope(localInst?.isFamily, isFamily)) {
           toDelete.add(docId);
           localMap.remove(docId);
           toSave.removeWhere((i) => i.id == docId);
@@ -272,51 +338,34 @@ class RemoteSnapshotReconciler {
       }
     }
 
-    final toPushIds = {for (final i in toPush) i.id};
-    if (!isCache && localMap.isNotEmpty) {
-      for (final localInst in localMap.values) {
-        if ((isFamily ? localInst.isFamily : !localInst.isFamily) &&
-            localInst.isFromCache &&
-            !localInst.hasPendingWrites &&
-            !isDirty(localInst.id) &&
-            !toPushIds.contains(localInst.id)) {
-          final updated = localInst.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localInst.id] = updated;
-        }
-      }
-    }
+    _clearStaleCacheFlags<TaskInstance>(
+      isCache: isCache,
+      isFamily: isFamily,
+      localMap: localMap,
+      toSave: toSave,
+      isDirty: isDirty,
+      excludedIds: {for (final i in toPush) i.id},
+      getId: (i) => i.id,
+      getIsFamily: (i) => i.isFamily,
+      getIsFromCache: (i) => i.isFromCache,
+      getHasPendingWrites: (i) => i.hasPendingWrites,
+      clearCacheFlag: (i) => i.copyWith(isFromCache: false),
+    );
 
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteInstances(toDelete);
-      await _localDataSource.clearDirtyBatch(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveInstances(toSave);
-    }
-    if (remoteSavedIds.isNotEmpty) {
-      await _localDataSource.clearDirtyBatch(remoteSavedIds.toList());
-    }
+    await _applyBatchLocalUpdates<TaskInstance>(
+      toDelete: toDelete,
+      toSave: toSave,
+      dirtyIdsToClear: remoteSavedIds,
+      deleteBatch: _localDataSource.deleteInstances,
+      saveBatch: _localDataSource.saveInstances,
+    );
 
-    final pushedInstIds = <String>{};
-    for (final inst in toPush) {
-      if (!pushedInstIds.add(inst.id)) continue;
-      await _localDataSource.markDirty(inst.id);
-      try {
-        final canClearDirty = await _pushInstanceToRemote(inst);
-        if (canClearDirty) {
-          await _localDataSource.clearDirty(inst.id);
-        }
-      } catch (e, st) {
-        // Keep dirty flag so the next sync retries pushing this instance.
-        _logger?.error(
-          'sync',
-          'Failed to push instance ${inst.id} to remote',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
+    await _pushLocalWinners<TaskInstance>(
+      toPush: toPush,
+      getId: (i) => i.id,
+      pushToRemote: _pushInstanceToRemote,
+      entityLabel: 'instance',
+    );
     for (final remId in remoteIdsToDelete) {
       if (isFamily) {
         if (familyId != null && familyId.isNotEmpty) {
@@ -355,9 +404,7 @@ class RemoteSnapshotReconciler {
     final isCache = snapshot.metadata.isFromCache;
     final localRecipes = _localDataSource.getRecipes();
     final localMap = {for (final r in localRecipes) r.id: r};
-    Set<String>? dirtyIds;
-    bool isDirty(String id) =>
-        (dirtyIds ??= _localDataSource.getDirtyTaskIds().toSet()).contains(id);
+    final isDirty = _createLazyDirtyChecker();
 
     final toSave = <Recipe>[];
     final toDelete = <String>[];
@@ -372,8 +419,7 @@ class RemoteSnapshotReconciler {
             (localRecipe.hasPendingWrites || isDirty(localRecipe.id))) {
           continue;
         }
-        if (localRecipe == null ||
-            (isFamily ? localRecipe.isFamily : !localRecipe.isFamily)) {
+        if (_matchesSnapshotScope(localRecipe?.isFamily, isFamily)) {
           toDelete.add(docId);
           toClearDirty.add(docId);
           localMap.remove(docId);
@@ -415,29 +461,28 @@ class RemoteSnapshotReconciler {
       }
     }
 
-    if (!isCache) {
-      for (final localRecipe in localMap.values) {
-        if ((isFamily ? localRecipe.isFamily : !localRecipe.isFamily) &&
-            localRecipe.isFromCache &&
-            !localRecipe.hasPendingWrites &&
-            !isDirty(localRecipe.id) &&
-            !toMarkDirty.contains(localRecipe.id)) {
-          final updated = localRecipe.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localRecipe.id] = updated;
-        }
-      }
-    }
+    _clearStaleCacheFlags<Recipe>(
+      isCache: isCache,
+      isFamily: isFamily,
+      localMap: localMap,
+      toSave: toSave,
+      isDirty: isDirty,
+      excludedIds: toMarkDirty,
+      getId: (r) => r.id,
+      getIsFamily: (r) => r.isFamily,
+      getIsFromCache: (r) => r.isFromCache,
+      getHasPendingWrites: (r) => r.hasPendingWrites,
+      clearCacheFlag: (r) => r.copyWith(isFromCache: false),
+    );
 
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteRecipes(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveRecipes(toSave);
-    }
-    if (toClearDirty.isNotEmpty) {
-      await _localDataSource.clearDirtyBatch(toClearDirty);
-    }
+    await _applyBatchLocalUpdates<Recipe>(
+      toDelete: toDelete,
+      toSave: toSave,
+      dirtyIdsToClear: toClearDirty,
+      deleteBatch: _localDataSource.deleteRecipes,
+      saveBatch: _localDataSource.saveRecipes,
+      clearDeletedDirtyIds: false,
+    );
     for (final id in toMarkDirty) {
       await _localDataSource.markDirty(id);
     }

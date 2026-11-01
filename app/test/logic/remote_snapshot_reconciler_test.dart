@@ -737,5 +737,39 @@ void main() {
         expect(localDataSource.getDirtyTaskIds(), contains('R-local-newer'));
       },
     );
+
+    test(
+      'handleRemoteRecipesSnapshot ignores removed document change from wrong scope (personal vs family)',
+      () async {
+        final familyRecipe = Recipe(
+          id: 'R-family-only',
+          title: 'Family Recipe',
+          isFamily: true,
+          updatedAt: DateTime.utc(2026, 9, 16, 12, 0),
+        );
+        await localDataSource.saveRecipe(familyRecipe);
+
+        final personalCol = firestore
+            .collection(FirestorePaths.users)
+            .doc('user-1')
+            .collection(FirestorePaths.recipes);
+        await personalCol.doc('R-family-only').set(familyRecipe.toFirestore());
+        final streamQueue = personalCol.snapshots().take(2).toList();
+        await personalCol.doc('R-family-only').delete();
+        final snapshots = await streamQueue;
+
+        // Pass the removal snapshot from personal collection (isFamily: false)
+        await reconciler.handleRemoteRecipesSnapshot(
+          snapshots.last,
+          isFamily: false,
+        );
+
+        // Local recipe is family-scoped, so personal removal should not delete it
+        expect(
+          localDataSource.getRecipes().map((r) => r.id),
+          contains('R-family-only'),
+        );
+      },
+    );
   });
 }

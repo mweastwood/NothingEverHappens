@@ -14,8 +14,10 @@ import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/family_id_fetcher.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/services.dart';
 
 Future<void> pumpUntil(
@@ -4121,6 +4123,63 @@ void main() {
           remainingDirtyIds,
           unorderedEquals(['S-pers-1', 'I-pers-1', 'R-pers-1']),
         );
+      },
+    );
+
+    test(
+      'sync() reconciles permission-denied on recipe push by reverting to remote family doc',
+      () async {
+        final failingFirestore = _PushFailingFirestore();
+        await failingFirestore.collection('users').doc('user1').set({
+          'familyId': 'fam1',
+        });
+
+        final remoteRecipe = Recipe(
+          id: 'R-perm-denied',
+          title: 'Canonical Remote Family Recipe',
+          isFamily: true,
+          updatedAt: DateTime(2026, 8, 20, 10, 0),
+        );
+        await failingFirestore
+            .collection('families')
+            .doc('fam1')
+            .collection('recipes')
+            .doc('R-perm-denied')
+            .set(remoteRecipe.toFirestore());
+
+        final service = TaskSyncService(
+          firestore: failingFirestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+        await pumpEventQueue();
+
+        final localForbiddenEdit = Recipe(
+          id: 'R-perm-denied',
+          title: 'Forbidden Local Recipe Edit',
+          isFamily: true,
+          hasPendingWrites: true,
+          updatedAt: DateTime(2026, 8, 20, 12, 0),
+        );
+        await localDataSource.saveRecipe(localForbiddenEdit);
+        await localDataSource.markDirty('R-perm-denied');
+
+        failingFirestore.failPush = true;
+        failingFirestore.failCode = 'permission-denied';
+
+        await service.sync();
+
+        expect(
+          localDataSource.getDirtyTaskIds(),
+          isNot(contains('R-perm-denied')),
+        );
+        final reconciled = localDataSource.getRecipes().firstWhere(
+          (r) => r.id == 'R-perm-denied',
+        );
+        expect(reconciled.title, equals('Canonical Remote Family Recipe'));
+        expect(reconciled.hasPendingWrites, isFalse);
       },
     );
   });
