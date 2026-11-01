@@ -46,7 +46,7 @@ dependencies:
   firebase_crashlytics: ^6.0.0
   firebase_remote_config: ^7.0.0
   firebase_auth: ^7.0.0
-  cloud_firestore: ^7.0.0
+  cloud_firestore: ^7.1.0
   google_sign_in: ^7.2.0
   flutter_riverpod: ^3.4.3
   uuid: ^4.6.0
