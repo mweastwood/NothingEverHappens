@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../logic/l10n_extension.dart';
+
 import '../logic/relative_time.dart';
-import 'interval_stepper.dart';
-import 'notification_config_section.dart';
-import 'schedule_timing_section.dart';
+import 'recurring_schedule_scaffold.dart';
 
 class CompletionRelativeSchedulingWidget extends StatefulWidget {
   final int interval;
@@ -47,132 +45,60 @@ class CompletionRelativeSchedulingWidget extends StatefulWidget {
 }
 
 class _CompletionRelativeSchedulingWidgetState
-    extends State<CompletionRelativeSchedulingWidget> {
-  late final ValueNotifier<RelativeTime> _startController;
-  late final ValueNotifier<RelativeTime> _dueController;
-  late final ValueNotifier<RelativeTime> _notificationController;
-
-  bool _ignoreEvents = false;
-
+    extends State<CompletionRelativeSchedulingWidget>
+    with ScheduleTimingControllersMixin {
   @override
   void initState() {
     super.initState();
-    _startController = ValueNotifier(widget.startRelativeTime);
-    _dueController = ValueNotifier(widget.dueRelativeTime);
-    _notificationController = ValueNotifier(
-      widget.notificationRelativeTime ??
-          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+    initTimingControllers(
+      startRelativeTime: widget.startRelativeTime,
+      onStartRelativeTimeChanged: widget.onStartRelativeTimeChanged,
+      dueRelativeTime: widget.dueRelativeTime,
+      onDueRelativeTimeChanged: widget.onDueRelativeTimeChanged,
+      notificationRelativeTime: widget.notificationRelativeTime,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
     );
-
-    _startController.addListener(_onStartChanged);
-    _dueController.addListener(_onDueChanged);
-    _notificationController.addListener(_onNotificationChanged);
-  }
-
-  void _onStartChanged() {
-    if (_ignoreEvents) return;
-    widget.onStartRelativeTimeChanged(_startController.value);
-  }
-
-  void _onDueChanged() {
-    if (_ignoreEvents) return;
-    widget.onDueRelativeTimeChanged(_dueController.value);
-  }
-
-  void _onNotificationChanged() {
-    if (_ignoreEvents) return;
-    if (widget.notificationRelativeTime != null) {
-      widget.onNotificationRelativeTimeChanged(_notificationController.value);
-    }
   }
 
   @override
   void didUpdateWidget(CompletionRelativeSchedulingWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _ignoreEvents = true;
-    try {
-      if (_startController.value != widget.startRelativeTime) {
-        _startController.value = widget.startRelativeTime;
-      }
-      if (_dueController.value != widget.dueRelativeTime) {
-        _dueController.value = widget.dueRelativeTime;
-      }
-      if (widget.notificationRelativeTime != null &&
-          _notificationController.value != widget.notificationRelativeTime) {
-        _notificationController.value = widget.notificationRelativeTime!;
-      }
-    } finally {
-      _ignoreEvents = false;
-    }
+    syncTimingControllers(
+      startRelativeTime: widget.startRelativeTime,
+      onStartRelativeTimeChanged: widget.onStartRelativeTimeChanged,
+      dueRelativeTime: widget.dueRelativeTime,
+      onDueRelativeTimeChanged: widget.onDueRelativeTimeChanged,
+      notificationRelativeTime: widget.notificationRelativeTime,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
+    );
   }
 
   @override
   void dispose() {
-    _startController.removeListener(_onStartChanged);
-    _dueController.removeListener(_onDueChanged);
-    _notificationController.removeListener(_onNotificationChanged);
-    _startController.dispose();
-    _dueController.dispose();
-    _notificationController.dispose();
+    disposeTimingControllers();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = context.l10n;
-    final notificationEnabled = widget.notificationRelativeTime != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        IntervalStepper(
-          key: Key('${widget.keyPrefix}_interval_stepper'),
-          interval: widget.interval,
-          onIntervalChanged: widget.onIntervalChanged,
-          label: l10n.intervalLabel,
-          unitSingular: widget.unitSingular,
-          unitPlural: widget.unitPlural,
-          readOnly: widget.readOnly,
-          intervalController: widget.intervalController,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                widget.helpText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        ScheduleTimingSection(
-          startController: _startController,
-          dueController: _dueController,
-          keyPrefix: widget.keyPrefix,
-        ),
-        NotificationConfigSection(
-          showNotification: widget.showNotification,
-          notificationEnabled: notificationEnabled,
-          readOnly: widget.readOnly,
-          notificationController: _notificationController,
-          onNotificationRelativeTimeChanged:
-              widget.onNotificationRelativeTimeChanged,
-          keyPrefix: widget.keyPrefix,
-        ),
-      ],
+    return RecurringScheduleScaffold(
+      keyPrefix: widget.keyPrefix,
+      interval: widget.interval,
+      onIntervalChanged: widget.onIntervalChanged,
+      unitSingular: widget.unitSingular,
+      unitPlural: widget.unitPlural,
+      helpText: widget.helpText,
+      startController: startController,
+      dueController: dueController,
+      notificationController: notificationController,
+      showNotification: widget.showNotification,
+      notificationEnabled: widget.notificationRelativeTime != null,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
+      readOnly: widget.readOnly,
+      intervalController: widget.intervalController,
     );
   }
 }

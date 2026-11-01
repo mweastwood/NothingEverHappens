@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
-import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
@@ -21,6 +19,16 @@ typedef _ScheduleWidgetBuilder =
       _ScheduleRuleConfigWidgetState state,
       TaskScheduleRule s,
     );
+
+RelativeTime? _clampDueForNewStart(
+  RelativeTime start,
+  RelativeTime currentDue,
+) => start.inMinutes > currentDue.inMinutes ? start : null;
+
+RelativeTime? _clampStartForNewDue(
+  RelativeTime currentStart,
+  RelativeTime due,
+) => due.inMinutes < currentStart.inMinutes ? due : null;
 
 SchedulingPolicy _scaleCompletionRelativeInterval(
   SchedulingPolicy policy,
@@ -148,18 +156,14 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onStartRelativeTimeChanged: (start) => state._emit(
         rule.copyWithTiming(
           startRelativeTime: start,
-          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
-              ? start
-              : null,
+          dueRelativeTime: _clampDueForNewStart(start, rule.dueRelativeTime),
         ),
       ),
       dueRelativeTime: rule.dueRelativeTime,
       onDueRelativeTimeChanged: (due) => state._emit(
         rule.copyWithTiming(
           dueRelativeTime: due,
-          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
-              ? due
-              : null,
+          startRelativeTime: _clampStartForNewDue(rule.startRelativeTime, due),
         ),
       ),
       notificationRelativeTime: null,
@@ -191,18 +195,14 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onStartRelativeTimeChanged: (start) => state._emit(
         rule.copyWithTiming(
           startRelativeTime: start,
-          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
-              ? start
-              : null,
+          dueRelativeTime: _clampDueForNewStart(start, rule.dueRelativeTime),
         ),
       ),
       dueRelativeTime: rule.dueRelativeTime,
       onDueRelativeTimeChanged: (due) => state._emit(
         rule.copyWithTiming(
           dueRelativeTime: due,
-          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
-              ? due
-              : null,
+          startRelativeTime: _clampStartForNewDue(rule.startRelativeTime, due),
         ),
       ),
       notificationRelativeTime: null,
@@ -264,18 +264,14 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onStartRelativeTimeChanged: (start) => state._emit(
         rule.copyWithTiming(
           startRelativeTime: start,
-          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
-              ? start
-              : null,
+          dueRelativeTime: _clampDueForNewStart(start, rule.dueRelativeTime),
         ),
       ),
       dueRelativeTime: rule.dueRelativeTime,
       onDueRelativeTimeChanged: (due) => state._emit(
         rule.copyWithTiming(
           dueRelativeTime: due,
-          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
-              ? due
-              : null,
+          startRelativeTime: _clampStartForNewDue(rule.startRelativeTime, due),
         ),
       ),
       notificationRelativeTime: null,
@@ -315,18 +311,14 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
       onStartRelativeTimeChanged: (start) => state._emit(
         rule.copyWithTiming(
           startRelativeTime: start,
-          dueRelativeTime: start.inMinutes > rule.dueRelativeTime.inMinutes
-              ? start
-              : null,
+          dueRelativeTime: _clampDueForNewStart(start, rule.dueRelativeTime),
         ),
       ),
       dueRelativeTime: rule.dueRelativeTime,
       onDueRelativeTimeChanged: (due) => state._emit(
         rule.copyWithTiming(
           dueRelativeTime: due,
-          startRelativeTime: rule.startRelativeTime.inMinutes > due.inMinutes
-              ? due
-              : null,
+          startRelativeTime: _clampStartForNewDue(rule.startRelativeTime, due),
         ),
       ),
       notificationRelativeTime: null,
@@ -342,11 +334,8 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
     );
   },
   OneOffSchedule: (context, state, s) {
-    return OneOffSchedulingWidget(
-      dueDateTime: state._oneOffDueController,
-      notificationTimeController: state._oneOffNotificationController,
-      showNotification: false,
-    );
+    final rule = s as OneOffSchedule;
+    return OneOffScheduleRuleSection(schedule: rule, onChanged: state._emit);
   },
 };
 
@@ -378,11 +367,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
   late TextEditingController _monthlyDayOfMonthController;
   late TextEditingController _yearlyDayController;
 
-  late ValueNotifier<DateTime> _oneOffStartController;
-  late ValueNotifier<DateTime> _oneOffDueController;
-  late ValueNotifier<TimeOfDay?> _oneOffNotificationController;
-  bool _ignoreControllerEvents = false;
-
   String? _lastReportedError;
   bool _hasReportedError = false;
   bool _didInit = false;
@@ -401,26 +385,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     _yearlyDayController = TextEditingController(
       text: _getYearlyDayText(widget.schedule),
     );
-
-    final s = widget.schedule;
-    final initialStart = s is OneOffSchedule
-        ? _relativeToAbsolute(s.date, s.startRelativeTime)
-        : AppClock.now;
-    final initialDue = s is OneOffSchedule
-        ? _relativeToAbsolute(s.date, s.dueRelativeTime)
-        : AppClock.now;
-    final initialNotif =
-        s is OneOffSchedule && s.notificationRelativeTimes.isNotEmpty
-        ? s.notificationRelativeTimes.first.time
-        : null;
-
-    _oneOffStartController = ValueNotifier<DateTime>(initialStart);
-    _oneOffDueController = ValueNotifier<DateTime>(initialDue);
-    _oneOffNotificationController = ValueNotifier<TimeOfDay?>(initialNotif);
-
-    _oneOffStartController.addListener(_onOneOffControllersChanged);
-    _oneOffDueController.addListener(_onOneOffControllersChanged);
-    _oneOffNotificationController.addListener(_onOneOffControllersChanged);
 
     _intervalController.addListener(_validateInputs);
     _monthlyDayOfMonthController.addListener(_validateInputs);
@@ -486,39 +450,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     }
   }
 
-  void _onOneOffControllersChanged() {
-    if (_ignoreControllerEvents) return;
-    final s = widget.schedule;
-    if (s is OneOffSchedule) {
-      final dueAbs = _oneOffDueController.value;
-
-      final newDate = CivilDay.fromDateTime(dueAbs);
-      var startAbs = _relativeToAbsolute(newDate, s.startRelativeTime);
-      if (startAbs.isAfter(dueAbs)) {
-        startAbs = dueAbs;
-      }
-      if (_oneOffStartController.value != startAbs) {
-        _ignoreControllerEvents = true;
-        _oneOffStartController.value = startAbs;
-        _ignoreControllerEvents = false;
-      }
-
-      final newStartRel = _absoluteToRelative(newDate, startAbs);
-      final newDueRel = _absoluteToRelative(newDate, dueAbs);
-
-      widget.onChanged(
-        OneOffSchedule(
-          id: s.id,
-          scheduleId: s.scheduleId,
-          date: newDate,
-          startRelativeTime: newStartRel,
-          dueRelativeTime: newDueRel,
-          notificationRelativeTimes: s.notificationRelativeTimes,
-        ),
-      );
-    }
-  }
-
   String _formatIntervalControllerText(TaskScheduleRule s) {
     final l10n = context.l10n;
     final intervalText = _getIntervalText(s);
@@ -554,12 +485,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     _intervalController.dispose();
     _monthlyDayOfMonthController.dispose();
     _yearlyDayController.dispose();
-    _oneOffStartController.removeListener(_onOneOffControllersChanged);
-    _oneOffDueController.removeListener(_onOneOffControllersChanged);
-    _oneOffNotificationController.removeListener(_onOneOffControllersChanged);
-    _oneOffStartController.dispose();
-    _oneOffDueController.dispose();
-    _oneOffNotificationController.dispose();
     super.dispose();
   }
 
@@ -597,26 +522,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
         }
       });
     }
-    if (widget.schedule is OneOffSchedule) {
-      final s = widget.schedule as OneOffSchedule;
-      final startAbs = _relativeToAbsolute(s.date, s.startRelativeTime);
-      final dueAbs = _relativeToAbsolute(s.date, s.dueRelativeTime);
-      final notifTime = s.notificationRelativeTimes.isNotEmpty
-          ? s.notificationRelativeTimes.first.time
-          : null;
-
-      _ignoreControllerEvents = true;
-      if (_oneOffStartController.value != startAbs) {
-        _oneOffStartController.value = startAbs;
-      }
-      if (_oneOffDueController.value != dueAbs) {
-        _oneOffDueController.value = dueAbs;
-      }
-      if (_oneOffNotificationController.value != notifTime) {
-        _oneOffNotificationController.value = notifTime;
-      }
-      _ignoreControllerEvents = false;
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _validateInputs();
     });
@@ -642,21 +547,6 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
       return s.day.toString();
     }
     return '1';
-  }
-
-  DateTime _relativeToAbsolute(CivilDay occurrenceDate, RelativeTime rel) {
-    return rel.referenceTo(occurrenceDate);
-  }
-
-  RelativeTime _absoluteToRelative(CivilDay occurrenceDate, DateTime abs) {
-    final occUtc = DateTime.utc(
-      occurrenceDate.year,
-      occurrenceDate.month,
-      occurrenceDate.day,
-    );
-    final absUtc = DateTime.utc(abs.year, abs.month, abs.day);
-    final offset = absUtc.difference(occUtc).inDays;
-    return RelativeTime(dayOffset: offset, hour: abs.hour, minute: abs.minute);
   }
 
   @override

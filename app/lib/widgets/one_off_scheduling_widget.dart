@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
-import 'absolute_time_widget.dart';
+
+import '../logic/civil_day.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/relative_time.dart';
+import '../logic/task_schedule_rule.dart';
+import 'absolute_time_widget.dart';
+import 'recurring_schedule_scaffold.dart';
 
 class OneOffSchedulingWidget extends StatefulWidget {
   final ValueNotifier<DateTime> dueDateTime;
@@ -34,26 +39,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
         const SizedBox(height: 8),
         AbsoluteTimeWidget(controller: widget.dueDateTime),
         const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                context.l10n.dueDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
+        ScheduleHelpRow(text: context.l10n.dueDescription),
         if (widget.showNotification &&
             widget.notificationTimeController != null) ...[
           const SizedBox(height: 20),
@@ -165,6 +151,143 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class OneOffScheduleRuleSection extends StatefulWidget {
+  final OneOffSchedule schedule;
+  final ValueChanged<OneOffSchedule> onChanged;
+  final bool showNotification;
+
+  const OneOffScheduleRuleSection({
+    super.key,
+    required this.schedule,
+    required this.onChanged,
+    this.showNotification = false,
+  });
+
+  @override
+  State<OneOffScheduleRuleSection> createState() =>
+      _OneOffScheduleRuleSectionState();
+}
+
+class _OneOffScheduleRuleSectionState extends State<OneOffScheduleRuleSection> {
+  late final ValueNotifier<DateTime> _startController;
+  late final ValueNotifier<DateTime> _dueController;
+  late final ValueNotifier<TimeOfDay?> _notificationController;
+  bool _ignoreControllerEvents = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.schedule;
+    _startController = ValueNotifier<DateTime>(
+      _relativeToAbsolute(s.date, s.startRelativeTime),
+    );
+    _dueController = ValueNotifier<DateTime>(
+      _relativeToAbsolute(s.date, s.dueRelativeTime),
+    );
+    _notificationController = ValueNotifier<TimeOfDay?>(
+      s.notificationRelativeTimes.isNotEmpty
+          ? s.notificationRelativeTimes.first.time
+          : null,
+    );
+
+    _startController.addListener(_onControllersChanged);
+    _dueController.addListener(_onControllersChanged);
+    _notificationController.addListener(_onControllersChanged);
+  }
+
+  void _onControllersChanged() {
+    if (_ignoreControllerEvents) return;
+    final s = widget.schedule;
+    final dueAbs = _dueController.value;
+
+    final newDate = CivilDay.fromDateTime(dueAbs);
+    var startAbs = _relativeToAbsolute(newDate, s.startRelativeTime);
+    if (startAbs.isAfter(dueAbs)) {
+      startAbs = dueAbs;
+    }
+    if (_startController.value != startAbs) {
+      _ignoreControllerEvents = true;
+      _startController.value = startAbs;
+      _ignoreControllerEvents = false;
+    }
+
+    final newStartRel = _absoluteToRelative(newDate, startAbs);
+    final newDueRel = _absoluteToRelative(newDate, dueAbs);
+
+    widget.onChanged(
+      OneOffSchedule(
+        id: s.id,
+        scheduleId: s.scheduleId,
+        date: newDate,
+        startRelativeTime: newStartRel,
+        dueRelativeTime: newDueRel,
+        notificationRelativeTimes: s.notificationRelativeTimes,
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(OneOffScheduleRuleSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final s = widget.schedule;
+    final startAbs = _relativeToAbsolute(s.date, s.startRelativeTime);
+    final dueAbs = _relativeToAbsolute(s.date, s.dueRelativeTime);
+    final notifTime = s.notificationRelativeTimes.isNotEmpty
+        ? s.notificationRelativeTimes.first.time
+        : null;
+
+    _ignoreControllerEvents = true;
+    try {
+      if (_startController.value != startAbs) {
+        _startController.value = startAbs;
+      }
+      if (_dueController.value != dueAbs) {
+        _dueController.value = dueAbs;
+      }
+      if (_notificationController.value != notifTime) {
+        _notificationController.value = notifTime;
+      }
+    } finally {
+      _ignoreControllerEvents = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _startController.removeListener(_onControllersChanged);
+    _dueController.removeListener(_onControllersChanged);
+    _notificationController.removeListener(_onControllersChanged);
+    _startController.dispose();
+    _dueController.dispose();
+    _notificationController.dispose();
+    super.dispose();
+  }
+
+  DateTime _relativeToAbsolute(CivilDay occurrenceDate, RelativeTime rel) {
+    return rel.referenceTo(occurrenceDate);
+  }
+
+  RelativeTime _absoluteToRelative(CivilDay occurrenceDate, DateTime abs) {
+    final occUtc = DateTime.utc(
+      occurrenceDate.year,
+      occurrenceDate.month,
+      occurrenceDate.day,
+    );
+    final absUtc = DateTime.utc(abs.year, abs.month, abs.day);
+    final offset = absUtc.difference(occUtc).inDays;
+    return RelativeTime(dayOffset: offset, hour: abs.hour, minute: abs.minute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OneOffSchedulingWidget(
+      dueDateTime: _dueController,
+      notificationTimeController: _notificationController,
+      showNotification: widget.showNotification,
     );
   }
 }

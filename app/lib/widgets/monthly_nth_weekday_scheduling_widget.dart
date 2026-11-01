@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
-import 'interval_stepper.dart';
-import 'date_stepper.dart';
-import 'missed_occurrence_policy_section.dart';
-import 'notification_config_section.dart';
-import 'schedule_timing_section.dart';
 import 'day_of_week_selector.dart';
+import 'recurring_schedule_scaffold.dart';
 
 class MonthlyNthWeekdaySchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -63,73 +60,39 @@ class MonthlyNthWeekdaySchedulingWidget extends StatefulWidget {
 }
 
 class _MonthlyNthWeekdaySchedulingWidgetState
-    extends State<MonthlyNthWeekdaySchedulingWidget> {
-  late final ValueNotifier<RelativeTime> _startController;
-  late final ValueNotifier<RelativeTime> _dueController;
-  late final ValueNotifier<RelativeTime> _notificationController;
-
-  bool _ignoreEvents = false;
-
+    extends State<MonthlyNthWeekdaySchedulingWidget>
+    with ScheduleTimingControllersMixin {
   @override
   void initState() {
     super.initState();
-    _startController = ValueNotifier(widget.startRelativeTime);
-    _dueController = ValueNotifier(widget.dueRelativeTime);
-    _notificationController = ValueNotifier(
-      widget.notificationRelativeTime ??
-          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+    initTimingControllers(
+      startRelativeTime: widget.startRelativeTime,
+      onStartRelativeTimeChanged: widget.onStartRelativeTimeChanged,
+      dueRelativeTime: widget.dueRelativeTime,
+      onDueRelativeTimeChanged: widget.onDueRelativeTimeChanged,
+      notificationRelativeTime: widget.notificationRelativeTime,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
     );
-
-    _startController.addListener(_onStartChanged);
-    _dueController.addListener(_onDueChanged);
-    _notificationController.addListener(_onNotificationChanged);
-  }
-
-  void _onStartChanged() {
-    if (_ignoreEvents) return;
-    widget.onStartRelativeTimeChanged(_startController.value);
-  }
-
-  void _onDueChanged() {
-    if (_ignoreEvents) return;
-    widget.onDueRelativeTimeChanged(_dueController.value);
-  }
-
-  void _onNotificationChanged() {
-    if (_ignoreEvents) return;
-    if (widget.notificationRelativeTime != null) {
-      widget.onNotificationRelativeTimeChanged(_notificationController.value);
-    }
   }
 
   @override
   void didUpdateWidget(MonthlyNthWeekdaySchedulingWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _ignoreEvents = true;
-    try {
-      if (_startController.value != widget.startRelativeTime) {
-        _startController.value = widget.startRelativeTime;
-      }
-      if (_dueController.value != widget.dueRelativeTime) {
-        _dueController.value = widget.dueRelativeTime;
-      }
-      if (widget.notificationRelativeTime != null &&
-          _notificationController.value != widget.notificationRelativeTime) {
-        _notificationController.value = widget.notificationRelativeTime!;
-      }
-    } finally {
-      _ignoreEvents = false;
-    }
+    syncTimingControllers(
+      startRelativeTime: widget.startRelativeTime,
+      onStartRelativeTimeChanged: widget.onStartRelativeTimeChanged,
+      dueRelativeTime: widget.dueRelativeTime,
+      onDueRelativeTimeChanged: widget.onDueRelativeTimeChanged,
+      notificationRelativeTime: widget.notificationRelativeTime,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
+    );
   }
 
   @override
   void dispose() {
-    _startController.removeListener(_onStartChanged);
-    _dueController.removeListener(_onDueChanged);
-    _notificationController.removeListener(_onNotificationChanged);
-    _startController.dispose();
-    _dueController.dispose();
-    _notificationController.dispose();
+    disposeTimingControllers();
     super.dispose();
   }
 
@@ -137,171 +100,75 @@ class _MonthlyNthWeekdaySchedulingWidgetState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
-    final dt = DateTime(
-      widget.startDate.year,
-      widget.startDate.month,
-      widget.startDate.day,
-    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 1 & 2. Interval and Start Date side-by-side
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: IntervalStepper(
-                key: const Key('monthly_nth_weekday_interval_stepper'),
-                interval: widget.interval,
-                onIntervalChanged: widget.onIntervalChanged,
-                label: l10n.intervalLabel,
-                unitSingular: l10n.presetMonthSingular,
-                unitPlural: l10n.presetMonthPlural,
-                readOnly: widget.readOnly,
-                intervalController: widget.intervalController,
-              ),
+    return RecurringScheduleScaffold(
+      keyPrefix: 'monthly_fixed',
+      headerKeyPrefix: 'monthly_nth_weekday',
+      interval: widget.interval,
+      onIntervalChanged: widget.onIntervalChanged,
+      unitSingular: l10n.presetMonthSingular,
+      unitPlural: l10n.presetMonthPlural,
+      startDate: widget.startDate,
+      onStartDateChanged: widget.onStartDateChanged,
+      helpText: l10n.repeatsEveryMonthHelp(
+        widget.interval,
+        formatCivilDayIso(widget.startDate),
+      ),
+      customSection: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.repeatsOnLabel,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DateStepper(
-                key: const Key('monthly_nth_weekday_date_stepper'),
-                date: dt,
-                onDateChanged: widget.readOnly
-                    ? null
-                    : (picked) {
-                        widget.onStartDateChanged(
-                          CivilDay(
-                            year: picked.year,
-                            month: picked.month,
-                            day: picked.day,
-                          ),
-                        );
-                      },
-                label: l10n.startDateLabel,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Shared help text for the combination
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.repeatsEveryMonthHelp(
-                  widget.interval,
-                  '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
-                ),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // Monthly Recurrence Rule Header
-        Text(
-          l10n.repeatsOnLabel,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
           ),
-        ),
-        const SizedBox(height: 8),
-
-        // Recurrence Rule Options
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _OccurrenceSelector(
-              key: const Key('monthly_occurrence_selector'),
-              selectedOccurrence: widget.occurrence ?? 1,
-              onChanged: (val) {
-                widget.onOccurrenceChanged(val);
-              },
-              readOnly: widget.readOnly,
+          const SizedBox(height: 8),
+          _OccurrenceSelector(
+            key: const Key('monthly_occurrence_selector'),
+            selectedOccurrence: widget.occurrence ?? 1,
+            onChanged: (val) {
+              widget.onOccurrenceChanged(val);
+            },
+            readOnly: widget.readOnly,
+          ),
+          const SizedBox(height: 12),
+          DayOfWeekSelector(
+            key: const Key('monthly_nth_weekday_day_selector'),
+            selectedWeekdays: {widget.dayOfWeek ?? 1},
+            onChanged: (days) {
+              if (days.isNotEmpty) {
+                widget.onDayOfWeekChanged(days.first);
+              }
+            },
+            readOnly: widget.readOnly,
+            multiSelect: false,
+          ),
+          const SizedBox(height: 8),
+          ScheduleHelpRow(
+            text: l10n.repeatsOnNthWeekdayHelp(
+              _getDayOfWeekString(context, widget.dayOfWeek ?? 1),
+              _getOccurrenceString(
+                context,
+                widget.occurrence ?? 1,
+              ).toLowerCase(),
             ),
-            const SizedBox(height: 12),
-            DayOfWeekSelector(
-              key: const Key('monthly_nth_weekday_day_selector'),
-              selectedWeekdays: {widget.dayOfWeek ?? 1},
-              onChanged: (days) {
-                if (days.isNotEmpty) {
-                  widget.onDayOfWeekChanged(days.first);
-                }
-              },
-              readOnly: widget.readOnly,
-              multiSelect: false,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.repeatsOnNthWeekdayHelp(
-                  _getDayOfWeekString(context, widget.dayOfWeek ?? 1),
-                  _getOccurrenceString(
-                    context,
-                    widget.occurrence ?? 1,
-                  ).toLowerCase(),
-                ),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // Start & Due
-        ScheduleTimingSection(
-          keyPrefix: 'monthly_fixed',
-          startController: _startController,
-          dueController: _dueController,
-        ),
-
-        // Notifications
-        NotificationConfigSection(
-          keyPrefix: 'monthly_fixed',
-          showNotification: widget.showNotification,
-          notificationEnabled: widget.notificationRelativeTime != null,
-          onNotificationRelativeTimeChanged:
-              widget.onNotificationRelativeTimeChanged,
-          notificationController: _notificationController,
-          readOnly: widget.readOnly,
-        ),
-
-        // Missed occurrence policy selector
-        MissedOccurrencePolicySection(
-          keyPrefix: 'monthly_fixed',
-          showMissedPolicy: widget.showMissedPolicy,
-          missedOccurrencePolicy: widget.missedOccurrencePolicy,
-          onMissedOccurrencePolicyChanged:
-              widget.onMissedOccurrencePolicyChanged,
-        ),
-      ],
+          ),
+        ],
+      ),
+      startController: startController,
+      dueController: dueController,
+      notificationController: notificationController,
+      showNotification: widget.showNotification,
+      notificationEnabled: widget.notificationRelativeTime != null,
+      onNotificationRelativeTimeChanged:
+          widget.onNotificationRelativeTimeChanged,
+      showMissedPolicy: widget.showMissedPolicy,
+      missedOccurrencePolicy: widget.missedOccurrencePolicy,
+      onMissedOccurrencePolicyChanged: widget.onMissedOccurrencePolicyChanged,
+      readOnly: widget.readOnly,
+      intervalController: widget.intervalController,
     );
   }
 }
