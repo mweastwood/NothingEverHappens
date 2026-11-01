@@ -89,6 +89,36 @@ class MockCollectionReference extends MockQuery implements CollectionReference {
   }
 
   @override
+  MockQuery where(String field, String op, dynamic value) {
+    final q = super.where(field, op, value);
+    if (onGet == null && cannedDocs.isEmpty) {
+      q.onGet = () async {
+        var docs = documents.values
+            .where((d) => d.isExisting && d.docData != null)
+            .where((d) {
+              for (final cond in q.whereConditions) {
+                final f = cond['field'] as String;
+                final o = cond['op'] as String;
+                final v = cond['value'];
+                final docVal = d.docData![f];
+                if (o == '==' && docVal != v) return false;
+              }
+              return true;
+            })
+            .map((d) => MockDocumentSnapshot(d.id, d.docData, true, d))
+            .toList();
+        if (q.limitCount != null &&
+            q.limitCount! >= 0 &&
+            docs.length > q.limitCount!) {
+          docs = docs.take(q.limitCount!).toList();
+        }
+        return MockQuerySnapshot(docs);
+      };
+    }
+    return q;
+  }
+
+  @override
   MockQuery limit(int count) {
     final q = MockQuery();
     q.onWhere = onWhere;

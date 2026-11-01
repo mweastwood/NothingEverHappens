@@ -7,6 +7,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 import '../logic/app_route_manager.dart';
 import '../logic/auth_repository.dart';
+import '../logic/family_repository.dart';
 import '../widgets/task_widget.dart';
 import 'home_screen.dart';
 import '../logic/task_repository.dart';
@@ -109,6 +110,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       builder: (context, mockTime, _) {
         final isMocked = mockTime != null;
         final currentUserId = ref.watch(authStateProvider).value?.uid;
+        final familyProfile = ref.watch(familyProfileStreamProvider).value;
+        final familyId = familyProfile?.familyId;
+        final currentFamily = (familyId != null && familyId.isNotEmpty)
+            ? ref.watch(familyStreamProvider(familyId)).value
+            : null;
+        final familyMembers = currentFamily?.members;
         final schedulesVal = ref.watch(taskSchedulesProvider);
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);
@@ -178,8 +185,11 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 inst.isCompletedForUser(currentUserId)) {
               return false;
             }
-            if (inst.assignedUserId != null &&
-                inst.assignedUserId != currentUserId) {
+            if (inst.isFamily &&
+                inst.assignedUserId != null &&
+                inst.assignedUserId != currentUserId &&
+                (familyMembers == null ||
+                    familyMembers.containsKey(inst.assignedUserId))) {
               return false;
             }
 
