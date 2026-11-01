@@ -10,6 +10,7 @@ class MonthlySchedule extends TaskScheduleRule {
   final CivilDay startDate;
 
   /// The number of months between occurrences.
+  @override
   final int interval;
 
   /// Option 1: The specific day of the month.
@@ -22,6 +23,9 @@ class MonthlySchedule extends TaskScheduleRule {
 
   /// Occurrence index: 1, 2, 3, 4, or -1 (last).
   final int? occurrence;
+
+  @override
+  int get futureInstancesCount => 3;
 
   MonthlySchedule({
     String? id,
@@ -36,7 +40,7 @@ class MonthlySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  })  : interval = interval <= 0 ? 1 : interval,
+  })  : interval = TaskScheduleRule.parseInterval(interval),
         super(
           id: id ?? TaskScheduleRule.generateId(),
           scheduleId: scheduleId ?? '',
@@ -60,54 +64,23 @@ class MonthlySchedule extends TaskScheduleRule {
   CivilDay get scheduledDate => startDate;
 
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
-    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
-    final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map?;
-    final dueJson = json['dueRelativeTime'] as Map?;
-    final start = startJson != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
-        : const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
-        : const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          );
-
-    final notifs = parseNotificationRelativeTimes(json);
-
-    final schedulingPolicy = json['schedulingPolicy'] != null
-        ? SchedulingPolicy.fromJson(
-            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
-          )
-        : const FixedCalendarPolicy();
-
-    final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
-        ? MissedOccurrencePolicy.fromJson(
-            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
-          )
-        : const MissedOccurrencePolicy.stack();
-
-    final rawInterval = json['interval'] as int? ?? 1;
-    final interval = rawInterval <= 0 ? 1 : rawInterval;
+    final base = TaskScheduleRule.parseBaseJson(json);
 
     return MonthlySchedule(
-      id: id,
-      scheduleId: scheduleId,
+      id: base.id,
+      scheduleId: base.scheduleId,
       startDate: CivilDay.fromJson(
         Map<String, dynamic>.from(json['startDate'] as Map),
       ),
-      interval: interval,
+      interval: TaskScheduleRule.parseInterval(json['interval']),
       dayOfMonth: json['dayOfMonth'] as int?,
       dayOfWeek: json['dayOfWeek'] as int?,
       occurrence: json['occurrence'] as int?,
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTimes: notifs,
-      schedulingPolicy: schedulingPolicy,
-      missedOccurrencePolicy: missedOccurrencePolicy,
+      startRelativeTime: base.startRelativeTime,
+      dueRelativeTime: base.dueRelativeTime,
+      notificationRelativeTimes: base.notificationRelativeTimes,
+      schedulingPolicy: base.schedulingPolicy,
+      missedOccurrencePolicy: base.missedOccurrencePolicy,
     );
   }
 
@@ -259,15 +232,6 @@ class MonthlySchedule extends TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
-    final newStart = startRelativeTime ?? this.startRelativeTime;
-    var newPolicy = schedulingPolicy ?? this.schedulingPolicy;
-    if (newPolicy is CompletionRelativePolicy && startRelativeTime != null) {
-      newPolicy = CompletionRelativePolicy(
-        interval: newPolicy.interval,
-        targetHour: startRelativeTime.hour,
-        targetMinute: startRelativeTime.minute,
-      );
-    }
     return MonthlySchedule(
       id: id ?? this.id,
       scheduleId: scheduleId ?? this.scheduleId,
@@ -276,11 +240,15 @@ class MonthlySchedule extends TaskScheduleRule {
       dayOfMonth: dayOfMonth,
       dayOfWeek: dayOfWeek,
       occurrence: occurrence,
-      startRelativeTime: newStart,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: newPolicy,
+      schedulingPolicy: TaskScheduleRule.resolveUpdatedSchedulingPolicy(
+        schedulingPolicy,
+        this.schedulingPolicy,
+        startRelativeTime,
+      ),
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
@@ -297,23 +265,11 @@ class MonthlySchedule extends TaskScheduleRule {
   }
 
   @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'scheduleId': scheduleId,
-      'type': 'monthly',
-      'startDate': startDate.toJson(),
-      'interval': interval,
-      if (dayOfMonth != null) 'dayOfMonth': dayOfMonth,
-      if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
-      if (occurrence != null) 'occurrence': occurrence,
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      'schedulingPolicy': schedulingPolicy.toJson(),
-      'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTimes.isNotEmpty)
-        'notificationRelativeTimes':
-            notificationRelativeTimes.map((t) => t.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() => baseToJson('monthly', {
+        'startDate': startDate.toJson(),
+        'interval': interval,
+        if (dayOfMonth != null) 'dayOfMonth': dayOfMonth,
+        if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
+        if (occurrence != null) 'occurrence': occurrence,
+      });
 }

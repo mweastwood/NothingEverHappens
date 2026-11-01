@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+
 import '../civil_day.dart';
 import '../relative_time.dart';
 import '../scheduling_policy.dart';
@@ -33,10 +34,89 @@ List<RelativeTime> _parseNotificationRelativeTimes(Map<String, dynamic> json) =>
 abstract class TaskScheduleRule {
   static String generateId() => 'R-${const Uuid().v4()}';
 
+  static String parseId(Map<String, dynamic> json) =>
+      json['id'] as String? ?? generateId();
+
+  static String parseScheduleId(Map<String, dynamic> json) =>
+      json['scheduleId'] as String? ?? '';
+
+  static RelativeTime parseStartRelativeTime(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map?;
+    return startJson != null
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
+        : const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+  }
+
+  static RelativeTime parseDueRelativeTime(Map<String, dynamic> json) {
+    final dueJson = json['dueRelativeTime'] as Map?;
+    return dueJson != null
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
+        : const RelativeTime(dayOffset: 0, hour: 17, minute: 0);
+  }
+
   static List<RelativeTime> parseNotificationRelativeTimes(
     Map<String, dynamic> json,
   ) =>
       _parseNotificationRelativeTimes(json);
+
+  static SchedulingPolicy parseSchedulingPolicy(Map<String, dynamic> json) {
+    return json['schedulingPolicy'] != null
+        ? SchedulingPolicy.fromJson(
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
+          )
+        : const FixedCalendarPolicy();
+  }
+
+  static MissedOccurrencePolicy parseMissedOccurrencePolicy(
+    Map<String, dynamic> json,
+  ) {
+    return json['missedOccurrencePolicy'] != null
+        ? MissedOccurrencePolicy.fromJson(
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
+          )
+        : const MissedOccurrencePolicy.stack();
+  }
+
+  static int parseInterval(dynamic raw) {
+    final rawInterval = (raw as num?)?.toInt() ?? 1;
+    return rawInterval <= 0 ? 1 : rawInterval;
+  }
+
+  static ({
+    String id,
+    String scheduleId,
+    RelativeTime startRelativeTime,
+    RelativeTime dueRelativeTime,
+    List<RelativeTime> notificationRelativeTimes,
+    SchedulingPolicy schedulingPolicy,
+    MissedOccurrencePolicy missedOccurrencePolicy,
+  }) parseBaseJson(Map<String, dynamic> json) {
+    return (
+      id: parseId(json),
+      scheduleId: parseScheduleId(json),
+      startRelativeTime: parseStartRelativeTime(json),
+      dueRelativeTime: parseDueRelativeTime(json),
+      notificationRelativeTimes: parseNotificationRelativeTimes(json),
+      schedulingPolicy: parseSchedulingPolicy(json),
+      missedOccurrencePolicy: parseMissedOccurrencePolicy(json),
+    );
+  }
+
+  static SchedulingPolicy resolveUpdatedSchedulingPolicy(
+    SchedulingPolicy? newPolicy,
+    SchedulingPolicy currentPolicy,
+    RelativeTime? newStart,
+  ) {
+    final resolved = newPolicy ?? currentPolicy;
+    if (resolved is CompletionRelativePolicy && newStart != null) {
+      return CompletionRelativePolicy(
+        interval: resolved.interval,
+        targetHour: newStart.hour,
+        targetMinute: newStart.minute,
+      );
+    }
+    return resolved;
+  }
 
   final String id;
   final String scheduleId;
@@ -46,14 +126,9 @@ abstract class TaskScheduleRule {
   final SchedulingPolicy schedulingPolicy;
   final MissedOccurrencePolicy missedOccurrencePolicy;
 
-  int get futureInstancesCount {
-    final self = this;
-    if (self is DailySchedule) return 10;
-    if (self is WeeklySchedule) return 5;
-    if (self is MonthlySchedule) return 3;
-    if (self is YearlySchedule) return 2;
-    return 1;
-  }
+  int get futureInstancesCount => 1;
+
+  int? get interval => null;
 
   const TaskScheduleRule({
     required this.id,
@@ -64,17 +139,9 @@ abstract class TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   })  : startRelativeTime = startRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
+            const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         dueRelativeTime = dueRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
+            const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         notificationRelativeTimes = notificationRelativeTimes ?? const [],
         schedulingPolicy = schedulingPolicy ?? const FixedCalendarPolicy(),
         missedOccurrencePolicy =
@@ -168,6 +235,25 @@ abstract class TaskScheduleRule {
     }
 
     return resolvedAt.add(policy.interval);
+  }
+
+  Map<String, dynamic> baseToJson(
+    String type,
+    Map<String, dynamic> specificFields,
+  ) {
+    return {
+      'id': id,
+      'scheduleId': scheduleId,
+      'type': type,
+      ...specificFields,
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      'schedulingPolicy': schedulingPolicy.toJson(),
+      'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes':
+            notificationRelativeTimes.map((t) => t.toJson()).toList(),
+    };
   }
 
   Map<String, dynamic> toJson();

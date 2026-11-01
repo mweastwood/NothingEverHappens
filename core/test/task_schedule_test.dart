@@ -12,10 +12,7 @@ class _FakeDocumentSnapshot {
   final Map<String, dynamic> dataMap;
   final _FakeSnapshotMetadata metadata = const _FakeSnapshotMetadata();
 
-  _FakeDocumentSnapshot({
-    required this.id,
-    required this.dataMap,
-  });
+  _FakeDocumentSnapshot({required this.id, required this.dataMap});
 
   Map<String, dynamic> data() => dataMap;
 }
@@ -31,10 +28,16 @@ void main() {
         schedules: [
           OneOffSchedule(
             date: todayCivil,
-            startRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 0, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 0,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 12,
+              minute: 0,
+            ),
           ),
         ],
       );
@@ -54,10 +57,16 @@ void main() {
           DailySchedule(
             startDate: const CivilDay(year: 2026, month: 3, day: 8),
             interval: 1,
-            startRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 7),
               targetHour: 9,
@@ -71,10 +80,16 @@ void main() {
             startDate: const CivilDay(year: 2026, month: 3, day: 8),
             interval: 1,
             daysOfWeek: const {1, 3, 5},
-            startRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 21, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 20,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 21,
+              minute: 0,
+            ),
           ),
         ],
         activeOccurrenceIndex: 1,
@@ -113,12 +128,16 @@ void main() {
       expect(policy.targetHour, 9);
       expect(policy.targetMinute, 30);
       expect(deserialized.missedOccurrencePolicy.isAutoDismiss, isTrue);
-      expect(deserialized.missedOccurrencePolicy.gracePeriod,
-          const Duration(hours: 4));
+      expect(
+        deserialized.missedOccurrencePolicy.gracePeriod,
+        const Duration(hours: 4),
+      );
       expect(deserialized.estimatedDuration, const Duration(minutes: 45));
       expect(deserialized.isFamily, true);
       expect(
-          deserialized.familyCompletionMode, FamilyCompletionMode.individual);
+        deserialized.familyCompletionMode,
+        FamilyCompletionMode.individual,
+      );
       expect(deserialized.priority, TaskPriority.high);
       expect(deserialized.cycleId, '2026-W23');
       expect(deserialized.preferredBy['user-1'], true);
@@ -163,10 +182,16 @@ void main() {
         schedules: [
           OneOffSchedule(
             date: const CivilDay(year: 2026, month: 3, day: 8),
-            startRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
           ),
         ],
         labelIds: ['L-1', 'L-2'],
@@ -181,10 +206,16 @@ void main() {
         newSchedules: [
           OneOffSchedule(
             date: const CivilDay(year: 2026, month: 3, day: 9),
-            startRelativeTime:
-                const RelativeTime(dayOffset: -1, hour: 10, minute: 0),
-            dueRelativeTime:
-                const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              hour: 10,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 18,
+              minute: 0,
+            ),
           ),
         ],
         newEstimatedDuration: null,
@@ -241,6 +272,65 @@ void main() {
       expect(revertResult.newTask.isFamily, isFalse);
       expect(revertResult.changes['isFamily'], isFalse);
       expect(revertResult.changes.containsKey('labelIds'), isFalse);
+    });
+
+    test(
+        'futureInstancesCount delegates to schedule rules and edit normalizes rules via _normalizeSchedules',
+        () {
+      const day = CivilDay(year: 2026, month: 3, day: 8);
+      final task = TaskSchedule(
+        id: 'norm-test',
+        title: 'Normalize Test',
+        description: '',
+        schedules: [
+          MonthlySchedule(
+            id: 'legacy-no-prefix',
+            startDate: day,
+            interval: 1,
+            dayOfMonth: 8,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(hours: 4),
+            ),
+          ),
+        ],
+      );
+
+      expect(task.futureInstancesCount, equals(3));
+      expect(task.schedules.first.id, startsWith('R-'));
+      expect(task.schedules.first.scheduleId, equals('S-norm-test'));
+
+      // Edit with a new rule lacking 'R-' prefix and matching MissedPolicy.autoDismiss
+      // should preserve custom gracePeriod and normalize id & scheduleId.
+      final editPreservingGrace = task.edit(
+        newTitle: task.title,
+        newDescription: task.description,
+        newSchedules: [
+          DailySchedule(
+            id: 'unprefixed-id',
+            startDate: day,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(hours: 6),
+            ),
+          ),
+        ],
+        newEstimatedDuration: null,
+        newMissedPolicy: MissedPolicy.autoDismiss,
+        newIsMaster: true,
+        newLastSpawnedDate: null,
+        newIsFamily: false,
+        newPriority: TaskPriority.medium,
+      );
+
+      final updatedRule = editPreservingGrace.newTask.schedules.first;
+      expect(updatedRule.id, startsWith('R-'));
+      expect(updatedRule.scheduleId, equals('S-norm-test'));
+      expect(
+        updatedRule.missedOccurrencePolicy.gracePeriod,
+        equals(const Duration(hours: 6)),
+      );
+      expect(editPreservingGrace.newTask.futureInstancesCount, equals(10));
+      expect(editPreservingGrace.changes['futureInstancesCount'], equals(10));
     });
   });
 }
