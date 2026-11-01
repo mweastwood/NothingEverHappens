@@ -253,6 +253,7 @@ class PlatformNotificationService implements NotificationService {
             task,
             s,
             notifRel,
+            j,
           );
           if (scheduledDate == null) continue;
           final delay = scheduledDate.difference(AppClock.now);
@@ -287,6 +288,7 @@ class PlatformNotificationService implements NotificationService {
             task,
             s,
             notifRel,
+            j,
           );
           if (scheduledDate == null) continue;
           final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
@@ -459,8 +461,9 @@ class PlatformNotificationService implements NotificationService {
   DateTime? _calculateNextNotificationDateTimeForNotif(
     TaskSchedule task,
     TaskScheduleRule s,
-    RelativeTime notifRel,
-  ) {
+    RelativeTime notifRel, [
+    int notifIndex = 0,
+  ]) {
     final now = AppClock.now;
     final today = CivilDay.fromDateTime(now);
     final taskInstances = _instancesLookup?.call(task.id) ?? const [];
@@ -487,7 +490,20 @@ class PlatformNotificationService implements NotificationService {
         (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
       );
       for (final inst in pendingInstances) {
-        final occurrenceDateTime = notifRel.referenceTo(inst.scheduledDate);
+        final effectiveNotifRel =
+            notifIndex < inst.notificationRelativeTimes.length
+            ? inst.notificationRelativeTimes[notifIndex]
+            : (s.schedulingPolicy is CompletionRelativePolicy
+                  ? SchedulerEngine.shiftRelativeToStart(
+                      notifRel,
+                      s,
+                      s.schedulingPolicy as CompletionRelativePolicy,
+                      inst.scheduledDate,
+                    )
+                  : notifRel);
+        final occurrenceDateTime = effectiveNotifRel.referenceTo(
+          inst.scheduledDate,
+        );
         if (occurrenceDateTime.isAfter(now)) {
           return occurrenceDateTime;
         }
@@ -512,7 +528,15 @@ class PlatformNotificationService implements NotificationService {
 
     for (final day in upcomingDays) {
       if (resolvedDays.contains(day)) continue;
-      final occurrenceDateTime = notifRel.referenceTo(day);
+      final effectiveNotifRel = s.schedulingPolicy is CompletionRelativePolicy
+          ? SchedulerEngine.shiftRelativeToStart(
+              notifRel,
+              s,
+              s.schedulingPolicy as CompletionRelativePolicy,
+              day,
+            )
+          : notifRel;
+      final occurrenceDateTime = effectiveNotifRel.referenceTo(day);
       if (occurrenceDateTime.isAfter(now)) {
         return occurrenceDateTime;
       }

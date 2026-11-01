@@ -1032,5 +1032,87 @@ void main() {
         expect(mockPlugin.scheduled, isEmpty);
       },
     );
+
+    test(
+      'CompletionRelativePolicy uses shifted instance notificationRelativeTimes instead of unshifted rule notificationRelativeTimes',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final crRule = DailySchedule(
+          id: 'R-cr-shifted-notif',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 3,
+          startRelativeTime: const RelativeTime(
+            dayOffset: -1,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: -1, hour: 10, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-cr-shifted-notif',
+          title: 'Shifted Notif CR Task',
+          description: '',
+          schedules: [crRule],
+        );
+
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-cr-shifted',
+            scheduleId: task.id,
+            ruleId: crRule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 1,
+              hour: 17,
+              minute: 0,
+            ),
+            notificationRelativeTimes: const [
+              RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+            ],
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        final service = PlatformNotificationService(
+          plugin: mockPlugin,
+          instancesLookup: (_) => instances,
+        );
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, hasLength(1));
+        final scheduledDate = DateTime.fromMillisecondsSinceEpoch(
+          (mockPlugin.scheduled.single['scheduledDate'] as tz.TZDateTime)
+              .millisecondsSinceEpoch,
+        );
+        expect(scheduledDate.year, 2026);
+        expect(scheduledDate.month, 8);
+        expect(scheduledDate.day, 10);
+        expect(scheduledDate.hour, 10);
+        expect(scheduledDate.minute, 0);
+      },
+    );
   });
 }
