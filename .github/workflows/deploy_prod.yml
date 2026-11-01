@@ -184,7 +184,7 @@ jobs:
           status: completed
 
   deploy_prod_backend:
-    name: Deploy Backend (Firestore Rules & Cloud Functions)
+    name: Deploy Backend (Firestore Rules, Indexes & Cloud Functions)
     runs-on: ubuntu-latest
 
     steps:
@@ -206,14 +206,14 @@ jobs:
         with:
           node-version: 22
 
-      - name: Deploy Firestore Rules
+      - name: Deploy Firestore Rules & Indexes
         working-directory: ./backend
         env:
           FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.31.0 deploy --only firestore:rules --project nothing-ever-happens-prod
+          npx --yes firebase-tools@15.31.0 deploy --only firestore:rules,firestore:indexes --project nothing-ever-happens-prod
           rm -f service-account.json
 
       - name: Deploy Cloud Functions
