@@ -5,6 +5,7 @@ import 'auth_repository.dart';
 import 'civil_day.dart';
 import 'family.dart';
 import 'family_repository.dart';
+import 'task_attribution_calculator.dart';
 import 'task_instance.dart';
 import 'task_repository.dart';
 import 'task_schedule.dart';
@@ -354,83 +355,17 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
     }
 
     final double baseDuration = ctx.durationMap[inst.scheduleId] ?? 0.0;
-    final bool isUserTask;
-    final TaskStatus effectiveStatus;
-    final double effectiveDuration;
-
-    if (inst.isFamily) {
-      if (inst.assignedUserId != null && inst.assignedUserId!.isNotEmpty) {
-        if (inst.status == TaskStatus.completed ||
-            inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        } else {
-          isUserTask = inst.assignedUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        }
-      } else if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
-        final userCompleted = inst.completedByUserIds.contains(currentUserId);
-        if (userCompleted) {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.completed;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = TaskStatus.skipped;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.failed ||
-            (inst.status == TaskStatus.pending &&
-                inst.scheduledDate.isBefore(today))) {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.failed;
-          effectiveDuration = baseDuration;
-        } else {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.pending;
-          effectiveDuration = baseDuration;
-        }
-      } else {
-        // Unassigned and anybody can complete
-        if (inst.status == TaskStatus.completed ||
-            inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.pending) {
-          if (inst.scheduledDate.isBefore(today)) {
-            isUserTask = false;
-            effectiveStatus = TaskStatus.pending;
-            effectiveDuration = 0.0;
-          } else {
-            isUserTask = true;
-            effectiveStatus = TaskStatus.pending;
-            effectiveDuration = baseDuration / familyMemberCount;
-          }
-        } else {
-          isUserTask = false;
-          effectiveStatus = inst.status;
-          effectiveDuration = 0.0;
-        }
-      }
-    } else {
-      if (inst.status == TaskStatus.completed ||
-          inst.status == TaskStatus.skipped) {
-        isUserTask =
-            inst.completedByUserId == currentUserId ||
-            (inst.completedByUserId == null &&
-                (inst.assignedUserId == null ||
-                    inst.assignedUserId == currentUserId));
-        effectiveStatus = inst.status;
-        effectiveDuration = baseDuration;
-      } else {
-        isUserTask =
-            inst.assignedUserId == null || inst.assignedUserId == currentUserId;
-        effectiveStatus = inst.status;
-        effectiveDuration = baseDuration;
-      }
-    }
+    final attribution =
+        TaskAttributionCalculator.evaluatePersonalTimelineAttribution(
+          instance: inst,
+          currentUserId: currentUserId,
+          familyMemberCount: familyMemberCount,
+          today: today,
+          baseDuration: baseDuration,
+        );
+    final isUserTask = attribution.isUserTask;
+    final effectiveStatus = attribution.effectiveStatus;
+    final effectiveDuration = attribution.effectiveDuration;
 
     if (!isUserTask) continue;
 

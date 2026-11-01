@@ -22,6 +22,7 @@ import 'telemetry_service.dart';
 import 'family.dart';
 import 'family_repository.dart';
 import 'cloud_family_scheduler_client.dart';
+import 'task_attribution_calculator.dart';
 
 export 'family_id_fetcher.dart';
 export 'cloud_family_scheduler_client.dart';
@@ -210,10 +211,10 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
   final startHorizon = today.addDays(-14);
   final endHorizon = today.addDays(60);
 
-  final durationMap = <String, double>{};
+  final durationMap = <String, int>{};
   for (final s in schedules) {
     if (s.estimatedDuration != null) {
-      durationMap[s.id] = s.estimatedDuration!.inMinutes.toDouble();
+      durationMap[s.id] = s.estimatedDuration!.inMinutes;
     }
   }
 
@@ -233,36 +234,16 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
     final durationMins = durationMap[inst.scheduleId];
     if (durationMins == null || durationMins <= 0) continue;
 
-    if (inst.isFamily) {
-      if (inst.assignedUserId != null && inst.assignedUserId!.isNotEmpty) {
-        if (inst.assignedUserId == currentUserId &&
-            inst.status == TaskStatus.pending) {
-          plannedMinutesPerDay[scheduledDate] =
-              (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
-        }
-      } else if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
-        final userCompleted =
-            currentUserId != null &&
-            inst.completedByUserIds.contains(currentUserId);
-        if (!userCompleted && inst.status == TaskStatus.pending) {
-          plannedMinutesPerDay[scheduledDate] =
-              (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
-        }
-      } else {
-        // Unassigned and anybody can complete
-        if (inst.status == TaskStatus.pending) {
-          plannedMinutesPerDay[scheduledDate] =
-              (plannedMinutesPerDay[scheduledDate] ?? 0.0) +
-              (durationMins / familyMemberCount);
-        }
-      }
-    } else {
-      if (inst.status == TaskStatus.pending &&
-          (inst.assignedUserId == null ||
-              inst.assignedUserId == currentUserId)) {
-        plannedMinutesPerDay[scheduledDate] =
-            (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
-      }
+    final addedMinutes =
+        TaskAttributionCalculator.calculateUserPendingPlannedMinutes(
+          instance: inst,
+          currentUserId: currentUserId,
+          familyMemberCount: familyMemberCount,
+          durationMinutes: durationMins,
+        );
+    if (addedMinutes > 0) {
+      plannedMinutesPerDay[scheduledDate] =
+          (plannedMinutesPerDay[scheduledDate] ?? 0.0) + addedMinutes;
     }
   }
 
