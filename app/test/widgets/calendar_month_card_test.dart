@@ -347,12 +347,22 @@ void main() {
       final blobBgFinder = find.byType(CalendarTodayBlobBackground);
       expect(blobBgFinder, findsOneWidget);
 
-      // Verify blob painter and foreground day content are isolated in separate RepaintBoundaries
+      // Verify blob sits in the lowest layer (index 0) of the month grid Stack behind all day cells
+      final gridStackFinder = find.ancestor(
+        of: blobBgFinder,
+        matching: find.byType(Stack),
+      );
+      expect(gridStackFinder, findsOneWidget);
+      final gridStack = tester.widget<Stack>(gridStackFinder);
+      expect(gridStack.children.first, isA<Positioned>());
+      expect(gridStack.children.last, isA<RepaintBoundary>());
+
+      // Verify blob painter has its own isolated RepaintBoundary
       final repaintBoundaries = find.descendant(
         of: blobBgFinder,
         matching: find.byType(RepaintBoundary),
       );
-      expect(repaintBoundaries, findsNWidgets(2));
+      expect(repaintBoundaries, findsOneWidget);
 
       final customPaintFinder = find.descendant(
         of: blobBgFinder,

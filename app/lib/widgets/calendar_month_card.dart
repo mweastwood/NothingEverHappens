@@ -202,7 +202,15 @@ class CalendarMonthCard extends StatelessWidget {
                     !isTier1 && cellWidth >= 42 && cellHeight >= 42;
                 final bool showChipIcon = cellWidth >= 72;
 
-                return Column(
+                final bool hasTodayInMonth =
+                    isCurrentMonth &&
+                    today.day >= 1 &&
+                    today.day <= daysInMonth;
+                final int todaySlotIndex = leadingEmptyCount + today.day - 1;
+                final int todayRow = todaySlotIndex ~/ 7;
+                final int todayCol = todaySlotIndex % 7;
+
+                final dayGridColumn = Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (int r = 0; r < rowCount; r++) ...[
@@ -233,6 +241,26 @@ class CalendarMonthCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ],
+                );
+
+                if (!hasTodayInMonth) {
+                  return dayGridColumn;
+                }
+
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: todayCol * cellWidth,
+                      top: todayRow * cellHeight,
+                      width: cellWidth,
+                      height: cellHeight,
+                      child: const IgnorePointer(
+                        child: CalendarTodayBlobBackground(),
+                      ),
+                    ),
+                    RepaintBoundary(child: dayGridColumn),
                   ],
                 );
               },
@@ -323,9 +351,7 @@ class CalendarDayCellSlot extends StatelessWidget {
         }
       },
       borderRadius: BorderRadius.circular(8),
-      child: isToday
-          ? CalendarTodayBlobBackground(child: dayContent)
-          : dayContent,
+      child: dayContent,
     );
   }
 
@@ -584,7 +610,7 @@ class CalendarDayCellSlot extends StatelessWidget {
 /// 60–120 Hz ticker wakeups and never repainting the foreground day cell content.
 class CalendarTodayBlobBackground extends StatefulWidget {
   /// Full cycle duration for the blob undulation.
-  static const Duration cycleDuration = Duration(seconds: 36);
+  static const Duration cycleDuration = Duration(seconds: 24);
 
   /// Target interval between blob repaints (~12 FPS).
   static const Duration frameInterval = Duration(milliseconds: 83);
@@ -593,9 +619,9 @@ class CalendarTodayBlobBackground extends StatefulWidget {
   @visibleForTesting
   static bool debugForceAnimateInTests = false;
 
-  final Widget child;
+  final Widget? child;
 
-  const CalendarTodayBlobBackground({super.key, required this.child});
+  const CalendarTodayBlobBackground({super.key, this.child});
 
   @override
   State<CalendarTodayBlobBackground> createState() =>
@@ -687,26 +713,31 @@ class _CalendarTodayBlobBackgroundState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final blobLayer = RepaintBoundary(
+      child: ValueListenableBuilder<double>(
+        valueListenable: _progressNotifier,
+        builder: (context, progress, _) {
+          return CustomPaint(
+            size: Size.infinite,
+            painter: CalendarTodayBlobPainter(
+              progress: progress,
+              colorScheme: theme.colorScheme,
+              brightness: theme.brightness,
+            ),
+          );
+        },
+      ),
+    );
+
+    if (widget.child == null) {
+      return blobLayer;
+    }
+
     return Stack(
       fit: StackFit.passthrough,
       children: [
-        Positioned.fill(
-          child: RepaintBoundary(
-            child: ValueListenableBuilder<double>(
-              valueListenable: _progressNotifier,
-              builder: (context, progress, _) {
-                return CustomPaint(
-                  painter: CalendarTodayBlobPainter(
-                    progress: progress,
-                    colorScheme: theme.colorScheme,
-                    brightness: theme.brightness,
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        RepaintBoundary(child: widget.child),
+        Positioned.fill(child: blobLayer),
+        RepaintBoundary(child: widget.child!),
       ],
     );
   }
@@ -847,7 +878,7 @@ class CalendarTodayBlobPainter extends CustomPainter {
     );
     final Paint outerFillPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.14);
+      ..color = colorScheme.primary.withValues(alpha: isDark ? 0.11 : 0.08);
     canvas.drawPath(outerBlob, outerFillPaint);
 
     // 2. Inner primary undulating blob with soft gradient fill
@@ -868,8 +899,8 @@ class CalendarTodayBlobPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          colorScheme.primaryContainer.withValues(alpha: isDark ? 0.50 : 0.68),
-          colorScheme.tertiaryContainer.withValues(alpha: isDark ? 0.36 : 0.48),
+          colorScheme.primaryContainer.withValues(alpha: isDark ? 0.30 : 0.42),
+          colorScheme.tertiaryContainer.withValues(alpha: isDark ? 0.20 : 0.28),
         ],
       ).createShader(rect);
     canvas.drawPath(innerBlob, innerFillPaint);
@@ -916,8 +947,9 @@ class CalendarLabelCapacityBar extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.65,
+        color: Color.alphaBlend(
+          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+          theme.colorScheme.surface,
         ),
         borderRadius: BorderRadius.circular(1.5),
       ),
@@ -999,7 +1031,10 @@ class CalendarTaskChip extends StatelessWidget {
         vertical: 1.5,
       ),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: bgAlpha),
+        color: Color.alphaBlend(
+          accentColor.withValues(alpha: bgAlpha),
+          theme.colorScheme.surface,
+        ),
         borderRadius: BorderRadius.circular(2.0),
         border: Border(
           left: BorderSide(color: stripeColor, width: compact ? 2.0 : 2.5),
