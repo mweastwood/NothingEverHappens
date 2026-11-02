@@ -328,6 +328,58 @@ void main() {
     expect(tappedDay, equals(todayDay8));
   });
 
+  testWidgets(
+    'Verify today cell renders isolated 12 FPS CalendarTodayBlobBackground and animates over time',
+    (tester) async {
+      CalendarTodayBlobBackground.debugForceAnimateInTests = true;
+      addTearDown(() {
+        CalendarTodayBlobBackground.debugForceAnimateInTests = false;
+      });
+
+      await tester.pumpWidget(
+        createTestWidget(
+          child: CalendarMonthCard(monthDate: march2026, today: todayDay8),
+        ),
+      );
+      await tester.pump();
+
+      // Only the single current day (March 8) renders CalendarTodayBlobBackground
+      final blobBgFinder = find.byType(CalendarTodayBlobBackground);
+      expect(blobBgFinder, findsOneWidget);
+
+      // Verify blob painter and foreground day content are isolated in separate RepaintBoundaries
+      final repaintBoundaries = find.descendant(
+        of: blobBgFinder,
+        matching: find.byType(RepaintBoundary),
+      );
+      expect(repaintBoundaries, findsNWidgets(2));
+
+      final customPaintFinder = find.descendant(
+        of: blobBgFinder,
+        matching: find.byType(CustomPaint),
+      );
+      final initialPaint = tester.widget<CustomPaint>(customPaintFinder);
+      final initialPainter = initialPaint.painter as CalendarTodayBlobPainter;
+      expect(initialPainter.progress, equals(0.0));
+
+      // Pump 12 frame intervals (~1 second at 12 FPS)
+      for (int i = 0; i < 12; i++) {
+        await tester.pump(CalendarTodayBlobBackground.frameInterval);
+      }
+      final updatedPaint = tester.widget<CustomPaint>(customPaintFinder);
+      final updatedPainter = updatedPaint.painter as CalendarTodayBlobPainter;
+      expect(
+        updatedPainter.progress,
+        closeTo(
+          (12 * CalendarTodayBlobBackground.frameInterval.inMilliseconds) /
+              CalendarTodayBlobBackground.cycleDuration.inMilliseconds,
+          0.01,
+        ),
+      );
+      expect(updatedPainter.shouldRepaint(initialPainter), isTrue);
+    },
+  );
+
   test('getWeekdayHeaders caches results and can be cleared', () {
     clearCalendarMonthCardCaches();
     final headers1 = getWeekdayHeaders(

@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 
 import '../logic/civil_day.dart';
@@ -300,35 +304,15 @@ class CalendarDayCellSlot extends StatelessWidget {
       isPastDay: isPast,
     );
 
-    final bool showOverloadAlert =
-        workload.isOverCapacity && !isPast && !workload.allCompleted;
-    final bool showHighLoadTint =
-        workload.isHighLoad && !isPast && !workload.allCompleted;
-
-    final Color? cellBgColor;
-    final Border cellBorder;
-    if (isToday) {
-      cellBgColor = theme.colorScheme.primaryContainer.withValues(alpha: 0.22);
-      cellBorder = Border.all(color: theme.colorScheme.primary, width: 1.0);
-    } else if (showOverloadAlert) {
-      cellBgColor = theme.colorScheme.errorContainer.withValues(alpha: 0.18);
-      cellBorder = Border.all(
-        color: theme.colorScheme.error.withValues(alpha: 0.55),
-        width: 0.75,
-      );
-    } else if (showHighLoadTint) {
-      cellBgColor = theme.colorScheme.tertiaryContainer.withValues(alpha: 0.14);
-      cellBorder = Border.all(
-        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.28),
-        width: 0.5,
-      );
-    } else {
-      cellBgColor = null;
-      cellBorder = Border.all(
-        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.24),
-        width: 0.5,
-      );
-    }
+    final dayContent = _buildResponsiveDayContent(
+      context,
+      dayNum,
+      isToday,
+      workload,
+      theme,
+      isTier1: isTier1,
+      isTier2: isTier2,
+    );
 
     return InkWell(
       onTap: () {
@@ -338,18 +322,10 @@ class CalendarDayCellSlot extends StatelessWidget {
           CalendarDayDetailsSheet.show(context, day: civilDay);
         }
       },
-      child: Container(
-        decoration: BoxDecoration(color: cellBgColor, border: cellBorder),
-        child: _buildResponsiveDayContent(
-          context,
-          dayNum,
-          isToday,
-          workload,
-          theme,
-          isTier1: isTier1,
-          isTier2: isTier2,
-        ),
-      ),
+      borderRadius: BorderRadius.circular(8),
+      child: isToday
+          ? CalendarTodayBlobBackground(child: dayContent)
+          : dayContent,
     );
   }
 
@@ -598,6 +574,312 @@ class CalendarDayCellSlot extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Slowly undulating organic blob background rendered behind the current day cell.
+///
+/// Uses a frame-gated 12 FPS timer (~83ms interval) and isolated [RepaintBoundary]
+/// layers so the ambient 36-second undulation stays visually smooth while avoiding
+/// 60–120 Hz ticker wakeups and never repainting the foreground day cell content.
+class CalendarTodayBlobBackground extends StatefulWidget {
+  /// Full cycle duration for the blob undulation.
+  static const Duration cycleDuration = Duration(seconds: 36);
+
+  /// Target interval between blob repaints (~12 FPS).
+  static const Duration frameInterval = Duration(milliseconds: 83);
+
+  /// Allows unit tests to explicitly enable repeating animation under TestWidgetsFlutterBinding.
+  @visibleForTesting
+  static bool debugForceAnimateInTests = false;
+
+  final Widget child;
+
+  const CalendarTodayBlobBackground({super.key, required this.child});
+
+  @override
+  State<CalendarTodayBlobBackground> createState() =>
+      _CalendarTodayBlobBackgroundState();
+}
+
+class _CalendarTodayBlobBackgroundState
+    extends State<CalendarTodayBlobBackground> {
+  final ValueNotifier<double> _progressNotifier = ValueNotifier<double>(0.0);
+  Timer? _frameTimer;
+  DateTime? _lastTickTime;
+  bool _shouldAnimate = false;
+  bool _waitingForPostFrame = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimationState();
+  }
+
+  void _syncAnimationState() {
+    final isTestBinding = WidgetsBinding.instance.runtimeType
+        .toString()
+        .contains('TestWidgetsFlutterBinding');
+    final disableAnimations =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final tickerEnabled = TickerMode.valuesOf(context).enabled;
+    final shouldAnimate =
+        (CalendarTodayBlobBackground.debugForceAnimateInTests ||
+            !isTestBinding) &&
+        !disableAnimations &&
+        tickerEnabled;
+
+    if (shouldAnimate == _shouldAnimate) return;
+    _shouldAnimate = shouldAnimate;
+
+    if (_shouldAnimate) {
+      _lastTickTime = DateTime.now();
+      _scheduleNextTick();
+    } else {
+      _frameTimer?.cancel();
+      _frameTimer = null;
+      _lastTickTime = null;
+    }
+  }
+
+  void _scheduleNextTick() {
+    if (!mounted || !_shouldAnimate || _frameTimer != null) return;
+    _frameTimer = Timer(CalendarTodayBlobBackground.frameInterval, _onTick);
+  }
+
+  void _onTick() {
+    _frameTimer = null;
+    if (!mounted || !_shouldAnimate) return;
+
+    final now = DateTime.now();
+    final elapsedMs = _lastTickTime != null
+        ? now
+              .difference(_lastTickTime!)
+              .inMilliseconds
+              .clamp(
+                CalendarTodayBlobBackground.frameInterval.inMilliseconds,
+                1000,
+              )
+        : CalendarTodayBlobBackground.frameInterval.inMilliseconds;
+    _lastTickTime = now;
+
+    final delta =
+        elapsedMs / CalendarTodayBlobBackground.cycleDuration.inMilliseconds;
+    _progressNotifier.value = (_progressNotifier.value + delta) % 1.0;
+
+    // Gate the next timer on actual frame completion so backgrounded tabs do zero work.
+    if (!_waitingForPostFrame) {
+      _waitingForPostFrame = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _waitingForPostFrame = false;
+        _scheduleNextTick();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _frameTimer?.cancel();
+    _progressNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: ValueListenableBuilder<double>(
+              valueListenable: _progressNotifier,
+              builder: (context, progress, _) {
+                return CustomPaint(
+                  painter: CalendarTodayBlobPainter(
+                    progress: progress,
+                    colorScheme: theme.colorScheme,
+                    brightness: theme.brightness,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        RepaintBoundary(child: widget.child),
+      ],
+    );
+  }
+}
+
+class _BlobBasisPoint {
+  final double cosT;
+  final double sinT;
+  final double squircleRadius;
+  final double cos2T;
+  final double sin2T;
+  final double cos3T;
+  final double sin3T;
+  final double cos4T;
+  final double sin4T;
+
+  const _BlobBasisPoint({
+    required this.cosT,
+    required this.sinT,
+    required this.squircleRadius,
+    required this.cos2T,
+    required this.sin2T,
+    required this.cos3T,
+    required this.sin3T,
+    required this.cos4T,
+    required this.sin4T,
+  });
+}
+
+/// Custom painter that draws a two-layer smoothly undulating organic blob.
+class CalendarTodayBlobPainter extends CustomPainter {
+  static const int _steps = 48;
+  static const double _squircleExponent = 3.8;
+
+  static final List<_BlobBasisPoint> _basisPoints = List.generate(_steps, (i) {
+    final double theta = (i / _steps) * 2.0 * math.pi;
+    final double cosT = math.cos(theta);
+    final double sinT = math.sin(theta);
+    final double denom =
+        math.pow(cosT.abs(), _squircleExponent).toDouble() +
+        math.pow(sinT.abs(), _squircleExponent).toDouble();
+    final double squircleRadius = math
+        .pow(denom, -1.0 / _squircleExponent)
+        .toDouble();
+
+    return _BlobBasisPoint(
+      cosT: cosT,
+      sinT: sinT,
+      squircleRadius: squircleRadius,
+      cos2T: math.cos(2.0 * theta),
+      sin2T: math.sin(2.0 * theta),
+      cos3T: math.cos(3.0 * theta),
+      sin3T: math.sin(3.0 * theta),
+      cos4T: math.cos(4.0 * theta),
+      sin4T: math.sin(4.0 * theta),
+    );
+  }, growable: false);
+
+  final double progress;
+  final ColorScheme colorScheme;
+  final Brightness brightness;
+
+  const CalendarTodayBlobPainter({
+    required this.progress,
+    required this.colorScheme,
+    required this.brightness,
+  });
+
+  Path _buildBlobPath(
+    Size size, {
+    required double phase,
+    required double scaleX,
+    required double scaleY,
+    required double lobe2,
+    required double lobe3,
+    required double lobe4,
+  }) {
+    final double cx = size.width / 2.0;
+    final double cy = size.height / 2.0;
+    final double rx = (size.width / 2.0) * scaleX;
+    final double ry = (size.height / 2.0) * scaleY;
+
+    // Precompute phase trig terms once per blob (6 trig calls total per frame)
+    final double p2 = phase + 0.4;
+    final double cosP2 = math.cos(p2);
+    final double sinP2 = math.sin(p2);
+
+    final double p3 = -phase + 1.1;
+    final double cosP3 = math.cos(p3);
+    final double sinP3 = math.sin(p3);
+
+    final double p4 = phase - 0.5;
+    final double cosP4 = math.cos(p4);
+    final double sinP4 = math.sin(p4);
+
+    final path = Path();
+    for (int i = 0; i < _steps; i++) {
+      final pt = _basisPoints[i];
+
+      // sin(2θ + p2) = sin(2θ)cos(p2) + cos(2θ)sin(p2)
+      final double w2 = pt.sin2T * cosP2 + pt.cos2T * sinP2;
+      // sin(3θ + p3) = sin(3θ)cos(p3) + cos(3θ)sin(p3)
+      final double w3 = pt.sin3T * cosP3 + pt.cos3T * sinP3;
+      // cos(4θ + p4) = cos(4θ)cos(p4) - sin(4θ)sin(p4)
+      final double w4 = pt.cos4T * cosP4 - pt.sin4T * sinP4;
+
+      final double wave = 1.0 + lobe2 * w2 + lobe3 * w3 + lobe4 * w4;
+      final double r = pt.squircleRadius * wave;
+      final double x = cx + rx * r * pt.cosT;
+      final double y = cy + ry * r * pt.sinT;
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    final bool isDark = brightness == Brightness.dark;
+    final double phi = progress * 2.0 * math.pi;
+
+    // 1. Outer counter-rotating soft halo blob
+    final Path outerBlob = _buildBlobPath(
+      size,
+      phase: -phi + 1.35,
+      scaleX: 1.08,
+      scaleY: 1.06,
+      lobe2: 0.055,
+      lobe3: 0.065,
+      lobe4: 0.038,
+    );
+    final Paint outerFillPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.14);
+    canvas.drawPath(outerBlob, outerFillPaint);
+
+    // 2. Inner primary undulating blob with soft gradient fill
+    final Path innerBlob = _buildBlobPath(
+      size,
+      phase: phi,
+      scaleX: 1.02,
+      scaleY: 1.01,
+      lobe2: 0.050,
+      lobe3: 0.060,
+      lobe4: 0.035,
+    );
+
+    final Rect rect = Offset.zero & size;
+    final Paint innerFillPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          colorScheme.primaryContainer.withValues(alpha: isDark ? 0.50 : 0.68),
+          colorScheme.tertiaryContainer.withValues(alpha: isDark ? 0.36 : 0.48),
+        ],
+      ).createShader(rect);
+    canvas.drawPath(innerBlob, innerFillPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CalendarTodayBlobPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.brightness != brightness ||
+        oldDelegate.colorScheme != colorScheme;
   }
 }
 
