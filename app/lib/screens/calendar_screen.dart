@@ -127,7 +127,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required FirstDayOfWeek firstDayOfWeek,
   }) {
     if (isWide) {
-      double offset = 16.0; // list top padding
+      double offset = 10.0; // list top padding
       final targetRow = _currentMonthIndex ~/ 2;
       for (int r = 0; r < targetRow; r++) {
         final idx1 = r * 2;
@@ -137,14 +137,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ? _getWeeksInMonth(_months[idx2], firstDayOfWeek)
             : 0;
         final maxWeeks = weeks1 > weeks2 ? weeks1 : weeks2;
-        offset += 83.0 + (maxWeeks * CalendarMonthCard.wideCellHeight) + 20.0;
+        offset += 58.0 + (maxWeeks * CalendarMonthCard.wideCellHeight) + 16.0;
       }
       return offset;
     } else {
-      double offset = 12.0; // list top padding
+      double offset = 8.0; // list top padding
       for (int i = 0; i < _currentMonthIndex; i++) {
         final weeks = _getWeeksInMonth(_months[i], firstDayOfWeek);
-        offset += 83.0 + (weeks * CalendarMonthCard.narrowCellHeight) + 16.0;
+        offset += 58.0 + (weeks * CalendarMonthCard.narrowCellHeight) + 12.0;
       }
       return offset;
     }
@@ -293,14 +293,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       key: const PageStorageKey<String>('calendar_month_list'),
       controller: _scrollController,
       scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       itemCount: rowCount,
       itemBuilder: (context, rowIndex) {
         final idx1 = rowIndex * 2;
         final idx2 = idx1 + 1;
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.only(bottom: 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -322,7 +322,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   onDayTap: _zoomToDay,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: idx2 < _months.length
                     ? CalendarMonthCard(
@@ -363,11 +363,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       key: const PageStorageKey<String>('calendar_month_list'),
       controller: _scrollController,
       scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       itemCount: _months.length,
       itemBuilder: (context, index) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 12),
           child: CalendarMonthCard(
             monthDate: _months[index],
             dayTaskMap: _getMonthTaskMap(

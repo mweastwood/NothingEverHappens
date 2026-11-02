@@ -67,13 +67,13 @@ List<String> getWeekdayHeaders(
   return result;
 }
 
-/// Renders a single month card with weekday headers and interactive day cells.
+/// Renders a single month section with weekday headers and interactive day cells.
 class CalendarMonthCard extends StatelessWidget {
-  /// Row height used for narrow (single-column mobile) month cards.
-  static const double narrowCellHeight = 76.0;
+  /// Row height used for narrow (single-column mobile) month grids.
+  static const double narrowCellHeight = 64.0;
 
-  /// Row height used for wide (two-column tablet/desktop) month cards.
-  static const double wideCellHeight = 86.0;
+  /// Row height used for wide (two-column tablet/desktop) month grids.
+  static const double wideCellHeight = 70.0;
 
   final DateTime monthDate;
   final Map<CivilDay, List<CalendarDayTask>> dayTaskMap;
@@ -120,134 +120,120 @@ class CalendarMonthCard extends StatelessWidget {
         monthDate.year == today.year && monthDate.month == today.month;
 
     return RepaintBoundary(
-      child: Card(
+      child: Container(
         key: Key('month_card_${monthDate.year}_${monthDate.month}'),
-        elevation: isCurrentMonth ? 2.5 : 1.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: isCurrentMonth
-              ? BorderSide(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                  width: 1.5,
-                )
-              : BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(
-                    alpha: 0.4,
-                  ),
-                  width: 0.5,
-                ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Month Header
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        monthTitle,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isCurrentMonth
-                              ? theme.colorScheme.primary
-                              : null,
-                        ),
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Month Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      monthTitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isCurrentMonth
+                            ? theme.colorScheme.primary
+                            : null,
                       ),
                     ),
-                    if (isCurrentMonth)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          context.l10n.calendarCurrentMonth,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
+                  ),
+                  if (isCurrentMonth)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
                       ),
-                  ],
-                ),
-              ),
-              // Weekday Headers
-              Row(
-                children: [
-                  for (final dayLabel in weekdayHeaders)
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          dayLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.7),
-                            fontWeight: FontWeight.bold,
-                          ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        context.l10n.calendarCurrentMonth,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onPrimaryContainer,
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Divider(height: 1, thickness: 0.5),
-              const SizedBox(height: 4),
-              // Calendar Day Grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final cellWidth = constraints.maxWidth / 7;
-                  final cellHeight = isWide ? wideCellHeight : narrowCellHeight;
-                  final bool isTier1 = cellWidth >= 60 && cellHeight >= 50;
-                  final bool isTier2 =
-                      !isTier1 && cellWidth >= 42 && cellHeight >= 42;
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (int r = 0; r < rowCount; r++) ...[
-                        SizedBox(
-                          height: cellHeight,
-                          child: Row(
-                            children: [
-                              for (int c = 0; c < 7; c++) ...[
-                                Expanded(
-                                  child: CalendarDayCellSlot(
-                                    row: r,
-                                    col: c,
-                                    leadingEmptyCount: leadingEmptyCount,
-                                    daysInMonth: daysInMonth,
-                                    monthDate: monthDate,
-                                    dayTaskMap: dayTaskMap,
-                                    today: today,
-                                    isTier1: isTier1,
-                                    isTier2: isTier2,
-                                    onDayTap: onDayTap,
-                                    labelsMap: labelsMap,
-                                    userSettings: userSettings,
-                                  ),
-                                ),
-                              ],
-                            ],
+            ),
+            // Weekday Headers
+            Row(
+              children: [
+                for (final dayLabel in weekdayHeaders)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        dayLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
                           ),
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Divider(height: 1, thickness: 0.5),
+            const SizedBox(height: 2),
+            // Calendar Day Grid
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cellWidth = constraints.maxWidth / 7;
+                final cellHeight = isWide ? wideCellHeight : narrowCellHeight;
+                final bool isTier1 = cellWidth >= 60 && cellHeight >= 48;
+                final bool isTier2 =
+                    !isTier1 && cellWidth >= 42 && cellHeight >= 42;
+                final bool showChipIcon = cellWidth >= 72;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int r = 0; r < rowCount; r++) ...[
+                      SizedBox(
+                        height: cellHeight,
+                        child: Row(
+                          children: [
+                            for (int c = 0; c < 7; c++) ...[
+                              Expanded(
+                                child: CalendarDayCellSlot(
+                                  row: r,
+                                  col: c,
+                                  leadingEmptyCount: leadingEmptyCount,
+                                  daysInMonth: daysInMonth,
+                                  monthDate: monthDate,
+                                  dayTaskMap: dayTaskMap,
+                                  today: today,
+                                  isTier1: isTier1,
+                                  isTier2: isTier2,
+                                  showChipIcon: showChipIcon,
+                                  onDayTap: onDayTap,
+                                  labelsMap: labelsMap,
+                                  userSettings: userSettings,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ],
-                  );
-                },
-              ),
-            ],
-          ),
+                  ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -265,6 +251,7 @@ class CalendarDayCellSlot extends StatelessWidget {
   final CivilDay today;
   final bool isTier1;
   final bool isTier2;
+  final bool showChipIcon;
   final void Function(CivilDay day)? onDayTap;
   final Map<String, TaskLabel> labelsMap;
   final UserSettings? userSettings;
@@ -280,6 +267,7 @@ class CalendarDayCellSlot extends StatelessWidget {
     required this.today,
     required this.isTier1,
     required this.isTier2,
+    this.showChipIcon = false,
     this.onDayTap,
     this.labelsMap = const {},
     this.userSettings,
@@ -318,33 +306,28 @@ class CalendarDayCellSlot extends StatelessWidget {
         workload.isHighLoad && !isPast && !workload.allCompleted;
 
     final Color? cellBgColor;
-    final Border? cellBorder;
+    final Border cellBorder;
     if (isToday) {
-      cellBgColor = theme.colorScheme.primaryContainer.withValues(alpha: 0.32);
-      cellBorder = Border.all(color: theme.colorScheme.primary, width: 1.5);
+      cellBgColor = theme.colorScheme.primaryContainer.withValues(alpha: 0.22);
+      cellBorder = Border.all(color: theme.colorScheme.primary, width: 1.0);
     } else if (showOverloadAlert) {
-      cellBgColor = theme.colorScheme.errorContainer.withValues(alpha: 0.28);
+      cellBgColor = theme.colorScheme.errorContainer.withValues(alpha: 0.18);
       cellBorder = Border.all(
-        color: theme.colorScheme.error.withValues(alpha: 0.6),
-        width: 1.0,
-      );
-    } else if (showHighLoadTint) {
-      cellBgColor = theme.colorScheme.tertiaryContainer.withValues(alpha: 0.25);
-      cellBorder = Border.all(
-        color: theme.colorScheme.tertiary.withValues(alpha: 0.45),
+        color: theme.colorScheme.error.withValues(alpha: 0.55),
         width: 0.75,
       );
-    } else if (tasks.isNotEmpty) {
-      cellBgColor = theme.colorScheme.surfaceContainerHighest.withValues(
-        alpha: isPast ? 0.16 : 0.28,
-      );
+    } else if (showHighLoadTint) {
+      cellBgColor = theme.colorScheme.tertiaryContainer.withValues(alpha: 0.14);
       cellBorder = Border.all(
-        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.28),
         width: 0.5,
       );
     } else {
       cellBgColor = null;
-      cellBorder = null;
+      cellBorder = Border.all(
+        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.24),
+        width: 0.5,
+      );
     }
 
     return InkWell(
@@ -355,14 +338,8 @@ class CalendarDayCellSlot extends StatelessWidget {
           CalendarDayDetailsSheet.show(context, day: civilDay);
         }
       },
-      borderRadius: BorderRadius.circular(8),
       child: Container(
-        margin: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: cellBgColor,
-          border: cellBorder,
-        ),
+        decoration: BoxDecoration(color: cellBgColor, border: cellBorder),
         child: _buildResponsiveDayContent(
           context,
           dayNum,
@@ -394,7 +371,7 @@ class CalendarDayCellSlot extends StatelessWidget {
     }
   }
 
-  /// Tier 1: Wide space -> Day number + planned hours + standout hero task chip + label capacity bar
+  /// Tier 1: Wide space -> Day number row + standout task chip + (+N & hours row) + capacity bar
   Widget _buildTier1Day(
     BuildContext context,
     int dayNum,
@@ -405,118 +382,19 @@ class CalendarDayCellSlot extends StatelessWidget {
     final standout = workload.standoutTask;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+      padding: const EdgeInsets.fromLTRB(3.5, 3, 3.5, 3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$dayNum',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                      color: isToday
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  if (workload.allCompleted) ...[
-                    const SizedBox(width: 2),
-                    Icon(
-                      Icons.check_circle,
-                      size: 10,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                    ),
-                  ],
-                ],
-              ),
-              if (workload.isNotEmpty)
-                Text(
-                  workload.formattedPlannedHours,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: workload.isOverCapacity && !workload.allCompleted
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.8,
-                          ),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Expanded(
-            child: standout == null
-                ? const SizedBox.shrink()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: CalendarTaskChip(
-                          task: standout,
-                          labelsMap: labelsMap,
-                          showText: true,
-                          maxLines: 2,
-                        ),
-                      ),
-                      if (workload.additionalTasksCount > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 1),
-                          child: Text(
-                            context.l10n.moreTasksCount(
-                              workload.additionalTasksCount,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-          ),
-          if (workload.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            CalendarLabelCapacityBar(workload: workload, height: 5.0),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Tier 2: Mobile portrait space -> Day number + hours + 2-line standout hero chip + label capacity bar
-  Widget _buildTier2Day(
-    BuildContext context,
-    int dayNum,
-    bool isToday,
-    CalendarDayWorkload workload,
-    ThemeData theme,
-  ) {
-    final standout = workload.standoutTask;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2.5, 2, 2.5, 2.5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+          // Row 1: Day number (and completed check icon if all done)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '$dayNum',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.5,
+                  height: 1.0,
                   fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
                   color: isToday
                       ? theme.colorScheme.primary
@@ -528,60 +406,165 @@ class CalendarDayCellSlot extends StatelessWidget {
                   Icons.check_circle,
                   size: 9.5,
                   color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                )
-              else if (workload.isNotEmpty)
-                Text(
-                  workload.formattedPlannedHours,
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: workload.isOverCapacity
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.85,
-                          ),
-                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 1.5),
+          const SizedBox(height: 2.5),
+          // Row 2: Standout Hero Task Chip
           Expanded(
             child: standout == null
                 ? const SizedBox.shrink()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: CalendarTaskChip(
-                          task: standout,
-                          labelsMap: labelsMap,
-                          showText: true,
-                          maxLines: 2,
-                          compact: true,
-                        ),
-                      ),
-                      if (workload.additionalTasksCount > 0)
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Text(
-                            '+${workload.additionalTasksCount}',
-                            style: TextStyle(
-                              fontSize: 7.5,
-                              height: 1.0,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ),
-                    ],
+                : CalendarTaskChip(
+                    task: standout,
+                    labelsMap: labelsMap,
+                    showText: true,
+                    maxLines: 2,
+                    compact: !showChipIcon,
                   ),
           ),
           if (workload.isNotEmpty) ...[
-            const SizedBox(height: 1.5),
-            CalendarLabelCapacityBar(workload: workload, height: 4.5),
+            const SizedBox(height: 2.5),
+            // Row 3: +N overflow count on left, total planned hours on right
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (workload.additionalTasksCount > 0)
+                  Text(
+                    '+${workload.additionalTasksCount}',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      height: 1.0,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.85),
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      workload.formattedPlannedHours,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        height: 1.0,
+                        color: workload.isOverCapacity && !workload.allCompleted
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.8,
+                              ),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            // Row 4: Label-segmented capacity bar
+            CalendarLabelCapacityBar(workload: workload, height: 4.0),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Tier 2: Mobile portrait space -> Day number row + 2-line standout chip + (+N & hours row) + capacity bar
+  Widget _buildTier2Day(
+    BuildContext context,
+    int dayNum,
+    bool isToday,
+    CalendarDayWorkload workload,
+    ThemeData theme,
+  ) {
+    final standout = workload.standoutTask;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(3, 2.5, 3, 2.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Row 1: Day number (and completed check icon if all done)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$dayNum',
+                style: TextStyle(
+                  fontSize: 10,
+                  height: 1.0,
+                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+                  color: isToday
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+              if (workload.allCompleted)
+                Icon(
+                  Icons.check_circle,
+                  size: 9,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.75),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          // Row 2: Standout Hero Task Chip
+          Expanded(
+            child: standout == null
+                ? const SizedBox.shrink()
+                : CalendarTaskChip(
+                    task: standout,
+                    labelsMap: labelsMap,
+                    showText: true,
+                    maxLines: 2,
+                    compact: true,
+                  ),
+          ),
+          if (workload.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            // Row 3: +N overflow count on left, total planned hours on right
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (workload.additionalTasksCount > 0)
+                  Text(
+                    '+${workload.additionalTasksCount}',
+                    style: TextStyle(
+                      fontSize: 7.5,
+                      height: 1.0,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.85),
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      workload.formattedPlannedHours,
+                      style: TextStyle(
+                        fontSize: 7.5,
+                        height: 1.0,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                        color: workload.isOverCapacity && !workload.allCompleted
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.85,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            // Row 4: Label-segmented capacity bar
+            CalendarLabelCapacityBar(workload: workload, height: 3.5),
           ],
         ],
       ),
@@ -652,9 +635,9 @@ class CalendarLabelCapacityBar extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.75,
+          alpha: 0.65,
         ),
-        borderRadius: BorderRadius.circular(height / 2),
+        borderRadius: BorderRadius.circular(1.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: fillFraction <= 0 || workload.segments.isEmpty
@@ -728,15 +711,16 @@ class CalendarTaskChip extends StatelessWidget {
         : accentColor;
 
     return Container(
+      alignment: Alignment.centerLeft,
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 2.5 : 3.5,
-        vertical: compact ? 1.5 : 2.0,
+        vertical: 1.5,
       ),
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: bgAlpha),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(2.0),
         border: Border(
-          left: BorderSide(color: stripeColor, width: compact ? 2.2 : 2.8),
+          left: BorderSide(color: stripeColor, width: compact ? 2.0 : 2.5),
         ),
       ),
       child: Row(
@@ -768,8 +752,8 @@ class CalendarTaskChip extends StatelessWidget {
                 maxLines: maxLines,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: compact ? 8.0 : 8.5,
-                  height: 1.12,
+                  fontSize: compact ? 8.5 : 9.0,
+                  height: 1.1,
                   letterSpacing: compact ? -0.2 : -0.1,
                   decoration: task.isCompleted
                       ? TextDecoration.lineThrough

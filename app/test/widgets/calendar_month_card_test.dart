@@ -153,11 +153,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tier 1 shows planned hours badge and standout task title chip
+      // Tier 1 shows planned hours badge, compact +N in header, and standout task title chip
       expect(find.text('1.5h'), findsOneWidget);
       expect(find.text('Task Alpha'), findsOneWidget);
-      // Because tasks.length > 2, moreTasksCount "+2 more" is shown
-      expect(find.text('+2 more'), findsOneWidget);
+      expect(find.text('+2'), findsOneWidget);
       expect(find.byType(CalendarLabelCapacityBar), findsOneWidget);
     },
   );
