@@ -174,10 +174,17 @@ class CalendarLabelSegment {
 
 /// Aggregated workload, standout task, and label-color breakdown for a single calendar day.
 class CalendarDayWorkload {
+  /// Maximum number of standout tasks rotated through on a single day cell.
+  static const int maxStandoutCandidates = 4;
+
+  /// Minimum standoutScore ratio relative to the top task for a secondary task to rotate.
+  static const double minStandoutScoreRatio = 0.25;
+
   final List<CalendarDayTask> tasks;
   final int totalMinutes;
   final double capacityHours;
   final CalendarDayTask? standoutTask;
+  final List<CalendarDayTask> standoutCandidates;
   final List<CalendarLabelSegment> segments;
 
   const CalendarDayWorkload({
@@ -185,6 +192,7 @@ class CalendarDayWorkload {
     required this.totalMinutes,
     required this.capacityHours,
     required this.standoutTask,
+    this.standoutCandidates = const [],
     required this.segments,
   });
 
@@ -200,23 +208,39 @@ class CalendarDayWorkload {
         totalMinutes: 0,
         capacityHours: capacityHours,
         standoutTask: null,
+        standoutCandidates: const [],
         segments: const [],
       );
     }
 
+    final sortedTasks = List<CalendarDayTask>.of(tasks)
+      ..sort((a, b) => compareCalendarDayTasks(a, b, isPastDay: isPastDay));
+    final CalendarDayTask bestTask = sortedTasks.first;
+
+    final List<CalendarDayTask> candidates = [bestTask];
+    final double minScore = bestTask.standoutScore * minStandoutScoreRatio;
+    for (var i = 1; i < sortedTasks.length; i++) {
+      if (candidates.length >= maxStandoutCandidates) break;
+      final candidate = sortedTasks[i];
+      if (!isPastDay && !bestTask.isCompleted && candidate.isCompleted) {
+        continue;
+      }
+      if (!bestTask.isRoutineDaily && candidate.isRoutineDaily) {
+        continue;
+      }
+      if (candidate.standoutScore < minScore) {
+        continue;
+      }
+      candidates.add(candidate);
+    }
+
     int totalMins = 0;
-    CalendarDayTask bestTask = tasks.first;
     final Map<String?, double> minutesByColorKey = {};
 
     for (var i = 0; i < tasks.length; i++) {
       final task = tasks[i];
       final durationMins = task.effectiveDurationMinutes;
       totalMins += durationMins;
-
-      if (i > 0 &&
-          compareCalendarDayTasks(task, bestTask, isPastDay: isPastDay) < 0) {
-        bestTask = task;
-      }
 
       final resolvedLabels = <TaskLabel>[
         for (final id in task.labelIds)
@@ -254,6 +278,7 @@ class CalendarDayWorkload {
       totalMinutes: totalMins,
       capacityHours: capacityHours,
       standoutTask: bestTask,
+      standoutCandidates: candidates,
       segments: segments,
     );
   }

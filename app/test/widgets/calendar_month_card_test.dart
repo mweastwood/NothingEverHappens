@@ -390,6 +390,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Verify CalendarRotatingTaskChip rotates through standoutCandidates with staggered timing across days',
+    (tester) async {
+      CalendarRotatingTaskChip.debugForceAnimateInTests = true;
+      addTearDown(() {
+        CalendarRotatingTaskChip.debugForceAnimateInTests = false;
+      });
+
+      final day15 = const CivilDay(year: 2026, month: 3, day: 15);
+      final day22 = const CivilDay(year: 2026, month: 3, day: 22);
+
+      await tester.pumpWidget(
+        createTestWidget(
+          width: 700,
+          child: CalendarMonthCard(
+            monthDate: march2026,
+            today: todayDay8,
+            isWide: true,
+            dayTaskMap: {
+              day15: const [
+                CalendarDayTask(
+                  id: 'd15-1',
+                  title: 'Tax Prep',
+                  priority: TaskPriority.high,
+                  isInstance: true,
+                ),
+                CalendarDayTask(
+                  id: 'd15-2',
+                  title: 'Meal Prep',
+                  priority: TaskPriority.medium,
+                  isInstance: true,
+                ),
+              ],
+              day22: const [
+                CalendarDayTask(
+                  id: 'd22-1',
+                  title: 'Dentist Visit',
+                  priority: TaskPriority.high,
+                  isInstance: true,
+                ),
+                CalendarDayTask(
+                  id: 'd22-2',
+                  title: 'Grocery Run',
+                  priority: TaskPriority.medium,
+                  isInstance: true,
+                ),
+              ],
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Initially both days display their top standout task
+      expect(find.text('Tax Prep'), findsOneWidget);
+      expect(find.text('Dentist Visit'), findsOneWidget);
+
+      // Advance past maximum initial delay (9s) so both days rotate to their second candidate
+      for (int i = 0; i < 10; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      expect(find.text('Meal Prep'), findsOneWidget);
+      expect(find.text('Grocery Run'), findsOneWidget);
+    },
+  );
+
   test('getWeekdayHeaders caches results and can be cleared', () {
     clearCalendarMonthCardCaches();
     final headers1 = getWeekdayHeaders(

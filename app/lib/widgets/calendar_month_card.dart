@@ -334,6 +334,7 @@ class CalendarDayCellSlot extends StatelessWidget {
 
     final dayContent = _buildResponsiveDayContent(
       context,
+      civilDay,
       dayNum,
       isToday,
       workload,
@@ -357,6 +358,7 @@ class CalendarDayCellSlot extends StatelessWidget {
 
   Widget _buildResponsiveDayContent(
     BuildContext context,
+    CivilDay civilDay,
     int dayNum,
     bool isToday,
     CalendarDayWorkload workload,
@@ -365,9 +367,23 @@ class CalendarDayCellSlot extends StatelessWidget {
     required bool isTier2,
   }) {
     if (isTier1) {
-      return _buildTier1Day(context, dayNum, isToday, workload, theme);
+      return _buildTier1Day(
+        context,
+        civilDay,
+        dayNum,
+        isToday,
+        workload,
+        theme,
+      );
     } else if (isTier2) {
-      return _buildTier2Day(context, dayNum, isToday, workload, theme);
+      return _buildTier2Day(
+        context,
+        civilDay,
+        dayNum,
+        isToday,
+        workload,
+        theme,
+      );
     } else {
       return _buildTier3Day(dayNum, isToday, workload, theme);
     }
@@ -376,13 +392,12 @@ class CalendarDayCellSlot extends StatelessWidget {
   /// Tier 1: Wide space -> Day number row + standout task chip + (+N & hours row) + capacity bar
   Widget _buildTier1Day(
     BuildContext context,
+    CivilDay civilDay,
     int dayNum,
     bool isToday,
     CalendarDayWorkload workload,
     ThemeData theme,
   ) {
-    final standout = workload.standoutTask;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(3.5, 3, 3.5, 3),
       child: Column(
@@ -412,17 +427,15 @@ class CalendarDayCellSlot extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2.5),
-          // Row 2: Standout Hero Task Chip
+          // Row 2: Standout Hero Task Chip (rotates when multiple tasks are worth highlighting)
           Expanded(
-            child: standout == null
-                ? const SizedBox.shrink()
-                : CalendarTaskChip(
-                    task: standout,
-                    labelsMap: labelsMap,
-                    showText: true,
-                    maxLines: 2,
-                    compact: !showChipIcon,
-                  ),
+            child: CalendarRotatingTaskChip(
+              candidates: workload.standoutCandidates,
+              day: civilDay,
+              labelsMap: labelsMap,
+              maxLines: 2,
+              compact: !showChipIcon,
+            ),
           ),
           if (workload.isNotEmpty) ...[
             const SizedBox(height: 2.5),
@@ -475,13 +488,12 @@ class CalendarDayCellSlot extends StatelessWidget {
   /// Tier 2: Mobile portrait space -> Day number row + 2-line standout chip + (+N & hours row) + capacity bar
   Widget _buildTier2Day(
     BuildContext context,
+    CivilDay civilDay,
     int dayNum,
     bool isToday,
     CalendarDayWorkload workload,
     ThemeData theme,
   ) {
-    final standout = workload.standoutTask;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(3, 2.5, 3, 2.5),
       child: Column(
@@ -511,17 +523,15 @@ class CalendarDayCellSlot extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
-          // Row 2: Standout Hero Task Chip
+          // Row 2: Standout Hero Task Chip (rotates when multiple tasks are worth highlighting)
           Expanded(
-            child: standout == null
-                ? const SizedBox.shrink()
-                : CalendarTaskChip(
-                    task: standout,
-                    labelsMap: labelsMap,
-                    showText: true,
-                    maxLines: 2,
-                    compact: true,
-                  ),
+            child: CalendarRotatingTaskChip(
+              candidates: workload.standoutCandidates,
+              day: civilDay,
+              labelsMap: labelsMap,
+              maxLines: 2,
+              compact: true,
+            ),
           ),
           if (workload.isNotEmpty) ...[
             const SizedBox(height: 2),
@@ -981,6 +991,214 @@ class CalendarLabelCapacityBar extends StatelessWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// Slowly rotates through [candidates] with per-day randomized staggering when
+/// a day has multiple standout tasks worth highlighting.
+///
+/// When [candidates] has 0 or 1 task, renders statically with zero timers.
+class CalendarRotatingTaskChip extends StatefulWidget {
+  /// Minimum initial delay before a day's first rotation.
+  static const int minInitialDelayMs = 2500;
+
+  /// Random jitter range added to the initial delay.
+  static const int initialDelayJitterMs = 6500;
+
+  /// Minimum dwell duration per task after the first rotation.
+  static const int minCycleDelayMs = 6000;
+
+  /// Random jitter range added to each subsequent dwell duration.
+  static const int cycleDelayJitterMs = 5000;
+
+  /// Crossfade/slide transition duration when switching tasks.
+  static const Duration switchDuration = Duration(milliseconds: 450);
+
+  /// Allows unit tests to explicitly enable staggered rotation under TestWidgetsFlutterBinding.
+  @visibleForTesting
+  static bool debugForceAnimateInTests = false;
+
+  final List<CalendarDayTask> candidates;
+  final CivilDay day;
+  final Map<String, TaskLabel> labelsMap;
+  final int maxLines;
+  final bool compact;
+
+  const CalendarRotatingTaskChip({
+    super.key,
+    required this.candidates,
+    required this.day,
+    this.labelsMap = const {},
+    this.maxLines = 2,
+    this.compact = false,
+  });
+
+  @override
+  State<CalendarRotatingTaskChip> createState() =>
+      _CalendarRotatingTaskChipState();
+}
+
+class _CalendarRotatingTaskChipState extends State<CalendarRotatingTaskChip> {
+  late math.Random _rng;
+  Timer? _rotationTimer;
+  int _currentIndex = 0;
+  bool _shouldAnimate = false;
+  bool _waitingForPostFrame = false;
+
+  static int _seedForDay(CivilDay day) =>
+      (day.year * 10007) ^ (day.month * 313) ^ (day.day * 97);
+
+  @override
+  void initState() {
+    super.initState();
+    _rng = math.Random(_seedForDay(widget.day));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncRotationState();
+  }
+
+  @override
+  void didUpdateWidget(covariant CalendarRotatingTaskChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.day != widget.day) {
+      _rng = math.Random(_seedForDay(widget.day));
+      _currentIndex = 0;
+      _cancelTimer();
+    } else if (widget.candidates.isNotEmpty &&
+        _currentIndex >= widget.candidates.length) {
+      _currentIndex = 0;
+    }
+    _syncRotationState();
+  }
+
+  void _syncRotationState() {
+    final isTestBinding = WidgetsBinding.instance.runtimeType
+        .toString()
+        .contains('TestWidgetsFlutterBinding');
+    final disableAnimations =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final tickerEnabled = TickerMode.valuesOf(context).enabled;
+    final shouldAnimate =
+        widget.candidates.length > 1 &&
+        (CalendarRotatingTaskChip.debugForceAnimateInTests || !isTestBinding) &&
+        !disableAnimations &&
+        tickerEnabled;
+
+    if (shouldAnimate == _shouldAnimate) {
+      if (_shouldAnimate && _rotationTimer == null && !_waitingForPostFrame) {
+        _scheduleNextRotation(initial: true);
+      }
+      return;
+    }
+    _shouldAnimate = shouldAnimate;
+
+    if (_shouldAnimate) {
+      _scheduleNextRotation(initial: true);
+    } else {
+      _cancelTimer();
+    }
+  }
+
+  Duration _nextDelay({required bool initial}) {
+    if (initial) {
+      return Duration(
+        milliseconds:
+            CalendarRotatingTaskChip.minInitialDelayMs +
+            _rng.nextInt(CalendarRotatingTaskChip.initialDelayJitterMs),
+      );
+    }
+    return Duration(
+      milliseconds:
+          CalendarRotatingTaskChip.minCycleDelayMs +
+          _rng.nextInt(CalendarRotatingTaskChip.cycleDelayJitterMs),
+    );
+  }
+
+  void _scheduleNextRotation({required bool initial}) {
+    if (!mounted || !_shouldAnimate || _rotationTimer != null) return;
+    _rotationTimer = Timer(_nextDelay(initial: initial), _onRotationTick);
+  }
+
+  void _onRotationTick() {
+    _rotationTimer = null;
+    if (!mounted || !_shouldAnimate || widget.candidates.length <= 1) return;
+
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % widget.candidates.length;
+    });
+
+    if (!_waitingForPostFrame) {
+      _waitingForPostFrame = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _waitingForPostFrame = false;
+        _scheduleNextRotation(initial: false);
+      });
+    }
+  }
+
+  void _cancelTimer() {
+    _rotationTimer?.cancel();
+    _rotationTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelTimer();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.candidates.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (widget.candidates.length == 1) {
+      return CalendarTaskChip(
+        task: widget.candidates.first,
+        labelsMap: widget.labelsMap,
+        showText: true,
+        maxLines: widget.maxLines,
+        compact: widget.compact,
+      );
+    }
+
+    final safeIndex = _currentIndex % widget.candidates.length;
+    final activeTask = widget.candidates[safeIndex];
+    final activeKey = ValueKey<String>('${activeTask.id}_$safeIndex');
+
+    return AnimatedSwitcher(
+      duration: CalendarRotatingTaskChip.switchDuration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [...previousChildren, ?currentChild],
+        );
+      },
+      transitionBuilder: (child, animation) {
+        final isIncoming = child.key == activeKey;
+        final slideOffset = Tween<Offset>(
+          begin: Offset(0, isIncoming ? 0.16 : -0.16),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: slideOffset, child: child),
+        );
+      },
+      child: CalendarTaskChip(
+        key: activeKey,
+        task: activeTask,
+        labelsMap: widget.labelsMap,
+        showText: true,
+        maxLines: widget.maxLines,
+        compact: widget.compact,
+      ),
     );
   }
 }
