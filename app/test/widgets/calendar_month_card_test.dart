@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../test_helper.dart';
 import 'package:nothing_ever_happens/logic/calendar_day_task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/task_priority.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/widgets/calendar_month_card.dart';
 
@@ -152,11 +153,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tier 1 shows task count next to day number and task title chip
-      expect(find.text('3'), findsWidgets); // Task count indicator
+      // Tier 1 shows planned hours badge and standout task title chip
+      expect(find.text('1.5h'), findsOneWidget);
       expect(find.text('Task Alpha'), findsOneWidget);
       // Because tasks.length > 2, moreTasksCount "+2 more" is shown
       expect(find.text('+2 more'), findsOneWidget);
+      expect(find.byType(CalendarLabelCapacityBar), findsOneWidget);
     },
   );
 
@@ -201,12 +203,103 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tier 3 shows no text task chips, only priority dot circles
+    // Tier 3 shows no text task chips, only compact label-segmented capacity bar
     expect(find.text('Task Alpha'), findsNothing);
     expect(find.text('+2'), findsNothing);
     expect(find.text('+2 more'), findsNothing);
     expect(find.byType(CalendarTaskChip), findsNothing);
+    expect(find.byType(CalendarLabelCapacityBar), findsOneWidget);
   });
+
+  testWidgets(
+    'Verify label-segmented capacity bar divides multi-label task duration evenly and shows overload indicator',
+    (tester) async {
+      final labelsMap = <String, TaskLabel>{
+        'lbl-home': TaskLabel(
+          id: 'lbl-home',
+          name: 'Home',
+          colorKey: 'emerald',
+          iconKey: 'home',
+          scope: TaskLabelScope.personal,
+          order: 0,
+          createdAt: DateTime.utc(2026, 3, 1),
+        ),
+        'lbl-meals': TaskLabel(
+          id: 'lbl-meals',
+          name: 'Meals',
+          colorKey: 'tangerine',
+          iconKey: 'restaurant',
+          scope: TaskLabelScope.personal,
+          order: 1,
+          createdAt: DateTime.utc(2026, 3, 1),
+        ),
+      };
+
+      final multiLabelSchedule = TaskSchedule(
+        id: 'S-1',
+        title: 'Dinner Party Prep',
+        description: '',
+        priority: TaskPriority.high,
+        estimatedDuration: const Duration(minutes: 180), // 3.0h
+        labelIds: const ['lbl-home', 'lbl-meals'],
+        schedules: const [],
+      );
+
+      final unlabeledSchedule = TaskSchedule(
+        id: 'S-2',
+        title: 'Quick Call',
+        description: '',
+        priority: TaskPriority.low,
+        estimatedDuration: const Duration(minutes: 30), // 0.5h
+        schedules: const [],
+      );
+
+      await tester.pumpWidget(
+        createTestWidget(
+          width: 700,
+          child: CalendarMonthCard(
+            monthDate: march2026,
+            today: todayDay8,
+            isWide: true,
+            labelsMap: labelsMap,
+            userSettings: const UserSettings(hoursAvailable: 3.0),
+            dayTaskMap: {
+              const CivilDay(year: 2026, month: 3, day: 12): [
+                CalendarDayTask(
+                  id: 't-1',
+                  title: multiLabelSchedule.title,
+                  priority: multiLabelSchedule.priority,
+                  isInstance: true,
+                  schedule: multiLabelSchedule,
+                ),
+                CalendarDayTask(
+                  id: 't-2',
+                  title: unlabeledSchedule.title,
+                  priority: unlabeledSchedule.priority,
+                  isInstance: true,
+                  schedule: unlabeledSchedule,
+                ),
+              ],
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 3.5h exceeds 3.0h capacity -> shows "3.5h!"
+      expect(find.text('3.5h!'), findsOneWidget);
+      expect(find.text('Dinner Party Prep'), findsOneWidget);
+
+      final barWidget = tester.widget<CalendarLabelCapacityBar>(
+        find.byType(CalendarLabelCapacityBar),
+      );
+      expect(barWidget.workload.segments, hasLength(3));
+      expect(barWidget.workload.segments[0].minutes, closeTo(90.0, 1e-6));
+      expect(barWidget.workload.segments[1].minutes, closeTo(90.0, 1e-6));
+      expect(barWidget.workload.segments[2].colorKey, isNull);
+      expect(barWidget.workload.segments[2].minutes, closeTo(30.0, 1e-6));
+    },
+  );
 
   testWidgets('Verify day cell tap invokes onDayTap callback', (tester) async {
     CivilDay? tappedDay;

@@ -7,7 +7,9 @@ import '../logic/auth_repository.dart';
 import '../logic/calendar_day_task.dart' as calendar_logic;
 import '../logic/civil_day.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/label_repository.dart';
 import '../logic/task_instance.dart';
+import '../logic/task_label.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
 import '../logic/user_settings.dart';
@@ -135,14 +137,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ? _getWeeksInMonth(_months[idx2], firstDayOfWeek)
             : 0;
         final maxWeeks = weeks1 > weeks2 ? weeks1 : weeks2;
-        offset += 83.0 + (maxWeeks * 62.0) + 20.0;
+        offset += 83.0 + (maxWeeks * CalendarMonthCard.wideCellHeight) + 20.0;
       }
       return offset;
     } else {
       double offset = 12.0; // list top padding
       for (int i = 0; i < _currentMonthIndex; i++) {
         final weeks = _getWeeksInMonth(_months[i], firstDayOfWeek);
-        offset += 83.0 + (weeks * 54.0) + 16.0;
+        offset += 83.0 + (weeks * CalendarMonthCard.narrowCellHeight) + 16.0;
       }
       return offset;
     }
@@ -202,8 +204,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final instances = instancesVal.value ?? [];
     final schedules = schedulesVal.value ?? [];
     final currentUserId = ref.watch(authStateProvider).value?.uid;
+    final userSettings = settingsVal.value;
     final firstDayOfWeek =
-        settingsVal.value?.firstDayOfWeek ?? FirstDayOfWeek.sunday;
+        userSettings?.firstDayOfWeek ?? FirstDayOfWeek.sunday;
+    final labelsMap = ref.watch(allLabelsMapProvider);
 
     final isWide = isWideScreen(context);
     final today = CivilDay.fromDateTime(AppClock.now);
@@ -228,6 +232,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         today,
                         currentUserId: currentUserId,
                         firstDayOfWeek: firstDayOfWeek,
+                        labelsMap: labelsMap,
+                        userSettings: userSettings,
                       )
                     : _buildNarrowMonthList(
                         instances,
@@ -235,6 +241,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         today,
                         currentUserId: currentUserId,
                         firstDayOfWeek: firstDayOfWeek,
+                        labelsMap: labelsMap,
+                        userSettings: userSettings,
                       ),
                 Positioned(
                   right: 16,
@@ -276,6 +284,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     CivilDay today, {
     String? currentUserId,
     required FirstDayOfWeek firstDayOfWeek,
+    required Map<String, TaskLabel> labelsMap,
+    UserSettings? userSettings,
   }) {
     final rowCount = (_months.length / 2).ceil();
 
@@ -307,6 +317,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   today: today,
                   isWide: true,
                   firstDayOfWeek: firstDayOfWeek,
+                  labelsMap: labelsMap,
+                  userSettings: userSettings,
                   onDayTap: _zoomToDay,
                 ),
               ),
@@ -325,6 +337,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         today: today,
                         isWide: true,
                         firstDayOfWeek: firstDayOfWeek,
+                        labelsMap: labelsMap,
+                        userSettings: userSettings,
                         onDayTap: _zoomToDay,
                       )
                     : const SizedBox.shrink(),
@@ -342,6 +356,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     CivilDay today, {
     String? currentUserId,
     required FirstDayOfWeek firstDayOfWeek,
+    required Map<String, TaskLabel> labelsMap,
+    UserSettings? userSettings,
   }) {
     return ListView.builder(
       key: const PageStorageKey<String>('calendar_month_list'),
@@ -364,6 +380,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             today: today,
             isWide: false,
             firstDayOfWeek: firstDayOfWeek,
+            labelsMap: labelsMap,
+            userSettings: userSettings,
             onDayTap: _zoomToDay,
           ),
         );
