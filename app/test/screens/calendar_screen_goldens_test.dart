@@ -14,7 +14,9 @@ import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/screens/calendar_screen.dart';
@@ -33,12 +35,62 @@ void main() {
 
   final fixedDate = DateTime(2026, 3, 8, 9, 0);
 
+  final sampleLabelsMap = <String, TaskLabel>{
+    'lbl-home': TaskLabel(
+      id: 'lbl-home',
+      name: 'Home',
+      colorKey: 'emerald',
+      iconKey: 'home',
+      scope: TaskLabelScope.personal,
+      order: 0,
+      createdAt: DateTime.utc(2026, 3, 1),
+    ),
+    'lbl-meals': TaskLabel(
+      id: 'lbl-meals',
+      name: 'Meals',
+      colorKey: 'tangerine',
+      iconKey: 'restaurant',
+      scope: TaskLabelScope.personal,
+      order: 1,
+      createdAt: DateTime.utc(2026, 3, 1),
+    ),
+    'lbl-finance': TaskLabel(
+      id: 'lbl-finance',
+      name: 'Finance',
+      colorKey: 'cobalt',
+      iconKey: 'payments',
+      scope: TaskLabelScope.personal,
+      order: 2,
+      createdAt: DateTime.utc(2026, 3, 1),
+    ),
+    'lbl-pets': TaskLabel(
+      id: 'lbl-pets',
+      name: 'Pets',
+      colorKey: 'lavender',
+      iconKey: 'pets',
+      scope: TaskLabelScope.personal,
+      order: 3,
+      createdAt: DateTime.utc(2026, 3, 1),
+    ),
+    'lbl-health': TaskLabel(
+      id: 'lbl-health',
+      name: 'Health',
+      colorKey: 'rose',
+      iconKey: 'medication',
+      scope: TaskLabelScope.personal,
+      order: 4,
+      createdAt: DateTime.utc(2026, 3, 1),
+    ),
+  };
+
   final sampleTasks = [
     TaskSchedule(
       id: 'S-1',
       title: 'Water the Houseplants',
       description: 'Living room, kitchen, and balcony plants.',
       priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 15),
+      labelIds: const ['lbl-home'],
       schedules: [
         DailySchedule(
           id: 'R-1',
@@ -63,6 +115,8 @@ void main() {
       title: 'Review Weekly Plan',
       description: 'Check calendar and meal schedule for the week.',
       priority: TaskPriority.medium,
+      estimatedDuration: const Duration(minutes: 45),
+      labelIds: const ['lbl-home', 'lbl-finance'],
       schedules: [
         WeeklySchedule(
           id: 'R-2',
@@ -88,6 +142,8 @@ void main() {
       title: 'Pay Utilities Bill',
       description: 'Electric and water bills.',
       priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 60),
+      labelIds: const ['lbl-finance'],
       schedules: [
         MonthlySchedule(
           id: 'R-3',
@@ -108,9 +164,182 @@ void main() {
         ),
       ],
     ),
+    TaskSchedule(
+      id: 'S-4',
+      title: 'Meal Prep & Groceries',
+      description: 'Shop for produce and prep lunches.',
+      priority: TaskPriority.medium,
+      estimatedDuration: const Duration(minutes: 90),
+      labelIds: const ['lbl-meals'],
+      schedules: [
+        WeeklySchedule(
+          id: 'R-4',
+          scheduleId: 'S-4',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          daysOfWeek: {4, 7},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 14,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
+    TaskSchedule(
+      id: 'S-5',
+      title: 'Deep Clean Kitchen',
+      description: 'Counters, stove, sink, and floors.',
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 90),
+      labelIds: const ['lbl-home'],
+      schedules: [
+        WeeklySchedule(
+          id: 'R-5',
+          scheduleId: 'S-5',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          daysOfWeek: {6},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 15,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
+    TaskSchedule(
+      id: 'S-6',
+      title: 'Vet Checkup',
+      description: 'Annual vaccination and wellness exam.',
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 75),
+      labelIds: const ['lbl-pets'],
+      schedules: [
+        OneOffSchedule(
+          id: 'R-6',
+          scheduleId: 'S-6',
+          date: const CivilDay(year: 2026, month: 3, day: 12),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 13,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
+    TaskSchedule(
+      id: 'S-7',
+      title: 'Quarterly Tax Prep',
+      description: 'Gather receipts and file Q1 estimate.',
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 90),
+      labelIds: const ['lbl-finance', 'lbl-home'],
+      schedules: [
+        OneOffSchedule(
+          id: 'R-7',
+          scheduleId: 'S-7',
+          date: const CivilDay(year: 2026, month: 3, day: 15),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 13,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
+    TaskSchedule(
+      id: 'S-8',
+      title: 'Dentist Cleaning',
+      description: '6-month dental hygiene visit.',
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(minutes: 60),
+      labelIds: const ['lbl-health'],
+      schedules: [
+        OneOffSchedule(
+          id: 'R-8',
+          scheduleId: 'S-8',
+          date: const CivilDay(year: 2026, month: 3, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 30,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
   ];
 
   final sampleInstances = [
+    // Past completed instances (March 4, 6, 7)
+    TaskInstance(
+      id: 'I-past-4',
+      scheduleId: 'S-2',
+      ruleId: 'R-2',
+      title: 'Review Weekly Plan',
+      description: 'Check calendar and meal schedule for the week.',
+      priority: TaskPriority.medium,
+      labelIds: const ['lbl-home', 'lbl-finance'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 4),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 3, 4, 11, 0),
+    ),
+    TaskInstance(
+      id: 'I-past-6',
+      scheduleId: 'S-2',
+      ruleId: 'R-2',
+      title: 'Review Weekly Plan',
+      description: 'Check calendar and meal schedule for the week.',
+      priority: TaskPriority.medium,
+      labelIds: const ['lbl-home', 'lbl-finance'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 6),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 3, 6, 15, 0),
+    ),
+    TaskInstance(
+      id: 'I-past-7',
+      scheduleId: 'S-5',
+      ruleId: 'R-5',
+      title: 'Deep Clean Kitchen',
+      description: 'Counters, stove, sink, and floors.',
+      priority: TaskPriority.high,
+      labelIds: const ['lbl-home'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 7),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 15, minute: 0),
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 3, 7, 13, 0),
+    ),
+    // Today (March 8)
     TaskInstance(
       id: 'I-1',
       scheduleId: 'S-1',
@@ -118,6 +347,7 @@ void main() {
       title: 'Water the Houseplants',
       description: 'Living room, kitchen, and balcony plants.',
       priority: TaskPriority.high,
+      labelIds: const ['lbl-home'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
@@ -131,6 +361,7 @@ void main() {
       title: 'Review Weekly Plan',
       description: 'Check calendar and meal schedule for the week.',
       priority: TaskPriority.medium,
+      labelIds: const ['lbl-home', 'lbl-finance'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
@@ -138,16 +369,18 @@ void main() {
     ),
     TaskInstance(
       id: 'I-3',
-      scheduleId: 'S-1',
-      ruleId: 'R-1',
+      scheduleId: 'S-4',
+      ruleId: 'R-4',
       title: 'Grocery Shopping',
       description: 'Buy vegetables, fruits, and milk.',
       priority: TaskPriority.low,
+      labelIds: const ['lbl-meals'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 14, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 16, minute: 0),
       status: TaskStatus.pending,
     ),
+    // March 9
     TaskInstance(
       id: 'I-4',
       scheduleId: 'S-1',
@@ -155,6 +388,7 @@ void main() {
       title: 'Water the Houseplants',
       description: 'Living room, kitchen, and balcony plants.',
       priority: TaskPriority.high,
+      labelIds: const ['lbl-home'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
@@ -167,11 +401,27 @@ void main() {
       title: 'Review Weekly Plan',
       description: 'Check calendar and meal schedule for the week.',
       priority: TaskPriority.medium,
+      labelIds: const ['lbl-home', 'lbl-finance'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       status: TaskStatus.pending,
     ),
+    // March 12 (One-Off Vet Checkup)
+    TaskInstance(
+      id: 'I-vet-12',
+      scheduleId: 'S-6',
+      ruleId: 'R-6',
+      title: 'Vet Checkup',
+      description: 'Annual vaccination and wellness exam.',
+      priority: TaskPriority.high,
+      labelIds: const ['lbl-pets'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 12),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 11, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 13, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    // March 15 (Overloaded day: Pay Utilities Bill + Quarterly Tax Prep + projected Meal Prep & Water Plants)
     TaskInstance(
       id: 'I-6',
       scheduleId: 'S-3',
@@ -179,9 +429,50 @@ void main() {
       title: 'Pay Utilities Bill',
       description: 'Electric and water bills.',
       priority: TaskPriority.high,
+      labelIds: const ['lbl-finance'],
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 15),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    TaskInstance(
+      id: 'I-tax-15',
+      scheduleId: 'S-7',
+      ruleId: 'R-7',
+      title: 'Quarterly Tax Prep',
+      description: 'Gather receipts and file Q1 estimate.',
+      priority: TaskPriority.high,
+      labelIds: const ['lbl-finance', 'lbl-home'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 15),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 13, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    // March 19 (One-Off Dentist Cleaning)
+    TaskInstance(
+      id: 'I-dentist-19',
+      scheduleId: 'S-8',
+      ruleId: 'R-8',
+      title: 'Dentist Cleaning',
+      description: '6-month dental hygiene visit.',
+      priority: TaskPriority.high,
+      labelIds: const ['lbl-health'],
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 19),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 30),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 11, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    // March 24 (Unlabeled one-off task to exercise primary color fallback)
+    TaskInstance(
+      id: 'I-unlabeled-24',
+      scheduleId: 'S-unlabeled',
+      ruleId: 'R-unlabeled',
+      title: 'Call Insurance',
+      description: 'Confirm policy renewal details.',
+      priority: TaskPriority.medium,
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 24),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 11, minute: 0),
       status: TaskStatus.pending,
     ),
   ];
@@ -200,7 +491,7 @@ void main() {
     );
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(
-        hoursAvailable: 8.0,
+        hoursAvailable: 3.0,
         lastCapacityConfirmedWeek: '2026-03-02',
       ),
     );
@@ -239,6 +530,7 @@ void main() {
         ),
         userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
         familyRepositoryProvider.overrideWithValue(familyRepo),
+        allLabelsMapProvider.overrideWithValue(sampleLabelsMap),
         subscriptionServiceProvider.overrideWith(
           (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
         ),

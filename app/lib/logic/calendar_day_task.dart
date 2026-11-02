@@ -5,6 +5,7 @@ import 'app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_instance.dart';
+import 'task_label.dart';
 import 'task_schedule.dart';
 
 /// Unified representation of a task scheduled for a specific day on the calendar.
@@ -35,6 +36,87 @@ class CalendarDayTask {
 
   Duration? get estimatedDuration => schedule?.estimatedDuration;
 
+  /// Effective duration in minutes, defaulting to 30 minutes when unset.
+  int get effectiveDurationMinutes =>
+      (schedule?.estimatedDuration?.inMinutes ?? 30).clamp(5, 1440);
+
+  /// Label IDs associated with this task (instance overrides schedule if non-empty).
+  List<String> get labelIds {
+    if (instance != null && instance!.labelIds.isNotEmpty) {
+      return instance!.labelIds;
+    }
+    if (schedule != null && schedule!.labelIds.isNotEmpty) {
+      return schedule!.labelIds;
+    }
+    return const <String>[];
+  }
+
+  /// Resolves the schedule rule that produced this calendar day task, if any.
+  TaskScheduleRule? get effectiveRule {
+    if (matchingRule != null) return matchingRule;
+    final sched = schedule;
+    if (sched == null || sched.schedules.isEmpty) return null;
+    final ruleId = instance?.ruleId;
+    if (ruleId != null && ruleId.isNotEmpty) {
+      for (final rule in sched.schedules) {
+        if (rule.id == ruleId) return rule;
+      }
+    }
+    return sched.schedules.first;
+  }
+
+  /// Whether this task is an everyday fixed-calendar routine (DailySchedule with interval == 1).
+  bool get isRoutineDaily {
+    final rule = effectiveRule;
+    if (rule == null) return false;
+    if (rule.schedulingPolicy is CompletionRelativePolicy) return false;
+    return rule is DailySchedule && rule.interval == 1;
+  }
+
+  /// Computes a score used to select the single "Hero / Standout" task for a day cell.
+  ///
+  /// Rarer schedules (one-off, yearly, monthly, weekly) and longer/higher-priority tasks
+  /// outrank repetitive daily routines so the monthly view surfaces what makes each day unique.
+  double get standoutScore {
+    final rule = effectiveRule;
+    final double rarityWeight;
+    if (rule == null || rule is OneOffSchedule) {
+      rarityWeight = 4.0;
+    } else if (rule is YearlySchedule) {
+      rarityWeight = 3.5;
+    } else if (rule is MonthlySchedule) {
+      rarityWeight = 3.0;
+    } else if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      rarityWeight = 2.5;
+    } else if (rule is WeeklySchedule) {
+      final daysCount = rule.daysOfWeek.length.clamp(1, 7);
+      rarityWeight = 1.5 + (7 - daysCount) * 0.2;
+    } else if (rule is DailySchedule) {
+      if (rule.interval > 1) {
+        rarityWeight = 1.0 + (rule.interval.clamp(2, 14) * 0.15);
+      } else {
+        rarityWeight = 0.35;
+      }
+    } else {
+      rarityWeight = 1.5;
+    }
+
+    final double priorityWeight;
+    switch (priority) {
+      case TaskPriority.high:
+        priorityWeight = 1.5;
+      case TaskPriority.medium:
+        priorityWeight = 1.2;
+      case TaskPriority.low:
+        priorityWeight = 1.0;
+    }
+
+    final durationFactor = effectiveDurationMinutes < 15
+        ? 15.0
+        : effectiveDurationMinutes.toDouble();
+    return rarityWeight * priorityWeight * durationFactor;
+  }
+
   ({RelativeTime start, RelativeTime due})? get relativeTimeWindow {
     if (instance != null) {
       return (
@@ -63,6 +145,142 @@ class CalendarDayTask {
   }
 }
 
+/// Compares two [CalendarDayTask]s for standout hero selection and day list ordering.
+int compareCalendarDayTasks(
+  CalendarDayTask a,
+  CalendarDayTask b, {
+  bool isPastDay = false,
+}) {
+  if (!isPastDay && a.isCompleted != b.isCompleted) {
+    return a.isCompleted ? 1 : -1;
+  }
+  final scoreCmp = b.standoutScore.compareTo(a.standoutScore);
+  if (scoreCmp != 0) return scoreCmp;
+  final priorityCmp = b.priority.index.compareTo(a.priority.index);
+  if (priorityCmp != 0) return priorityCmp;
+  return a.title.compareTo(b.title);
+}
+
+/// Represents a proportional color slice of a day's capacity bar.
+class CalendarLabelSegment {
+  /// The [TaskLabel.colorKey] for this segment, or `null` for unlabeled tasks.
+  final String? colorKey;
+
+  /// Total minutes attributed to this segment.
+  final double minutes;
+
+  const CalendarLabelSegment({required this.colorKey, required this.minutes});
+}
+
+/// Aggregated workload, standout task, and label-color breakdown for a single calendar day.
+class CalendarDayWorkload {
+  final List<CalendarDayTask> tasks;
+  final int totalMinutes;
+  final double capacityHours;
+  final CalendarDayTask? standoutTask;
+  final List<CalendarLabelSegment> segments;
+
+  const CalendarDayWorkload({
+    required this.tasks,
+    required this.totalMinutes,
+    required this.capacityHours,
+    required this.standoutTask,
+    required this.segments,
+  });
+
+  factory CalendarDayWorkload.fromTasks(
+    List<CalendarDayTask> tasks, {
+    double capacityHours = 4.0,
+    Map<String, TaskLabel> labelsMap = const {},
+    bool isPastDay = false,
+  }) {
+    if (tasks.isEmpty) {
+      return CalendarDayWorkload(
+        tasks: const [],
+        totalMinutes: 0,
+        capacityHours: capacityHours,
+        standoutTask: null,
+        segments: const [],
+      );
+    }
+
+    int totalMins = 0;
+    CalendarDayTask bestTask = tasks.first;
+    final Map<String?, double> minutesByColorKey = {};
+
+    for (var i = 0; i < tasks.length; i++) {
+      final task = tasks[i];
+      final durationMins = task.effectiveDurationMinutes;
+      totalMins += durationMins;
+
+      if (i > 0 &&
+          compareCalendarDayTasks(task, bestTask, isPastDay: isPastDay) < 0) {
+        bestTask = task;
+      }
+
+      final resolvedLabels = <TaskLabel>[
+        for (final id in task.labelIds)
+          if (labelsMap[id] != null) labelsMap[id]!,
+      ];
+
+      if (resolvedLabels.isEmpty) {
+        minutesByColorKey[null] =
+            (minutesByColorKey[null] ?? 0.0) + durationMins.toDouble();
+      } else {
+        final share = durationMins / resolvedLabels.length;
+        for (final label in resolvedLabels) {
+          final key = label.colorKey.trim().toLowerCase();
+          minutesByColorKey[key] = (minutesByColorKey[key] ?? 0.0) + share;
+        }
+      }
+    }
+
+    final segments =
+        [
+          for (final entry in minutesByColorKey.entries)
+            if (entry.value > 0)
+              CalendarLabelSegment(colorKey: entry.key, minutes: entry.value),
+        ]..sort((a, b) {
+          if ((a.colorKey == null) != (b.colorKey == null)) {
+            return a.colorKey == null ? 1 : -1;
+          }
+          final minCmp = b.minutes.compareTo(a.minutes);
+          if (minCmp != 0) return minCmp;
+          return (a.colorKey ?? '').compareTo(b.colorKey ?? '');
+        });
+
+    return CalendarDayWorkload(
+      tasks: tasks,
+      totalMinutes: totalMins,
+      capacityHours: capacityHours,
+      standoutTask: bestTask,
+      segments: segments,
+    );
+  }
+
+  bool get isEmpty => tasks.isEmpty;
+  bool get isNotEmpty => tasks.isNotEmpty;
+  double get totalHours => totalMinutes / 60.0;
+  double get effectiveCapacityHours => capacityHours > 0 ? capacityHours : 4.0;
+  double get loadRatio => totalHours / effectiveCapacityHours;
+  bool get isOverCapacity => totalHours > effectiveCapacityHours + 1e-6;
+  bool get isHighLoad => !isOverCapacity && loadRatio >= 0.85;
+  bool get allCompleted =>
+      tasks.isNotEmpty && tasks.every((t) => t.isCompleted);
+  int get additionalTasksCount => tasks.length > 1 ? tasks.length - 1 : 0;
+
+  /// Compact planned hours label (e.g. `1.5h`, `2h`, `3.5h!`).
+  String get formattedPlannedHours {
+    if (totalMinutes <= 0) return '';
+    final hours = totalMinutes / 60.0;
+    final roundedTenths = (hours * 10).round() / 10.0;
+    final text = roundedTenths == roundedTenths.roundToDouble()
+        ? '${roundedTenths.toInt()}h'
+        : '${roundedTenths.toStringAsFixed(1)}h';
+    return isOverCapacity ? '$text!' : text;
+  }
+}
+
 /// Computes the mapping of civil days to unified calendar day tasks for a given month.
 Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   required DateTime monthDate,
@@ -88,9 +306,16 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
       continue;
     }
     final sched = scheduleMap[inst.scheduleId];
-    final hasKnownRule =
-        sched != null && sched.schedules.any((r) => r.id == inst.ruleId);
-    if (hasKnownRule) {
+    TaskScheduleRule? matchedRule;
+    if (sched != null) {
+      for (final r in sched.schedules) {
+        if (r.id == inst.ruleId) {
+          matchedRule = r;
+          break;
+        }
+      }
+    }
+    if (matchedRule != null) {
       instanceRuleDateKeys.add((inst.scheduleId, inst.ruleId, scheduledDate));
     } else {
       instanceScheduleOnlyDateKeys.add((inst.scheduleId, scheduledDate));
@@ -112,7 +337,8 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
       status: inst.status,
       isInstance: true,
       instance: inst,
-      schedule: scheduleMap[inst.scheduleId],
+      schedule: sched,
+      matchingRule: matchedRule,
       isCompleted: isCompleted,
     );
 
@@ -179,14 +405,12 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
     }
   }
 
-  // Sort tasks in each day: incomplete before completed, then high priority to low
-  for (final list in map.values) {
-    list.sort((a, b) {
-      if (a.isCompleted != b.isCompleted) {
-        return a.isCompleted ? 1 : -1;
-      }
-      return b.priority.index.compareTo(a.priority.index);
-    });
+  // Sort tasks in each day by standout hero score (incomplete before completed on today/future days)
+  for (final entry in map.entries) {
+    final isPastDay = entry.key.isBefore(effectiveToday);
+    entry.value.sort(
+      (a, b) => compareCalendarDayTasks(a, b, isPastDay: isPastDay),
+    );
   }
 
   return map;

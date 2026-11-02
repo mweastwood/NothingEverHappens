@@ -3,6 +3,7 @@ import 'package:nothing_ever_happens/logic/calendar_day_task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 
 void main() {
@@ -338,5 +339,233 @@ void main() {
         }
       },
     );
+
+    test(
+      'ranks rarer weekly and monthly tasks above everyday daily routines via standoutScore',
+      () {
+        final dailyHigh = TaskSchedule(
+          id: 'S-daily-routine',
+          title: 'Water Plants',
+          description: '',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(minutes: 15),
+          schedules: [
+            DailySchedule(
+              id: 'R-daily-routine',
+              scheduleId: 'S-daily-routine',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 8,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 12,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final weeklyMedium = TaskSchedule(
+          id: 'S-weekly-plan',
+          title: 'Review Weekly Plan',
+          description: '',
+          priority: TaskPriority.medium,
+          estimatedDuration: const Duration(minutes: 45),
+          schedules: [
+            WeeklySchedule(
+              id: 'R-weekly-plan',
+              scheduleId: 'S-weekly-plan',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              daysOfWeek: {1, 3, 5}, // Mon, Wed, Fri
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final monthlyMedium = TaskSchedule(
+          id: 'S-monthly-bill',
+          title: 'Pay Utilities Bill',
+          description: '',
+          priority: TaskPriority.medium,
+          estimatedDuration: const Duration(minutes: 45),
+          schedules: [
+            MonthlySchedule(
+              id: 'R-monthly-bill',
+              scheduleId: 'S-monthly-bill',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              dayOfMonth: 16, // Monday March 16, 2026
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 18,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final map = computeMonthTaskMap(
+          monthDate: march2026,
+          instances: const [],
+          schedules: [dailyHigh, weeklyMedium, monthlyMedium],
+          today: today,
+        );
+
+        // Tuesday March 10 only has daily routine
+        final march10 = map[const CivilDay(year: 2026, month: 3, day: 10)]!;
+        expect(march10.first.title, equals('Water Plants'));
+        expect(march10.first.isRoutineDaily, isTrue);
+
+        // Monday March 9 has daily + weekly -> weekly wins standout
+        final march9 = map[const CivilDay(year: 2026, month: 3, day: 9)]!;
+        expect(march9.first.title, equals('Review Weekly Plan'));
+        expect(march9.first.isRoutineDaily, isFalse);
+
+        // Monday March 16 has daily + weekly + monthly -> monthly wins standout
+        final march16 = map[const CivilDay(year: 2026, month: 3, day: 16)]!;
+        expect(march16.first.title, equals('Pay Utilities Bill'));
+      },
+    );
+  });
+
+  group('CalendarDayWorkload', () {
+    final labelsMap = <String, TaskLabel>{
+      'lbl-home': TaskLabel(
+        id: 'lbl-home',
+        name: 'Home',
+        colorKey: 'emerald',
+        iconKey: 'home',
+        scope: TaskLabelScope.personal,
+        order: 0,
+        createdAt: DateTime.utc(2026, 3, 1),
+      ),
+      'lbl-finance': TaskLabel(
+        id: 'lbl-finance',
+        name: 'Finance',
+        colorKey: 'cobalt',
+        iconKey: 'payments',
+        scope: TaskLabelScope.personal,
+        order: 1,
+        createdAt: DateTime.utc(2026, 3, 1),
+      ),
+      'lbl-meals': TaskLabel(
+        id: 'lbl-meals',
+        name: 'Meals',
+        colorKey: 'tangerine',
+        iconKey: 'restaurant',
+        scope: TaskLabelScope.personal,
+        order: 2,
+        createdAt: DateTime.utc(2026, 3, 1),
+      ),
+    };
+
+    test(
+      'divides task duration evenly across multiple labels on a single task and falls back to null for unlabeled tasks',
+      () {
+        final multiLabelSchedule = TaskSchedule(
+          id: 'S-multi-lbl',
+          title: 'Budget & Home Audit',
+          description: '',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(minutes: 60),
+          labelIds: const ['lbl-home', 'lbl-finance'],
+          schedules: const [],
+        );
+        final unlabeledSchedule = TaskSchedule(
+          id: 'S-unlabeled',
+          title: 'Misc Errand',
+          description: '',
+          priority: TaskPriority.low,
+          estimatedDuration: const Duration(minutes: 30),
+          schedules: const [],
+        );
+
+        final tasks = [
+          CalendarDayTask(
+            id: 't-1',
+            title: multiLabelSchedule.title,
+            priority: multiLabelSchedule.priority,
+            isInstance: true,
+            schedule: multiLabelSchedule,
+          ),
+          CalendarDayTask(
+            id: 't-2',
+            title: unlabeledSchedule.title,
+            priority: unlabeledSchedule.priority,
+            isInstance: true,
+            schedule: unlabeledSchedule,
+          ),
+        ];
+
+        final workload = CalendarDayWorkload.fromTasks(
+          tasks,
+          capacityHours: 2.0,
+          labelsMap: labelsMap,
+        );
+
+        expect(workload.totalMinutes, equals(90));
+        expect(workload.totalHours, closeTo(1.5, 1e-6));
+        expect(workload.loadRatio, closeTo(0.75, 1e-6));
+        expect(workload.isOverCapacity, isFalse);
+        expect(workload.formattedPlannedHours, equals('1.5h'));
+
+        // 60m divided evenly between emerald and cobalt -> 30m each, plus 30m unlabeled (null) last
+        expect(workload.segments, hasLength(3));
+        expect(workload.segments[0].colorKey, equals('cobalt'));
+        expect(workload.segments[0].minutes, closeTo(30.0, 1e-6));
+        expect(workload.segments[1].colorKey, equals('emerald'));
+        expect(workload.segments[1].minutes, closeTo(30.0, 1e-6));
+        expect(workload.segments[2].colorKey, isNull);
+        expect(workload.segments[2].minutes, closeTo(30.0, 1e-6));
+      },
+    );
+
+    test('detects overload and appends exclamation mark to planned hours', () {
+      final bigSchedule = TaskSchedule(
+        id: 'S-big',
+        title: 'Deep Clean Garage',
+        description: '',
+        priority: TaskPriority.high,
+        estimatedDuration: const Duration(minutes: 210), // 3.5h
+        labelIds: const ['lbl-home'],
+        schedules: const [],
+      );
+
+      final workload = CalendarDayWorkload.fromTasks(
+        [
+          CalendarDayTask(
+            id: 't-big',
+            title: bigSchedule.title,
+            priority: bigSchedule.priority,
+            isInstance: true,
+            schedule: bigSchedule,
+          ),
+        ],
+        capacityHours: 3.0,
+        labelsMap: labelsMap,
+      );
+
+      expect(workload.isOverCapacity, isTrue);
+      expect(workload.formattedPlannedHours, equals('3.5h!'));
+    });
   });
 }

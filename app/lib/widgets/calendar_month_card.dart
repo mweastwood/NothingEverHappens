@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../logic/civil_day.dart';
 import '../logic/calendar_day_task.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/task_label.dart';
 import '../logic/task_priority.dart';
 import '../logic/user_settings.dart';
 import 'calendar_day_details_sheet.dart';
@@ -68,12 +69,20 @@ List<String> getWeekdayHeaders(
 
 /// Renders a single month card with weekday headers and interactive day cells.
 class CalendarMonthCard extends StatelessWidget {
+  /// Row height used for narrow (single-column mobile) month cards.
+  static const double narrowCellHeight = 76.0;
+
+  /// Row height used for wide (two-column tablet/desktop) month cards.
+  static const double wideCellHeight = 86.0;
+
   final DateTime monthDate;
   final Map<CivilDay, List<CalendarDayTask>> dayTaskMap;
   final CivilDay today;
   final bool isWide;
   final void Function(CivilDay day)? onDayTap;
   final FirstDayOfWeek firstDayOfWeek;
+  final Map<String, TaskLabel> labelsMap;
+  final UserSettings? userSettings;
 
   const CalendarMonthCard({
     super.key,
@@ -83,6 +92,8 @@ class CalendarMonthCard extends StatelessWidget {
     this.isWide = false,
     this.onDayTap,
     this.firstDayOfWeek = FirstDayOfWeek.sunday,
+    this.labelsMap = const {},
+    this.userSettings,
   });
 
   @override
@@ -196,7 +207,7 @@ class CalendarMonthCard extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final cellWidth = constraints.maxWidth / 7;
-                  final cellHeight = isWide ? 62.0 : 54.0;
+                  final cellHeight = isWide ? wideCellHeight : narrowCellHeight;
                   final bool isTier1 = cellWidth >= 60 && cellHeight >= 50;
                   final bool isTier2 =
                       !isTier1 && cellWidth >= 42 && cellHeight >= 42;
@@ -222,6 +233,8 @@ class CalendarMonthCard extends StatelessWidget {
                                     isTier1: isTier1,
                                     isTier2: isTier2,
                                     onDayTap: onDayTap,
+                                    labelsMap: labelsMap,
+                                    userSettings: userSettings,
                                   ),
                                 ),
                               ],
@@ -253,6 +266,8 @@ class CalendarDayCellSlot extends StatelessWidget {
   final bool isTier1;
   final bool isTier2;
   final void Function(CivilDay day)? onDayTap;
+  final Map<String, TaskLabel> labelsMap;
+  final UserSettings? userSettings;
 
   const CalendarDayCellSlot({
     super.key,
@@ -266,6 +281,8 @@ class CalendarDayCellSlot extends StatelessWidget {
     required this.isTier1,
     required this.isTier2,
     this.onDayTap,
+    this.labelsMap = const {},
+    this.userSettings,
   });
 
   @override
@@ -283,8 +300,52 @@ class CalendarDayCellSlot extends StatelessWidget {
       day: dayNum,
     );
     final isToday = civilDay == today;
+    final isPast = civilDay.isBefore(today);
     final tasks = dayTaskMap[civilDay] ?? const [];
     final theme = Theme.of(context);
+    final capacityHours =
+        userSettings?.getCapacityForDate(civilDay.toDateTime()) ?? 4.0;
+    final workload = CalendarDayWorkload.fromTasks(
+      tasks,
+      capacityHours: capacityHours,
+      labelsMap: labelsMap,
+      isPastDay: isPast,
+    );
+
+    final bool showOverloadAlert =
+        workload.isOverCapacity && !isPast && !workload.allCompleted;
+    final bool showHighLoadTint =
+        workload.isHighLoad && !isPast && !workload.allCompleted;
+
+    final Color? cellBgColor;
+    final Border? cellBorder;
+    if (isToday) {
+      cellBgColor = theme.colorScheme.primaryContainer.withValues(alpha: 0.32);
+      cellBorder = Border.all(color: theme.colorScheme.primary, width: 1.5);
+    } else if (showOverloadAlert) {
+      cellBgColor = theme.colorScheme.errorContainer.withValues(alpha: 0.28);
+      cellBorder = Border.all(
+        color: theme.colorScheme.error.withValues(alpha: 0.6),
+        width: 1.0,
+      );
+    } else if (showHighLoadTint) {
+      cellBgColor = theme.colorScheme.tertiaryContainer.withValues(alpha: 0.25);
+      cellBorder = Border.all(
+        color: theme.colorScheme.tertiary.withValues(alpha: 0.45),
+        width: 0.75,
+      );
+    } else if (tasks.isNotEmpty) {
+      cellBgColor = theme.colorScheme.surfaceContainerHighest.withValues(
+        alpha: isPast ? 0.16 : 0.28,
+      );
+      cellBorder = Border.all(
+        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+        width: 0.5,
+      );
+    } else {
+      cellBgColor = null;
+      cellBorder = null;
+    }
 
     return InkWell(
       onTap: () {
@@ -299,29 +360,14 @@ class CalendarDayCellSlot extends StatelessWidget {
         margin: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: isToday
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : (tasks.isNotEmpty
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.25,
-                      )
-                    : null),
-          border: isToday
-              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-              : (tasks.isNotEmpty
-                    ? Border.all(
-                        color: theme.colorScheme.outlineVariant.withValues(
-                          alpha: 0.3,
-                        ),
-                        width: 0.5,
-                      )
-                    : null),
+          color: cellBgColor,
+          border: cellBorder,
         ),
         child: _buildResponsiveDayContent(
           context,
           dayNum,
           isToday,
-          tasks,
+          workload,
           theme,
           isTier1: isTier1,
           isTier2: isTier2,
@@ -334,30 +380,133 @@ class CalendarDayCellSlot extends StatelessWidget {
     BuildContext context,
     int dayNum,
     bool isToday,
-    List<CalendarDayTask> tasks,
+    CalendarDayWorkload workload,
     ThemeData theme, {
     required bool isTier1,
     required bool isTier2,
   }) {
     if (isTier1) {
-      return _buildTier1Day(context, dayNum, isToday, tasks, theme);
+      return _buildTier1Day(context, dayNum, isToday, workload, theme);
     } else if (isTier2) {
-      return _buildTier2Day(dayNum, isToday, tasks, theme);
+      return _buildTier2Day(context, dayNum, isToday, workload, theme);
     } else {
-      return _buildTier3Day(dayNum, isToday, tasks, theme);
+      return _buildTier3Day(dayNum, isToday, workload, theme);
     }
   }
 
-  /// Tier 1: Wide space -> Day number + task count + truncated title chips
+  /// Tier 1: Wide space -> Day number + planned hours + standout hero task chip + label capacity bar
   Widget _buildTier1Day(
     BuildContext context,
     int dayNum,
     bool isToday,
-    List<CalendarDayTask> tasks,
+    CalendarDayWorkload workload,
     ThemeData theme,
   ) {
+    final standout = workload.standoutTask;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$dayNum',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                      color: isToday
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  if (workload.allCompleted) ...[
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.check_circle,
+                      size: 10,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.75),
+                    ),
+                  ],
+                ],
+              ),
+              if (workload.isNotEmpty)
+                Text(
+                  workload.formattedPlannedHours,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: workload.isOverCapacity && !workload.allCompleted
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: standout == null
+                ? const SizedBox.shrink()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: CalendarTaskChip(
+                          task: standout,
+                          labelsMap: labelsMap,
+                          showText: true,
+                          maxLines: 2,
+                        ),
+                      ),
+                      if (workload.additionalTasksCount > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 1),
+                          child: Text(
+                            context.l10n.moreTasksCount(
+                              workload.additionalTasksCount,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+          if (workload.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            CalendarLabelCapacityBar(workload: workload, height: 5.0),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Tier 2: Mobile portrait space -> Day number + hours + 2-line standout hero chip + label capacity bar
+  Widget _buildTier2Day(
+    BuildContext context,
+    int dayNum,
+    bool isToday,
+    CalendarDayWorkload workload,
+    ThemeData theme,
+  ) {
+    final standout = workload.standoutTask;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2.5, 2, 2.5, 2.5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -367,201 +516,271 @@ class CalendarDayCellSlot extends StatelessWidget {
               Text(
                 '$dayNum',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                  fontSize: 10,
+                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
                   color: isToday
                       ? theme.colorScheme.primary
                       : theme.colorScheme.onSurface,
                 ),
               ),
-              if (tasks.isNotEmpty)
+              if (workload.allCompleted)
+                Icon(
+                  Icons.check_circle,
+                  size: 9.5,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.75),
+                )
+              else if (workload.isNotEmpty)
                 Text(
-                  '${tasks.length}',
+                  workload.formattedPlannedHours,
                   style: TextStyle(
-                    fontSize: 9,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.7,
-                    ),
-                    fontWeight: FontWeight.bold,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    color: workload.isOverCapacity
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.85,
+                          ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 1),
-          if (tasks.isNotEmpty) ...[
-            for (int i = 0; i < (tasks.length > 2 ? 1 : tasks.length); i++) ...[
-              CalendarTaskChip(task: tasks[i], showText: true),
-              const SizedBox(height: 1),
-            ],
-            if (tasks.length > 2)
-              Text(
-                context.l10n.moreTasksCount(tasks.length - 1),
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
+          const SizedBox(height: 1.5),
+          Expanded(
+            child: standout == null
+                ? const SizedBox.shrink()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: CalendarTaskChip(
+                          task: standout,
+                          labelsMap: labelsMap,
+                          showText: true,
+                          maxLines: 2,
+                          compact: true,
+                        ),
+                      ),
+                      if (workload.additionalTasksCount > 0)
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Text(
+                            '+${workload.additionalTasksCount}',
+                            style: TextStyle(
+                              fontSize: 7.5,
+                              height: 1.0,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+          if (workload.isNotEmpty) ...[
+            const SizedBox(height: 1.5),
+            CalendarLabelCapacityBar(workload: workload, height: 4.5),
           ],
         ],
       ),
     );
   }
 
-  /// Tier 2: Medium space -> Day number + compact task pills
-  Widget _buildTier2Day(
+  /// Tier 3: Compact space -> Day number + label-segmented capacity bar
+  Widget _buildTier3Day(
     int dayNum,
     bool isToday,
-    List<CalendarDayTask> tasks,
+    CalendarDayWorkload workload,
     ThemeData theme,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Center(
-            child: Text(
-              '$dayNum',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                color: isToday
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface,
-              ),
+          Text(
+            '$dayNum',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              color: isToday ? theme.colorScheme.primary : null,
             ),
           ),
-          const Spacer(),
-          if (tasks.isNotEmpty) ...[
-            CalendarTaskChip(task: tasks[0], showText: true),
-            if (tasks.length > 1)
-              Center(
-                child: Text(
-                  '+${tasks.length - 1}',
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
+          if (workload.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            CalendarLabelCapacityBar(workload: workload, height: 4.0),
           ],
-          const Spacer(),
         ],
       ),
-    );
-  }
-
-  /// Tier 3: Compact space -> Day number + colored priority dots
-  Widget _buildTier3Day(
-    int dayNum,
-    bool isToday,
-    List<CalendarDayTask> tasks,
-    ThemeData theme,
-  ) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          '$dayNum',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-            color: isToday ? theme.colorScheme.primary : null,
-          ),
-        ),
-        if (tasks.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (
-                int i = 0;
-                i < (tasks.length > 3 ? 3 : tasks.length);
-                i++
-              ) ...[
-                Container(
-                  width: 4,
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tasks[i].isCompleted
-                        ? theme.colorScheme.outline
-                        : getPriorityColor(
-                            theme.colorScheme,
-                            tasks[i].priority,
-                          ),
-                  ),
-                ),
-              ],
-              if (tasks.length > 3)
-                Container(
-                  width: 3,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ],
     );
   }
 }
 
-/// Compact chip displaying a task's priority and completion state.
-class CalendarTaskChip extends StatelessWidget {
-  final CalendarDayTask task;
-  final bool showText;
+/// Bottom capacity bar segmented proportionally by task label colors.
+class CalendarLabelCapacityBar extends StatelessWidget {
+  final CalendarDayWorkload workload;
+  final double height;
 
-  const CalendarTaskChip({super.key, required this.task, this.showText = true});
+  const CalendarLabelCapacityBar({
+    super.key,
+    required this.workload,
+    this.height = 5.0,
+  });
+
+  Color _resolveSegmentColor(
+    BuildContext context,
+    ThemeData theme,
+    String? colorKey,
+  ) {
+    final baseColor = colorKey != null
+        ? LabelPalette.getColor(colorKey, context)
+        : theme.colorScheme.primary;
+    if (workload.allCompleted) {
+      return baseColor.withValues(alpha: 0.55);
+    }
+    return baseColor;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = getPriorityColor(theme.colorScheme, task.priority);
+    final fillFraction = workload.loadRatio.clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 1.0),
+      height: height,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: task.isCompleted ? 0.08 : 0.18),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.75,
+        ),
+        borderRadius: BorderRadius.circular(height / 2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: fillFraction <= 0 || workload.segments.isEmpty
+          ? null
+          : FractionallySizedBox(
+              alignment: AlignmentDirectional.centerStart,
+              widthFactor: fillFraction,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < workload.segments.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 1),
+                    Expanded(
+                      flex: (workload.segments[i].minutes * 10).round().clamp(
+                        1,
+                        100000,
+                      ),
+                      child: ColoredBox(
+                        color: _resolveSegmentColor(
+                          context,
+                          theme,
+                          workload.segments[i].colorKey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+/// Compact chip displaying a standout task styled with its primary label color (or priority fallback).
+class CalendarTaskChip extends StatelessWidget {
+  final CalendarDayTask task;
+  final bool showText;
+  final Map<String, TaskLabel> labelsMap;
+  final int maxLines;
+  final bool compact;
+
+  const CalendarTaskChip({
+    super.key,
+    required this.task,
+    this.showText = true,
+    this.labelsMap = const {},
+    this.maxLines = 1,
+    this.compact = false,
+  });
+
+  TaskLabel? _resolvePrimaryLabel() {
+    for (final id in task.labelIds) {
+      final label = labelsMap[id];
+      if (label != null) return label;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryLabel = _resolvePrimaryLabel();
+    final accentColor = primaryLabel != null
+        ? LabelPalette.getColor(primaryLabel.colorKey, context)
+        : getPriorityColor(theme.colorScheme, task.priority);
+
+    final isRoutine = task.isRoutineDaily;
+    final bgAlpha = task.isCompleted ? 0.07 : (isRoutine ? 0.12 : 0.20);
+    final stripeColor = task.isCompleted
+        ? theme.colorScheme.outline.withValues(alpha: 0.6)
+        : accentColor;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 2.5 : 3.5,
+        vertical: compact ? 1.5 : 2.0,
+      ),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(4),
+        border: Border(
+          left: BorderSide(color: stripeColor, width: compact ? 2.2 : 2.8),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: task.isCompleted ? theme.colorScheme.outline : color,
+          if (!compact && primaryLabel != null) ...[
+            Icon(
+              LabelIcons.getIcon(primaryLabel.iconKey),
+              size: 9.5,
+              color: stripeColor,
             ),
-          ),
-          if (showText) ...[
-            const SizedBox(width: 2),
+            const SizedBox(width: 2.5),
+          ] else if (!compact) ...[
+            Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: stripeColor,
+              ),
+            ),
+            const SizedBox(width: 2.5),
+          ],
+          if (showText)
             Expanded(
               child: Text(
                 task.title,
-                maxLines: 1,
+                maxLines: maxLines,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 8.5,
+                  fontSize: compact ? 8.0 : 8.5,
+                  height: 1.12,
+                  letterSpacing: compact ? -0.2 : -0.1,
                   decoration: task.isCompleted
                       ? TextDecoration.lineThrough
                       : null,
                   color: task.isCompleted
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                      ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
                       : theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: isRoutine ? FontWeight.w500 : FontWeight.w600,
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
