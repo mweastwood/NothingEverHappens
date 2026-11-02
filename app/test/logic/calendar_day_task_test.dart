@@ -567,5 +567,110 @@ void main() {
       expect(workload.isOverCapacity, isTrue);
       expect(workload.formattedPlannedHours, equals('3.5h!'));
     });
+
+    test(
+      'standoutCandidates includes multiple significant tasks while excluding routine daily chores and completed tasks',
+      () {
+        final taxSchedule = TaskSchedule(
+          id: 'S-tax',
+          title: 'Quarterly Tax Prep',
+          description: '',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(minutes: 120),
+          schedules: const [],
+        );
+        final mealPrepSchedule = TaskSchedule(
+          id: 'S-meal',
+          title: 'Meal Prep & Groceries',
+          description: '',
+          priority: TaskPriority.medium,
+          estimatedDuration: const Duration(minutes: 90),
+          schedules: [
+            WeeklySchedule(
+              id: 'R-meal',
+              scheduleId: 'S-meal',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              daysOfWeek: {4, 7},
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 18,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+        final dailyPlantsSchedule = TaskSchedule(
+          id: 'S-plants',
+          title: 'Water the Houseplants',
+          description: '',
+          priority: TaskPriority.low,
+          estimatedDuration: const Duration(minutes: 15),
+          schedules: [
+            DailySchedule(
+              id: 'R-plants',
+              scheduleId: 'S-plants',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 8,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 12,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final workload = CalendarDayWorkload.fromTasks([
+          CalendarDayTask(
+            id: 't-plants',
+            title: dailyPlantsSchedule.title,
+            priority: dailyPlantsSchedule.priority,
+            isInstance: false,
+            schedule: dailyPlantsSchedule,
+            matchingRule: dailyPlantsSchedule.schedules.first,
+          ),
+          CalendarDayTask(
+            id: 't-meal',
+            title: mealPrepSchedule.title,
+            priority: mealPrepSchedule.priority,
+            isInstance: false,
+            schedule: mealPrepSchedule,
+            matchingRule: mealPrepSchedule.schedules.first,
+          ),
+          CalendarDayTask(
+            id: 't-tax',
+            title: taxSchedule.title,
+            priority: taxSchedule.priority,
+            isInstance: true,
+            schedule: taxSchedule,
+          ),
+          CalendarDayTask(
+            id: 't-done',
+            title: 'Already Done Big Task',
+            priority: TaskPriority.high,
+            isInstance: true,
+            isCompleted: true,
+            schedule: taxSchedule,
+          ),
+        ]);
+
+        expect(workload.standoutTask?.title, equals('Quarterly Tax Prep'));
+        expect(
+          workload.standoutCandidates.map((t) => t.title).toList(),
+          equals(['Quarterly Tax Prep', 'Meal Prep & Groceries']),
+        );
+      },
+    );
   });
 }
