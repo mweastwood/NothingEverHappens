@@ -206,6 +206,60 @@ abstract class AppLocalizations {
   /// **'Next day'**
   String get calendarNextDay;
 
+  /// No description provided for @calendarPreviousMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get calendarPreviousMonth;
+
+  /// No description provided for @calendarNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get calendarNextMonth;
+
+  /// No description provided for @calendarAgendaView.
+  ///
+  /// In en, this message translates to:
+  /// **'Agenda'**
+  String get calendarAgendaView;
+
+  /// No description provided for @calendarTimelineView.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeline'**
+  String get calendarTimelineView;
+
+  /// No description provided for @calendarHighlightedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlighted'**
+  String get calendarHighlightedSection;
+
+  /// Expandable summary row label for routine and weekly repeating tasks in calendar agenda
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Routine & weekly (1)} other{Routine & weekly ({count})}}'**
+  String calendarRoutineSectionCount(int count);
+
+  /// No description provided for @calendarNoHighlightedTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No one-off or rare tasks scheduled'**
+  String get calendarNoHighlightedTasks;
+
+  /// No description provided for @calendarExpandTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand timeline'**
+  String get calendarExpandTimeline;
+
+  /// No description provided for @calendarCollapseTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Show month'**
+  String get calendarCollapseTimeline;
+
   /// Header showing tasks for a given date in calendar
   ///
   /// In en, this message translates to:

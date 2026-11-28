@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../test_helper.dart';
 import 'package:nothing_ever_happens/logic/calendar_day_task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
@@ -13,36 +14,42 @@ void main() {
   final march2026 = DateTime(2026, 3, 1);
   final todayDay8 = const CivilDay(year: 2026, month: 3, day: 8);
 
-  final sampleTasks = [
-    const CalendarDayTask(
-      id: 'task-1',
-      title: 'Task Alpha',
-      priority: TaskPriority.high,
-      isInstance: true,
-      isCompleted: false,
+  final sampleLabelsMap = <String, TaskLabel>{
+    'lbl-home': TaskLabel(
+      id: 'lbl-home',
+      name: 'Home',
+      colorKey: 'emerald',
+      iconKey: 'home',
+      scope: TaskLabelScope.personal,
+      order: 0,
+      createdAt: DateTime.utc(2026, 3, 1),
     ),
-    const CalendarDayTask(
-      id: 'task-2',
-      title: 'Task Beta',
-      priority: TaskPriority.medium,
-      isInstance: true,
-      isCompleted: false,
+    'lbl-meals': TaskLabel(
+      id: 'lbl-meals',
+      name: 'Meals',
+      colorKey: 'tangerine',
+      iconKey: 'restaurant',
+      scope: TaskLabelScope.personal,
+      order: 1,
+      createdAt: DateTime.utc(2026, 3, 1),
     ),
-    const CalendarDayTask(
-      id: 'task-3',
-      title: 'Task Gamma',
-      priority: TaskPriority.low,
-      isInstance: true,
-      isCompleted: true,
+    'lbl-health': TaskLabel(
+      id: 'lbl-health',
+      name: 'Health',
+      colorKey: 'rose',
+      iconKey: 'medication',
+      scope: TaskLabelScope.personal,
+      order: 2,
+      createdAt: DateTime.utc(2026, 3, 1),
     ),
-  ];
+  };
 
   Widget createTestWidget({required Widget child, double? width}) {
     return buildTestableWidget(
       child: Scaffold(
         body: Center(
           child: SizedBox(
-            width: width ?? 600,
+            width: width ?? 400,
             child: SingleChildScrollView(child: child),
           ),
         ),
@@ -60,13 +67,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Month Title
     expect(find.text('March 2026'), findsOneWidget);
-
-    // Current Month badge
     expect(find.text('This Month'), findsOneWidget);
 
-    // Weekday headers: S, M, T, W, T, F, S (or M, T, W, T, F, S, S)
     expect(find.text('M'), findsOneWidget);
     expect(find.text('W'), findsOneWidget);
     expect(find.text('F'), findsOneWidget);
@@ -137,103 +140,137 @@ void main() {
   );
 
   testWidgets(
-    'Verify Tier 1 responsive layout triggers when cell width >= 60 and height >= 50',
+    'Routine and weekly tasks fold into capacity bar only while one-off/rare tasks show label dots',
     (tester) async {
-      // With width 700, cellWidth = 700 / 7 = 100 >= 60, isWide = true -> cellHeight = 62 >= 50
+      final weeklyRule = WeeklySchedule(
+        id: 'R-weekly',
+        scheduleId: 'S-weekly',
+        startDate: const CivilDay(year: 2026, month: 3, day: 1),
+        interval: 1,
+        daysOfWeek: {1},
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 7, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+      );
+      final weeklySchedule = TaskSchedule(
+        id: 'S-weekly',
+        title: 'Go to the gym',
+        description: '',
+        priority: TaskPriority.medium,
+        estimatedDuration: const Duration(minutes: 60),
+        labelIds: const ['lbl-home'],
+        schedules: [weeklyRule],
+      );
+
+      final oneOffRule = OneOffSchedule(
+        id: 'R-dentist',
+        scheduleId: 'S-dentist',
+        date: const CivilDay(year: 2026, month: 3, day: 12),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          hour: 14,
+          minute: 0,
+        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 15, minute: 0),
+      );
+      final oneOffSchedule = TaskSchedule(
+        id: 'S-dentist',
+        title: 'Dentist Appointment',
+        description: '',
+        priority: TaskPriority.high,
+        estimatedDuration: const Duration(minutes: 60),
+        labelIds: const ['lbl-health'],
+        schedules: [oneOffRule],
+      );
+
+      final monthlyRule = MonthlySchedule(
+        id: 'R-filter',
+        scheduleId: 'S-filter',
+        startDate: const CivilDay(year: 2026, month: 3, day: 1),
+        interval: 1,
+        dayOfMonth: 12,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          hour: 10,
+          minute: 0,
+        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 11, minute: 0),
+      );
+      final monthlySchedule = TaskSchedule(
+        id: 'S-filter',
+        title: 'Replace HVAC Filter',
+        description: '',
+        priority: TaskPriority.medium,
+        estimatedDuration: const Duration(minutes: 30),
+        labelIds: const ['lbl-home'],
+        schedules: [monthlyRule],
+      );
+
       await tester.pumpWidget(
         createTestWidget(
-          width: 700,
+          width: 400,
           child: CalendarMonthCard(
             monthDate: march2026,
             today: todayDay8,
-            isWide: true,
-            dayTaskMap: {todayDay8: sampleTasks},
+            labelsMap: sampleLabelsMap,
+            dayTaskMap: {
+              const CivilDay(year: 2026, month: 3, day: 9): [
+                CalendarDayTask(
+                  id: 't-gym',
+                  title: weeklySchedule.title,
+                  priority: weeklySchedule.priority,
+                  isInstance: false,
+                  schedule: weeklySchedule,
+                  matchingRule: weeklyRule,
+                ),
+              ],
+              const CivilDay(year: 2026, month: 3, day: 12): [
+                CalendarDayTask(
+                  id: 't-dentist',
+                  title: oneOffSchedule.title,
+                  priority: oneOffSchedule.priority,
+                  isInstance: true,
+                  schedule: oneOffSchedule,
+                  matchingRule: oneOffRule,
+                ),
+                CalendarDayTask(
+                  id: 't-filter',
+                  title: monthlySchedule.title,
+                  priority: monthlySchedule.priority,
+                  isInstance: false,
+                  schedule: monthlySchedule,
+                  matchingRule: monthlyRule,
+                ),
+              ],
+            },
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Tier 1 shows planned hours badge, compact +N in header, and standout task title chip
-      expect(find.text('1.5h'), findsOneWidget);
-      expect(find.text('Task Alpha'), findsOneWidget);
-      expect(find.text('+2'), findsOneWidget);
-      expect(find.byType(CalendarLabelCapacityBar), findsOneWidget);
-    },
-  );
+      // Month grid stays clean: no task titles crammed inside day cells
+      expect(find.text('Go to the gym'), findsNothing);
+      expect(find.text('Dentist Appointment'), findsNothing);
 
-  testWidgets(
-    'Verify Tier 2 responsive layout triggers when 42 <= cell width < 60',
-    (tester) async {
-      // With width 350, cellWidth = 350 / 7 = 50 (< 60 and >= 42), cellHeight = 54 >= 42
-      await tester.pumpWidget(
-        createTestWidget(
-          width: 350,
-          child: CalendarMonthCard(
-            monthDate: march2026,
-            today: todayDay8,
-            isWide: false,
-            dayTaskMap: {todayDay8: sampleTasks},
-          ),
-        ),
+      // Day 9 (routine weekly only) has a capacity bar but NO highlighted label dots
+      final day9Dots = tester.widget<CalendarHighlightedDotsRow>(
+        find.byKey(const Key('highlighted_dots_2026_3_9')),
       );
-      await tester.pumpAndSettle();
+      expect(day9Dots.dotColorKeys, isEmpty);
 
-      // Tier 2 shows first task title chip and compact "+N" overflow pill
-      expect(find.text('Task Alpha'), findsOneWidget);
-      expect(find.text('+2'), findsOneWidget);
-      expect(find.text('+2 more'), findsNothing);
+      // Day 12 (one-off + monthly) renders two label-colored dots
+      final day12Dots = tester.widget<CalendarHighlightedDotsRow>(
+        find.byKey(const Key('highlighted_dots_2026_3_12')),
+      );
+      expect(day12Dots.dotColorKeys, equals(['rose', 'emerald']));
+
+      // Both days render a CalendarLabelCapacityBar
+      expect(find.byType(CalendarLabelCapacityBar), findsNWidgets(2));
     },
   );
 
-  testWidgets('Verify Tier 3 responsive layout triggers when cell width < 42', (
-    tester,
-  ) async {
-    // With width 210, cellWidth = 210 / 7 = 30 (< 42)
-    await tester.pumpWidget(
-      createTestWidget(
-        width: 210,
-        child: CalendarMonthCard(
-          monthDate: march2026,
-          today: todayDay8,
-          isWide: false,
-          dayTaskMap: {todayDay8: sampleTasks},
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // Tier 3 shows no text task chips, only compact label-segmented capacity bar
-    expect(find.text('Task Alpha'), findsNothing);
-    expect(find.text('+2'), findsNothing);
-    expect(find.text('+2 more'), findsNothing);
-    expect(find.byType(CalendarTaskChip), findsNothing);
-    expect(find.byType(CalendarLabelCapacityBar), findsOneWidget);
-  });
-
   testWidgets(
-    'Verify label-segmented capacity bar divides multi-label task duration evenly and shows overload indicator',
+    'Verify label-segmented capacity bar divides multi-label task duration evenly and scales across overloaded months',
     (tester) async {
-      final labelsMap = <String, TaskLabel>{
-        'lbl-home': TaskLabel(
-          id: 'lbl-home',
-          name: 'Home',
-          colorKey: 'emerald',
-          iconKey: 'home',
-          scope: TaskLabelScope.personal,
-          order: 0,
-          createdAt: DateTime.utc(2026, 3, 1),
-        ),
-        'lbl-meals': TaskLabel(
-          id: 'lbl-meals',
-          name: 'Meals',
-          colorKey: 'tangerine',
-          iconKey: 'restaurant',
-          scope: TaskLabelScope.personal,
-          order: 1,
-          createdAt: DateTime.utc(2026, 3, 1),
-        ),
-      };
-
       final multiLabelSchedule = TaskSchedule(
         id: 'S-1',
         title: 'Dinner Party Prep',
@@ -253,14 +290,22 @@ void main() {
         schedules: const [],
       );
 
+      final heavySchedule = TaskSchedule(
+        id: 'S-3',
+        title: 'Full Day Move',
+        description: '',
+        priority: TaskPriority.high,
+        estimatedDuration: const Duration(minutes: 360), // 6.0h
+        schedules: const [],
+      );
+
       await tester.pumpWidget(
         createTestWidget(
-          width: 700,
+          width: 400,
           child: CalendarMonthCard(
             monthDate: march2026,
             today: todayDay8,
-            isWide: true,
-            labelsMap: labelsMap,
+            labelsMap: sampleLabelsMap,
             userSettings: const UserSettings(hoursAvailable: 3.0),
             dayTaskMap: {
               const CivilDay(year: 2026, month: 3, day: 12): [
@@ -279,24 +324,37 @@ void main() {
                   schedule: unlabeledSchedule,
                 ),
               ],
+              const CivilDay(year: 2026, month: 3, day: 14): [
+                CalendarDayTask(
+                  id: 't-3',
+                  title: heavySchedule.title,
+                  priority: heavySchedule.priority,
+                  isInstance: true,
+                  schedule: heavySchedule,
+                ),
+              ],
             },
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // 3.5h exceeds 3.0h capacity -> shows "3.5h!"
-      expect(find.text('3.5h!'), findsOneWidget);
-      expect(find.text('Dinner Party Prep'), findsOneWidget);
+      final bars = tester
+          .widgetList<CalendarLabelCapacityBar>(
+            find.byType(CalendarLabelCapacityBar),
+          )
+          .toList();
+      expect(bars, hasLength(2));
 
-      final barWidget = tester.widget<CalendarLabelCapacityBar>(
-        find.byType(CalendarLabelCapacityBar),
-      );
-      expect(barWidget.workload.segments, hasLength(3));
-      expect(barWidget.workload.segments[0].minutes, closeTo(90.0, 1e-6));
-      expect(barWidget.workload.segments[1].minutes, closeTo(90.0, 1e-6));
-      expect(barWidget.workload.segments[2].colorKey, isNull);
-      expect(barWidget.workload.segments[2].minutes, closeTo(30.0, 1e-6));
+      final day12Bar = bars.firstWhere((b) => b.workload.totalMinutes == 210);
+      expect(day12Bar.workload.isOverCapacity, isTrue);
+      // Scaled to peak month hours (6.0h) instead of flatlining at 3.0h
+      expect(day12Bar.scaleCapacityHours, closeTo(6.0, 1e-6));
+      expect(day12Bar.workload.segments, hasLength(3));
+      expect(day12Bar.workload.segments[0].minutes, closeTo(90.0, 1e-6));
+      expect(day12Bar.workload.segments[1].minutes, closeTo(90.0, 1e-6));
+      expect(day12Bar.workload.segments[2].colorKey, isNull);
+      expect(day12Bar.workload.segments[2].minutes, closeTo(30.0, 1e-6));
     },
   );
 
@@ -308,6 +366,7 @@ void main() {
         child: CalendarMonthCard(
           monthDate: march2026,
           today: todayDay8,
+          selectedDay: todayDay8,
           onDayTap: (day) {
             tappedDay = day;
           },
@@ -316,10 +375,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final day8Finder = find.descendant(
-      of: find.byKey(const Key('month_card_2026_3')),
-      matching: find.text('8'),
-    );
+    final day8Finder = find.byKey(const Key('calendar_day_2026_3_8'));
     expect(day8Finder, findsOneWidget);
 
     await tester.tap(day8Finder);
@@ -343,11 +399,9 @@ void main() {
       );
       await tester.pump();
 
-      // Only the single current day (March 8) renders CalendarTodayBlobBackground
       final blobBgFinder = find.byType(CalendarTodayBlobBackground);
       expect(blobBgFinder, findsOneWidget);
 
-      // Verify blob sits in the lowest layer (index 0) of the month grid Stack behind all day cells
       final gridStackFinder = find.ancestor(
         of: blobBgFinder,
         matching: find.byType(Stack),
@@ -357,7 +411,6 @@ void main() {
       expect(gridStack.children.first, isA<Positioned>());
       expect(gridStack.children.last, isA<RepaintBoundary>());
 
-      // Verify blob painter has its own isolated RepaintBoundary
       final repaintBoundaries = find.descendant(
         of: blobBgFinder,
         matching: find.byType(RepaintBoundary),
@@ -372,7 +425,6 @@ void main() {
       final initialPainter = initialPaint.painter as CalendarTodayBlobPainter;
       expect(initialPainter.progress, equals(0.0));
 
-      // Pump 12 frame intervals (~1 second at 12 FPS)
       for (int i = 0; i < 12; i++) {
         await tester.pump(CalendarTodayBlobBackground.frameInterval);
       }
@@ -387,73 +439,6 @@ void main() {
         ),
       );
       expect(updatedPainter.shouldRepaint(initialPainter), isTrue);
-    },
-  );
-
-  testWidgets(
-    'Verify CalendarRotatingTaskChip rotates through standoutCandidates with staggered timing across days',
-    (tester) async {
-      CalendarRotatingTaskChip.debugForceAnimateInTests = true;
-      addTearDown(() {
-        CalendarRotatingTaskChip.debugForceAnimateInTests = false;
-      });
-
-      final day15 = const CivilDay(year: 2026, month: 3, day: 15);
-      final day22 = const CivilDay(year: 2026, month: 3, day: 22);
-
-      await tester.pumpWidget(
-        createTestWidget(
-          width: 700,
-          child: CalendarMonthCard(
-            monthDate: march2026,
-            today: todayDay8,
-            isWide: true,
-            dayTaskMap: {
-              day15: const [
-                CalendarDayTask(
-                  id: 'd15-1',
-                  title: 'Tax Prep',
-                  priority: TaskPriority.high,
-                  isInstance: true,
-                ),
-                CalendarDayTask(
-                  id: 'd15-2',
-                  title: 'Meal Prep',
-                  priority: TaskPriority.medium,
-                  isInstance: true,
-                ),
-              ],
-              day22: const [
-                CalendarDayTask(
-                  id: 'd22-1',
-                  title: 'Dentist Visit',
-                  priority: TaskPriority.high,
-                  isInstance: true,
-                ),
-                CalendarDayTask(
-                  id: 'd22-2',
-                  title: 'Grocery Run',
-                  priority: TaskPriority.medium,
-                  isInstance: true,
-                ),
-              ],
-            },
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Initially both days display their top standout task
-      expect(find.text('Tax Prep'), findsOneWidget);
-      expect(find.text('Dentist Visit'), findsOneWidget);
-
-      // Advance past maximum initial delay (9s) so both days rotate to their second candidate
-      for (int i = 0; i < 10; i++) {
-        await tester.pump(const Duration(seconds: 1));
-      }
-
-      expect(find.text('Meal Prep'), findsOneWidget);
-      expect(find.text('Grocery Run'), findsOneWidget);
     },
   );
 

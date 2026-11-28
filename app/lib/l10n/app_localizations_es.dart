@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -62,6 +63,42 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get calendarNextDay => 'Día siguiente';
+
+  @override
+  String get calendarPreviousMonth => 'Mes anterior';
+
+  @override
+  String get calendarNextMonth => 'Mes siguiente';
+
+  @override
+  String get calendarAgendaView => 'Agenda';
+
+  @override
+  String get calendarTimelineView => 'Línea de tiempo';
+
+  @override
+  String get calendarHighlightedSection => 'Destacadas';
+
+  @override
+  String calendarRoutineSectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Rutina y semanales ($count)',
+      one: 'Rutina y semanales (1)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarNoHighlightedTasks =>
+      'No hay tareas únicas ni poco frecuentes';
+
+  @override
+  String get calendarExpandTimeline => 'Expandir línea de tiempo';
+
+  @override
+  String get calendarCollapseTimeline => 'Mostrar mes';
 
   @override
   String tasksForDate(String date) {

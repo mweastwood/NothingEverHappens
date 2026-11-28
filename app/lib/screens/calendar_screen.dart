@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../logic/app_clock.dart';
 import '../logic/auth_repository.dart';
@@ -14,17 +14,19 @@ import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
-import '../logic/utils/layout_breakpoints.dart';
+import '../widgets/calendar_day_pane.dart';
 import '../widgets/calendar_day_timeline_view.dart';
 import '../widgets/calendar_month_card.dart';
 
 export '../logic/calendar_day_task.dart';
 export '../widgets/calendar_day_details_sheet.dart';
+export '../widgets/calendar_day_pane.dart';
 export '../widgets/calendar_day_timeline_view.dart';
 export '../widgets/calendar_month_card.dart';
 export '../widgets/calendar_task_details_sheet.dart';
 
-/// Screen displaying a scrollable calendar view of past and future months.
+/// Screen displaying a split calendar view with a calm label-dot month grid
+/// paired with a live selected-day Agenda / Timeline pane.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
@@ -53,60 +55,36 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  ScrollController? _scrollController;
+  static const int _pastMonths = 12;
+  static const int _futureMonths = 24;
+
   late final DateTime _initialNow;
   late final List<DateTime> _months;
   late final int _currentMonthIndex;
+  late final PageController _monthPageController;
 
-  CivilDay? _zoomedDay;
-
-  void _zoomToDay(CivilDay day) {
-    setState(() {
-      _zoomedDay = day;
-    });
-  }
-
-  void _zoomOutToMonth() {
-    setState(() {
-      _zoomedDay = null;
-    });
-  }
+  late int _visibleMonthIndex;
+  late CivilDay _selectedDay;
+  CalendarDayPaneMode _paneMode = CalendarDayPaneMode.agenda;
+  bool _isTimelineExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _initialNow = AppClock.now;
-
-    // Generate 12 months in the past to 24 months in the future
-    _months = [];
-    const pastMonths = 12;
-    const futureMonths = 24;
-
-    for (int i = -pastMonths; i <= futureMonths; i++) {
-      _months.add(DateTime(_initialNow.year, _initialNow.month + i, 1));
-    }
-    _currentMonthIndex = pastMonths;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_scrollController == null) {
-      final isWide = isWideScreen(context);
-      final firstDayOfWeek =
-          ref.read(userSettingsProvider).value?.firstDayOfWeek ??
-          FirstDayOfWeek.sunday;
-      final targetOffset = _calculateTargetOffset(
-        isWide: isWide,
-        firstDayOfWeek: firstDayOfWeek,
-      );
-      _scrollController = ScrollController(initialScrollOffset: targetOffset);
-    }
+    _months = [
+      for (int i = -_pastMonths; i <= _futureMonths; i++)
+        DateTime(_initialNow.year, _initialNow.month + i, 1),
+    ];
+    _currentMonthIndex = _pastMonths;
+    _visibleMonthIndex = _currentMonthIndex;
+    _selectedDay = CivilDay.fromDateTime(_initialNow);
+    _monthPageController = PageController(initialPage: _currentMonthIndex);
   }
 
   @override
   void dispose() {
-    _scrollController?.dispose();
+    _monthPageController.dispose();
     super.dispose();
   }
 
@@ -122,56 +100,100 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return (totalSlots / 7).ceil();
   }
 
-  double _calculateTargetOffset({
-    required bool isWide,
-    required FirstDayOfWeek firstDayOfWeek,
-  }) {
-    if (isWide) {
-      double offset = 10.0; // list top padding
-      final targetRow = _currentMonthIndex ~/ 2;
-      for (int r = 0; r < targetRow; r++) {
-        final idx1 = r * 2;
-        final idx2 = idx1 + 1;
-        final weeks1 = _getWeeksInMonth(_months[idx1], firstDayOfWeek);
-        final weeks2 = idx2 < _months.length
-            ? _getWeeksInMonth(_months[idx2], firstDayOfWeek)
-            : 0;
-        final maxWeeks = weeks1 > weeks2 ? weeks1 : weeks2;
-        offset += 58.0 + (maxWeeks * CalendarMonthCard.wideCellHeight) + 16.0;
+  int? _indexForMonth(int year, int month) {
+    for (int i = 0; i < _months.length; i++) {
+      if (_months[i].year == year && _months[i].month == month) {
+        return i;
       }
-      return offset;
-    } else {
-      double offset = 8.0; // list top padding
-      for (int i = 0; i < _currentMonthIndex; i++) {
-        final weeks = _getWeeksInMonth(_months[i], firstDayOfWeek);
-        offset += 58.0 + (weeks * CalendarMonthCard.narrowCellHeight) + 12.0;
+    }
+    return null;
+  }
+
+  void _selectDay(CivilDay day) {
+    setState(() {
+      _selectedDay = day;
+    });
+  }
+
+  void _onTimelineDayChanged(CivilDay day) {
+    final targetMonthIdx = _indexForMonth(day.year, day.month);
+    setState(() {
+      _selectedDay = day;
+      if (targetMonthIdx != null) {
+        _visibleMonthIndex = targetMonthIdx;
       }
-      return offset;
+    });
+    if (targetMonthIdx != null &&
+        _monthPageController.hasClients &&
+        _monthPageController.page?.round() != targetMonthIdx) {
+      _monthPageController.jumpToPage(targetMonthIdx);
     }
   }
 
-  void _scrollToCurrentMonth({
-    bool animate = false,
-    required FirstDayOfWeek firstDayOfWeek,
-  }) {
-    if (!mounted) return;
-    final controller = _scrollController;
-    if (controller == null || !controller.hasClients) return;
-    final isWide = isWideScreen(context);
-    final targetOffset = _calculateTargetOffset(
-      isWide: isWide,
-      firstDayOfWeek: firstDayOfWeek,
-    );
+  void _onMonthPageChanged(int index, CivilDay today) {
+    final monthDate = _months[index];
+    CivilDay nextSelected = _selectedDay;
+    if (_selectedDay.year != monthDate.year ||
+        _selectedDay.month != monthDate.month) {
+      if (monthDate.year == today.year && monthDate.month == today.month) {
+        nextSelected = today;
+      } else {
+        final daysInMonth = DateTime(
+          monthDate.year,
+          monthDate.month + 1,
+          0,
+        ).day;
+        final clampedDay = _selectedDay.day.clamp(1, daysInMonth);
+        nextSelected = CivilDay(
+          year: monthDate.year,
+          month: monthDate.month,
+          day: clampedDay,
+        );
+      }
+    }
+    setState(() {
+      _visibleMonthIndex = index;
+      _selectedDay = nextSelected;
+    });
+  }
 
+  void _goToMonthIndex(int targetIndex, {bool animate = true}) {
+    final clamped = targetIndex.clamp(0, _months.length - 1);
+    if (!_monthPageController.hasClients) {
+      setState(() => _visibleMonthIndex = clamped);
+      return;
+    }
     if (animate) {
-      controller.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 300),
+      _monthPageController.animateToPage(
+        clamped,
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
       );
     } else {
-      controller.jumpTo(targetOffset);
+      _monthPageController.jumpToPage(clamped);
     }
+  }
+
+  void _jumpToToday(CivilDay today) {
+    final targetIndex =
+        _indexForMonth(today.year, today.month) ?? _currentMonthIndex;
+    setState(() {
+      _selectedDay = today;
+      _visibleMonthIndex = targetIndex;
+    });
+    _goToMonthIndex(targetIndex, animate: true);
+  }
+
+  void _expandTimeline() {
+    setState(() {
+      _isTimelineExpanded = true;
+    });
+  }
+
+  void _collapseTimeline() {
+    setState(() {
+      _isTimelineExpanded = false;
+    });
   }
 
   Map<CivilDay, List<calendar_logic.CalendarDayTask>> _getMonthTaskMap(
@@ -209,183 +231,229 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         userSettings?.firstDayOfWeek ?? FirstDayOfWeek.sunday;
     final labelsMap = ref.watch(allLabelsMapProvider);
 
-    final isWide = isWideScreen(context);
     final today = CivilDay.fromDateTime(AppClock.now);
+    final monthCache = ref.read(calendar_logic.calendarMonthTaskCacheProvider);
+
+    final selectedMonthDate = DateTime(_selectedDay.year, _selectedDay.month);
+    final selectedMonthMap = _getMonthTaskMap(
+      selectedMonthDate,
+      instances,
+      schedules,
+      today: today,
+      currentUserId: currentUserId,
+    );
+    final selectedDayTasks = selectedMonthMap[_selectedDay] ?? const [];
+
+    final dayPane = CalendarDayPane(
+      selectedDay: _selectedDay,
+      today: today,
+      dayTasks: selectedDayTasks,
+      instances: instances,
+      schedules: schedules,
+      currentUserId: currentUserId,
+      labelsMap: labelsMap,
+      userSettings: userSettings,
+      monthTaskCache: monthCache,
+      mode: _paneMode,
+      onModeChanged: (mode) => setState(() => _paneMode = mode),
+      onDayChanged: _onTimelineDayChanged,
+      onExpandTimeline: _expandTimeline,
+    );
 
     return PopScope(
-      canPop: _zoomedDay == null,
+      canPop: !_isTimelineExpanded,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _zoomedDay != null) {
-          _zoomOutToMonth();
+        if (!didPop && _isTimelineExpanded) {
+          _collapseTimeline();
         }
       },
       child: Stack(
         children: [
           Offstage(
-            offstage: _zoomedDay != null,
-            child: Stack(
-              children: [
-                isWide
-                    ? _buildWideMonthList(
-                        instances,
-                        schedules,
-                        today,
-                        currentUserId: currentUserId,
-                        firstDayOfWeek: firstDayOfWeek,
-                        labelsMap: labelsMap,
-                        userSettings: userSettings,
-                      )
-                    : _buildNarrowMonthList(
-                        instances,
-                        schedules,
-                        today,
-                        currentUserId: currentUserId,
-                        firstDayOfWeek: firstDayOfWeek,
-                        labelsMap: labelsMap,
-                        userSettings: userSettings,
+            offstage: _isTimelineExpanded,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final useHorizontalSplit = constraints.maxWidth >= 640.0;
+                final monthPane = _buildMonthPane(
+                  context,
+                  instances: instances,
+                  schedules: schedules,
+                  today: today,
+                  currentUserId: currentUserId,
+                  firstDayOfWeek: firstDayOfWeek,
+                  labelsMap: labelsMap,
+                  userSettings: userSettings,
+                  isWide: useHorizontalSplit,
+                );
+
+                if (useHorizontalSplit) {
+                  final leftWidth = (constraints.maxWidth * 0.42).clamp(
+                    280.0,
+                    380.0,
+                  );
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: leftWidth,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 16),
+                          child: monthPane,
+                        ),
                       ),
-                Positioned(
-                  right: 16,
-                  bottom: 16,
-                  child: FloatingActionButton(
-                    key: const Key('calendar_jump_to_today_button'),
-                    heroTag: 'calendar_jump_to_today_fab',
-                    tooltip: context.l10n.calendarJumpToToday,
-                    onPressed: () => _scrollToCurrentMonth(
-                      animate: true,
-                      firstDayOfWeek: firstDayOfWeek,
+                      const VerticalDivider(width: 1, thickness: 0.5),
+                      Expanded(child: dayPane),
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+                      child: monthPane,
                     ),
-                    child: const Icon(Icons.today),
-                  ),
-                ),
-              ],
+                    const Divider(height: 1, thickness: 0.5),
+                    Expanded(child: dayPane),
+                  ],
+                );
+              },
             ),
           ),
-          if (_zoomedDay != null)
+          if (_isTimelineExpanded)
             CalendarDayTimelineView(
-              initialDay: _zoomedDay!,
-              onBackToMonth: _zoomOutToMonth,
+              initialDay: _selectedDay,
+              onBackToMonth: _collapseTimeline,
+              onDayChanged: _onTimelineDayChanged,
               instances: instances,
               schedules: schedules,
               currentUserId: currentUserId,
               today: today,
-              monthTaskCache: ref.read(
-                calendar_logic.calendarMonthTaskCacheProvider,
-              ),
+              monthTaskCache: monthCache,
             ),
         ],
       ),
     );
   }
 
-  Widget _buildWideMonthList(
-    List<TaskInstance> instances,
-    List<TaskSchedule> schedules,
-    CivilDay today, {
-    String? currentUserId,
+  Widget _buildMonthPane(
+    BuildContext context, {
+    required List<TaskInstance> instances,
+    required List<TaskSchedule> schedules,
+    required CivilDay today,
+    required String? currentUserId,
     required FirstDayOfWeek firstDayOfWeek,
     required Map<String, TaskLabel> labelsMap,
-    UserSettings? userSettings,
+    required UserSettings? userSettings,
+    required bool isWide,
   }) {
-    final rowCount = (_months.length / 2).ceil();
+    final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).toString();
+    final activeMonth = _months[_visibleMonthIndex];
+    final monthTitle = DateFormat.yMMMM(locale).format(activeMonth);
+    final isCurrentMonth =
+        activeMonth.year == today.year && activeMonth.month == today.month;
 
-    return ListView.builder(
-      key: const PageStorageKey<String>('calendar_month_list'),
-      controller: _scrollController,
-      scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      itemCount: rowCount,
-      itemBuilder: (context, rowIndex) {
-        final idx1 = rowIndex * 2;
-        final idx2 = idx1 + 1;
+    final rowCount = _getWeeksInMonth(activeMonth, firstDayOfWeek);
+    final cellHeight = isWide
+        ? CalendarMonthCard.wideCellHeight
+        : CalendarMonthCard.narrowCellHeight;
+    // Weekday headers + divider + vertical padding + day rows
+    final gridHeight = 36.0 + (rowCount * cellHeight);
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Month Navigation Header
+        Row(
+          children: [
+            IconButton(
+              key: const Key('calendar_previous_month_button'),
+              icon: const Icon(Icons.chevron_left, size: 22),
+              visualDensity: VisualDensity.compact,
+              tooltip: context.l10n.calendarPreviousMonth,
+              onPressed: _visibleMonthIndex > 0
+                  ? () => _goToMonthIndex(_visibleMonthIndex - 1)
+                  : null,
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      monthTitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isCurrentMonth
+                            ? theme.colorScheme.primary
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              key: const Key('calendar_next_month_button'),
+              icon: const Icon(Icons.chevron_right, size: 22),
+              visualDensity: VisualDensity.compact,
+              tooltip: context.l10n.calendarNextMonth,
+              onPressed: _visibleMonthIndex < _months.length - 1
+                  ? () => _goToMonthIndex(_visibleMonthIndex + 1)
+                  : null,
+            ),
+            TextButton(
+              key: const Key('calendar_jump_to_today_button'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 32),
+              ),
+              onPressed: () => _jumpToToday(today),
+              child: Text(context.l10n.calendarJumpToToday),
+            ),
+          ],
+        ),
+        // Swipeable Month Grid
+        SizedBox(
+          height: gridHeight,
+          child: PageView.builder(
+            key: const PageStorageKey<String>('calendar_month_pager'),
+            controller: _monthPageController,
+            itemCount: _months.length,
+            onPageChanged: (index) => _onMonthPageChanged(index, today),
+            itemBuilder: (context, index) {
+              final monthDate = _months[index];
+              return SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
                 child: CalendarMonthCard(
-                  monthDate: _months[idx1],
+                  monthDate: monthDate,
                   dayTaskMap: _getMonthTaskMap(
-                    _months[idx1],
+                    monthDate,
                     instances,
                     schedules,
                     today: today,
                     currentUserId: currentUserId,
                   ),
                   today: today,
-                  isWide: true,
+                  selectedDay: _selectedDay,
+                  isWide: isWide,
+                  showMonthHeader: false,
                   firstDayOfWeek: firstDayOfWeek,
                   labelsMap: labelsMap,
                   userSettings: userSettings,
-                  onDayTap: _zoomToDay,
+                  onDayTap: _selectDay,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: idx2 < _months.length
-                    ? CalendarMonthCard(
-                        monthDate: _months[idx2],
-                        dayTaskMap: _getMonthTaskMap(
-                          _months[idx2],
-                          instances,
-                          schedules,
-                          today: today,
-                          currentUserId: currentUserId,
-                        ),
-                        today: today,
-                        isWide: true,
-                        firstDayOfWeek: firstDayOfWeek,
-                        labelsMap: labelsMap,
-                        userSettings: userSettings,
-                        onDayTap: _zoomToDay,
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNarrowMonthList(
-    List<TaskInstance> instances,
-    List<TaskSchedule> schedules,
-    CivilDay today, {
-    String? currentUserId,
-    required FirstDayOfWeek firstDayOfWeek,
-    required Map<String, TaskLabel> labelsMap,
-    UserSettings? userSettings,
-  }) {
-    return ListView.builder(
-      key: const PageStorageKey<String>('calendar_month_list'),
-      controller: _scrollController,
-      scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      itemCount: _months.length,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: CalendarMonthCard(
-            monthDate: _months[index],
-            dayTaskMap: _getMonthTaskMap(
-              _months[index],
-              instances,
-              schedules,
-              today: today,
-              currentUserId: currentUserId,
-            ),
-            today: today,
-            isWide: false,
-            firstDayOfWeek: firstDayOfWeek,
-            labelsMap: labelsMap,
-            userSettings: userSettings,
-            onDayTap: _zoomToDay,
-          ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

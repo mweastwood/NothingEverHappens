@@ -30,6 +30,8 @@ class CalendarDayTimelineView extends ConsumerStatefulWidget {
   final List<TaskSchedule> schedules;
   final String? currentUserId;
   final CivilDay today;
+  final bool embedded;
+  final ValueChanged<CivilDay>? onDayChanged;
 
   const CalendarDayTimelineView({
     super.key,
@@ -40,6 +42,8 @@ class CalendarDayTimelineView extends ConsumerStatefulWidget {
     this.currentUserId,
     required this.today,
     this.monthTaskCache,
+    this.embedded = false,
+    this.onDayChanged,
   });
 
   final CalendarMonthTaskCache? monthTaskCache;
@@ -98,8 +102,29 @@ class CalendarDayTimelineViewState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    _updateControllers(screenWidth);
+    if (!widget.embedded) {
+      final screenWidth = MediaQuery.sizeOf(context).width;
+      _updateControllers(screenWidth);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CalendarDayTimelineView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final targetIndex = dayToIndex(widget.initialDay);
+    if (oldWidget.initialDay != widget.initialDay &&
+        targetIndex != _currentPageIndex) {
+      _currentPageIndex = targetIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _currentPageIndex != targetIndex) return;
+        if (_pageController != null && _pageController!.hasClients) {
+          _pageController!.jumpToPage(targetIndex);
+        }
+        if (_headerController != null && _headerController!.hasClients) {
+          _headerController!.jumpToPage(targetIndex);
+        }
+      });
+    }
   }
 
   @override
@@ -269,13 +294,14 @@ class CalendarDayTimelineViewState
       _initialScrollToRelevantTime();
     });
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Column(
+    Widget buildBody() {
+      return Column(
         children: [
-          // Top Toolbar
-          _buildTopToolbar(theme, monthYearTitle),
-          const Divider(height: 1, thickness: 0.5),
+          if (!widget.embedded) ...[
+            // Top Toolbar
+            _buildTopToolbar(theme, monthYearTitle),
+            const Divider(height: 1, thickness: 0.5),
+          ],
 
           // Pinned Day Headers Row
           _buildPinnedDayHeaders(theme, locale),
@@ -299,9 +325,11 @@ class CalendarDayTimelineViewState
                         key: const Key('calendar_day_timeline_pageview'),
                         controller: _pageController,
                         onPageChanged: (pageIndex) {
+                          if (pageIndex == _currentPageIndex) return;
                           setState(() {
                             _currentPageIndex = pageIndex;
                           });
+                          widget.onDayChanged?.call(indexToDay(pageIndex));
                         },
                         itemBuilder: (context, dayIndex) {
                           final day = indexToDay(dayIndex);
@@ -318,7 +346,38 @@ class CalendarDayTimelineViewState
             ),
           ),
         ],
-      ),
+      );
+    }
+
+    if (widget.embedded) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedWidth && constraints.maxWidth > 0) {
+            final targetWidth = constraints.maxWidth;
+            final desiredDays = targetWidth >= 1150
+                ? 7
+                : targetWidth >= 850
+                ? 5
+                : targetWidth >= 600
+                ? 3
+                : 1;
+            if (desiredDays != _visibleDays) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                setState(() {
+                  _updateControllers(targetWidth);
+                });
+              });
+            }
+          }
+          return Material(color: theme.colorScheme.surface, child: buildBody());
+        },
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      body: buildBody(),
     );
   }
 
