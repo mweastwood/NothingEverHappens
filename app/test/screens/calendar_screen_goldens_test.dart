@@ -687,15 +687,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
-    await tester.tap(
-      find
-          .descendant(
-            of: find.byKey(const Key('month_card_2026_3')),
-            matching: find.text('8'),
-          )
-          .first,
-    );
+    // Switch inline day pane toggle to Timeline on Day 8 (today)
+    await tester.tap(find.byKey(const Key('calendar_mode_timeline_button')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'calendar_screen_day_timeline_mobile');
@@ -719,15 +712,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
-    await tester.tap(
-      find
-          .descendant(
-            of: find.byKey(const Key('month_card_2026_3')),
-            matching: find.text('8'),
-          )
-          .first,
-    );
+    // Switch inline day pane toggle to Timeline on Day 8 (today)
+    await tester.tap(find.byKey(const Key('calendar_mode_timeline_button')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'calendar_screen_day_timeline_desktop');
@@ -751,15 +737,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
-    await tester.tap(
-      find
-          .descendant(
-            of: find.byKey(const Key('month_card_2026_3')),
-            matching: find.text('8'),
-          )
-          .first,
-    );
+    // Switch inline day pane toggle to Timeline on Day 8 (today)
+    await tester.tap(find.byKey(const Key('calendar_mode_timeline_button')));
     await tester.pumpAndSettle();
 
     // Tap on the day header chip in the timeline to open the day details sheet

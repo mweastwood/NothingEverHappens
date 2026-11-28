@@ -73,6 +73,42 @@ class CalendarDayTask {
     return rule is DailySchedule && rule.interval == 1;
   }
 
+  /// Whether this task repeats at least once per week and should be folded into
+  /// the capacity bar and collapsible routine section rather than highlighted.
+  ///
+  /// One-off tasks, monthly/yearly schedules, biweekly+ weekly schedules
+  /// (`interval >= 2`), and multi-week daily schedules (`interval > 7`) are
+  /// considered highlighted (`isHighlighted == true`).
+  bool get isRoutine {
+    final rule = effectiveRule;
+    if (rule == null || rule is OneOffSchedule) return false;
+    final policy = rule.schedulingPolicy;
+    if (policy is CompletionRelativePolicy) {
+      return policy.interval.inDays <= 7;
+    }
+    if (rule is DailySchedule) {
+      return rule.interval <= 7;
+    }
+    if (rule is WeeklySchedule) {
+      return rule.interval <= 1;
+    }
+    return false;
+  }
+
+  /// Whether this task is a one-off or repeats less frequently than once per week.
+  bool get isHighlighted => !isRoutine;
+
+  /// Resolves the normalized color key of this task's primary label, or `null` if unlabeled.
+  String? primaryLabelColorKey(Map<String, TaskLabel> labelsMap) {
+    for (final id in labelIds) {
+      final label = labelsMap[id];
+      if (label != null) {
+        return label.colorKey.trim().toLowerCase();
+      }
+    }
+    return null;
+  }
+
   /// Computes a score used to select the single "Hero / Standout" task for a day cell.
   ///
   /// Rarer schedules (one-off, yearly, monthly, weekly) and longer/higher-priority tasks
@@ -186,6 +222,11 @@ class CalendarDayWorkload {
   final CalendarDayTask? standoutTask;
   final List<CalendarDayTask> standoutCandidates;
   final List<CalendarLabelSegment> segments;
+  final List<CalendarDayTask> highlightedTasks;
+  final List<CalendarDayTask> routineTasks;
+  final int highlightedMinutes;
+  final int routineMinutes;
+  final List<String?> highlightedDotColorKeys;
 
   const CalendarDayWorkload({
     required this.tasks,
@@ -194,6 +235,11 @@ class CalendarDayWorkload {
     required this.standoutTask,
     this.standoutCandidates = const [],
     required this.segments,
+    this.highlightedTasks = const [],
+    this.routineTasks = const [],
+    this.highlightedMinutes = 0,
+    this.routineMinutes = 0,
+    this.highlightedDotColorKeys = const [],
   });
 
   factory CalendarDayWorkload.fromTasks(
@@ -210,6 +256,11 @@ class CalendarDayWorkload {
         standoutTask: null,
         standoutCandidates: const [],
         segments: const [],
+        highlightedTasks: const [],
+        routineTasks: const [],
+        highlightedMinutes: 0,
+        routineMinutes: 0,
+        highlightedDotColorKeys: const [],
       );
     }
 
@@ -232,6 +283,22 @@ class CalendarDayWorkload {
         continue;
       }
       candidates.add(candidate);
+    }
+
+    final highlighted = <CalendarDayTask>[];
+    final routine = <CalendarDayTask>[];
+    final dotColorKeys = <String?>[];
+    int highlightedMins = 0;
+    int routineMins = 0;
+    for (final task in sortedTasks) {
+      if (task.isHighlighted) {
+        highlighted.add(task);
+        highlightedMins += task.effectiveDurationMinutes;
+        dotColorKeys.add(task.primaryLabelColorKey(labelsMap));
+      } else {
+        routine.add(task);
+        routineMins += task.effectiveDurationMinutes;
+      }
     }
 
     int totalMins = 0;
@@ -280,12 +347,20 @@ class CalendarDayWorkload {
       standoutTask: bestTask,
       standoutCandidates: candidates,
       segments: segments,
+      highlightedTasks: highlighted,
+      routineTasks: routine,
+      highlightedMinutes: highlightedMins,
+      routineMinutes: routineMins,
+      highlightedDotColorKeys: dotColorKeys,
     );
   }
 
   bool get isEmpty => tasks.isEmpty;
   bool get isNotEmpty => tasks.isNotEmpty;
+  bool get hasHighlightedTasks => highlightedTasks.isNotEmpty;
+  bool get hasRoutineTasks => routineTasks.isNotEmpty;
   double get totalHours => totalMinutes / 60.0;
+  double get routineHours => routineMinutes / 60.0;
   double get effectiveCapacityHours => capacityHours > 0 ? capacityHours : 4.0;
   double get loadRatio => totalHours / effectiveCapacityHours;
   bool get isOverCapacity => totalHours > effectiveCapacityHours + 1e-6;
@@ -294,16 +369,23 @@ class CalendarDayWorkload {
       tasks.isNotEmpty && tasks.every((t) => t.isCompleted);
   int get additionalTasksCount => tasks.length > 1 ? tasks.length - 1 : 0;
 
-  /// Compact planned hours label (e.g. `1.5h`, `2h`, `3.5h!`).
-  String get formattedPlannedHours {
-    if (totalMinutes <= 0) return '';
-    final hours = totalMinutes / 60.0;
+  /// Formats a duration in minutes into compact hours (e.g. `1.5h`, `2h`).
+  static String formatHoursCompact(int minutes, {bool overCapacity = false}) {
+    if (minutes <= 0) return '';
+    final hours = minutes / 60.0;
     final roundedTenths = (hours * 10).round() / 10.0;
     final text = roundedTenths == roundedTenths.roundToDouble()
         ? '${roundedTenths.toInt()}h'
         : '${roundedTenths.toStringAsFixed(1)}h';
-    return isOverCapacity ? '$text!' : text;
+    return overCapacity ? '$text!' : text;
   }
+
+  /// Compact planned hours label (e.g. `1.5h`, `2h`, `3.5h!`).
+  String get formattedPlannedHours =>
+      formatHoursCompact(totalMinutes, overCapacity: isOverCapacity);
+
+  /// Compact routine hours label (e.g. `2.5h`, `3h`).
+  String get formattedRoutineHours => formatHoursCompact(routineMinutes);
 }
 
 /// Computes the mapping of civil days to unified calendar day tasks for a given month.

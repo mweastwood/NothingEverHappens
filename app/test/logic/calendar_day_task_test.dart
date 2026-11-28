@@ -672,5 +672,280 @@ void main() {
         );
       },
     );
+
+    test(
+      'classifies tasks repeating at least once per week as routine and rarer/one-off tasks as highlighted',
+      () {
+        const start = CivilDay(year: 2026, month: 3, day: 1);
+        const startTime = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+        const dueTime = RelativeTime(dayOffset: 0, hour: 10, minute: 0);
+
+        CalendarDayTask makeTask(String id, TaskScheduleRule? rule) =>
+            CalendarDayTask(
+              id: id,
+              title: id,
+              priority: TaskPriority.medium,
+              isInstance: rule == null || rule is OneOffSchedule,
+              matchingRule: rule,
+            );
+
+        // Routine (>= once per week)
+        expect(
+          makeTask(
+            'daily-1',
+            DailySchedule(
+              id: 'r1',
+              scheduleId: 's1',
+              startDate: start,
+              interval: 1,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isRoutine,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'daily-7',
+            DailySchedule(
+              id: 'r2',
+              scheduleId: 's2',
+              startDate: start,
+              interval: 7,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isRoutine,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'weekly-1',
+            WeeklySchedule(
+              id: 'r3',
+              scheduleId: 's3',
+              startDate: start,
+              interval: 1,
+              daysOfWeek: {1},
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isRoutine,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'cr-5d',
+            DailySchedule(
+              id: 'r4',
+              scheduleId: 's4',
+              startDate: start,
+              interval: 5,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 5),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+            ),
+          ).isRoutine,
+          isTrue,
+        );
+
+        // Highlighted (one-off or rarer than weekly)
+        expect(makeTask('no-rule', null).isHighlighted, isTrue);
+        expect(
+          makeTask(
+            'one-off',
+            OneOffSchedule(
+              id: 'r5',
+              scheduleId: 's5',
+              date: start,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'daily-8',
+            DailySchedule(
+              id: 'r6',
+              scheduleId: 's6',
+              startDate: start,
+              interval: 8,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'biweekly',
+            WeeklySchedule(
+              id: 'r7',
+              scheduleId: 's7',
+              startDate: start,
+              interval: 2,
+              daysOfWeek: {3},
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'monthly',
+            MonthlySchedule(
+              id: 'r8',
+              scheduleId: 's8',
+              startDate: start,
+              interval: 1,
+              dayOfMonth: 15,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'yearly',
+            YearlySchedule(
+              id: 'r9',
+              scheduleId: 's9',
+              startDate: start,
+              interval: 1,
+              month: 12,
+              day: 25,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+        expect(
+          makeTask(
+            'cr-14d',
+            DailySchedule(
+              id: 'r10',
+              scheduleId: 's10',
+              startDate: start,
+              interval: 14,
+              startRelativeTime: startTime,
+              dueRelativeTime: dueTime,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 14),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+            ),
+          ).isHighlighted,
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'CalendarDayWorkload partitions highlighted vs routine tasks and extracts label dot color keys',
+      () {
+        final labelsMap = <String, TaskLabel>{
+          'lbl-health': TaskLabel(
+            id: 'lbl-health',
+            name: 'Health',
+            colorKey: 'rose',
+            iconKey: 'medication',
+            scope: TaskLabelScope.personal,
+            order: 0,
+            createdAt: DateTime.utc(2026, 3, 1),
+          ),
+        };
+
+        final weeklyGym = TaskSchedule(
+          id: 'S-gym',
+          title: 'Go to the gym',
+          description: '',
+          priority: TaskPriority.medium,
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [
+            WeeklySchedule(
+              id: 'R-gym',
+              scheduleId: 'S-gym',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 1,
+              daysOfWeek: {1, 3},
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 7,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 8,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final dentist = TaskSchedule(
+          id: 'S-dentist',
+          title: 'Dentist Appointment',
+          description: '',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(minutes: 90),
+          labelIds: const ['lbl-health'],
+          schedules: [
+            OneOffSchedule(
+              id: 'R-dentist',
+              scheduleId: 'S-dentist',
+              date: const CivilDay(year: 2026, month: 3, day: 9),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 14,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 15,
+                minute: 30,
+              ),
+            ),
+          ],
+        );
+
+        final workload = CalendarDayWorkload.fromTasks([
+          CalendarDayTask(
+            id: 't-gym',
+            title: weeklyGym.title,
+            priority: weeklyGym.priority,
+            isInstance: false,
+            schedule: weeklyGym,
+            matchingRule: weeklyGym.schedules.first,
+          ),
+          CalendarDayTask(
+            id: 't-dentist',
+            title: dentist.title,
+            priority: dentist.priority,
+            isInstance: true,
+            schedule: dentist,
+            matchingRule: dentist.schedules.first,
+          ),
+        ], labelsMap: labelsMap);
+
+        expect(workload.highlightedTasks.map((t) => t.title), [
+          'Dentist Appointment',
+        ]);
+        expect(workload.routineTasks.map((t) => t.title), ['Go to the gym']);
+        expect(workload.highlightedMinutes, equals(90));
+        expect(workload.routineMinutes, equals(60));
+        expect(workload.totalMinutes, equals(150));
+        expect(workload.highlightedDotColorKeys, equals(['rose']));
+      },
+    );
   });
 }

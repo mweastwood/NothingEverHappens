@@ -17,6 +17,24 @@
   "calendarBackToMonth": "Back to month view",
   "calendarPreviousDay": "Previous day",
   "calendarNextDay": "Next day",
+  "calendarPreviousMonth": "Previous month",
+  "calendarNextMonth": "Next month",
+  "calendarAgendaView": "Agenda",
+  "calendarTimelineView": "Timeline",
+  "calendarHighlightedSection": "Highlighted",
+  "calendarRoutineSectionCount": "{count, plural, =1{Routine & weekly (1)} other{Routine & weekly ({count})}}",
+  "@calendarRoutineSectionCount": {
+    "description": "Expandable summary row label for routine and weekly repeating tasks in calendar agenda",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "calendarNoHighlightedTasks": "No one-off or rare tasks scheduled",
+  "calendarExpandTimeline": "Expand timeline",
+  "calendarCollapseTimeline": "Show month",
   "tasksForDate": "Tasks for {date}",
   "@tasksForDate": {
     "description": "Header showing tasks for a given date in calendar",

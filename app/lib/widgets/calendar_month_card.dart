@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 
-import '../logic/civil_day.dart';
 import '../logic/calendar_day_task.dart';
+import '../logic/civil_day.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/task_label.dart';
 import '../logic/task_priority.dart';
@@ -71,18 +71,22 @@ List<String> getWeekdayHeaders(
   return result;
 }
 
-/// Renders a single month section with weekday headers and interactive day cells.
+/// Renders a single calm month grid where routine/weekly tasks fold into each
+/// day's capacity bar and only one-off or rarer-than-weekly tasks display
+/// label-colored indicator dots.
 class CalendarMonthCard extends StatelessWidget {
-  /// Row height used for narrow (single-column mobile) month grids.
-  static const double narrowCellHeight = 64.0;
+  /// Row height used for narrow (mobile portrait) month grids.
+  static const double narrowCellHeight = 46.0;
 
-  /// Row height used for wide (two-column tablet/desktop) month grids.
-  static const double wideCellHeight = 70.0;
+  /// Row height used for wide (tablet/desktop) month grids.
+  static const double wideCellHeight = 52.0;
 
   final DateTime monthDate;
   final Map<CivilDay, List<CalendarDayTask>> dayTaskMap;
   final CivilDay today;
+  final CivilDay? selectedDay;
   final bool isWide;
+  final bool showMonthHeader;
   final void Function(CivilDay day)? onDayTap;
   final FirstDayOfWeek firstDayOfWeek;
   final Map<String, TaskLabel> labelsMap;
@@ -93,12 +97,33 @@ class CalendarMonthCard extends StatelessWidget {
     required this.monthDate,
     this.dayTaskMap = const {},
     required this.today,
+    this.selectedDay,
     this.isWide = false,
+    this.showMonthHeader = true,
     this.onDayTap,
     this.firstDayOfWeek = FirstDayOfWeek.sunday,
     this.labelsMap = const {},
     this.userSettings,
   });
+
+  double _computePeakMonthHours() {
+    double peakHours = 0.0;
+    for (final entry in dayTaskMap.entries) {
+      if (entry.key.year != monthDate.year ||
+          entry.key.month != monthDate.month) {
+        continue;
+      }
+      int dayMins = 0;
+      for (final task in entry.value) {
+        dayMins += task.effectiveDurationMinutes;
+      }
+      final dayHours = dayMins / 60.0;
+      if (dayHours > peakHours) {
+        peakHours = dayHours;
+      }
+    }
+    return peakHours;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,54 +147,56 @@ class CalendarMonthCard extends StatelessWidget {
 
     final isCurrentMonth =
         monthDate.year == today.year && monthDate.month == today.month;
+    final peakMonthHours = _computePeakMonthHours();
 
     return RepaintBoundary(
       child: Container(
         key: Key('month_card_${monthDate.year}_${monthDate.month}'),
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Month Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      monthTitle,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isCurrentMonth
-                            ? theme.colorScheme.primary
-                            : null,
-                      ),
-                    ),
-                  ),
-                  if (isCurrentMonth)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+            if (showMonthHeader)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
                       child: Text(
-                        context.l10n.calendarCurrentMonth,
-                        style: TextStyle(
-                          fontSize: 10,
+                        monthTitle,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onPrimaryContainer,
+                          color: isCurrentMonth
+                              ? theme.colorScheme.primary
+                              : null,
                         ),
                       ),
                     ),
-                ],
+                    if (isCurrentMonth)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          context.l10n.calendarCurrentMonth,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
             // Weekday Headers
             Row(
               children: [
@@ -197,10 +224,7 @@ class CalendarMonthCard extends StatelessWidget {
               builder: (context, constraints) {
                 final cellWidth = constraints.maxWidth / 7;
                 final cellHeight = isWide ? wideCellHeight : narrowCellHeight;
-                final bool isTier1 = cellWidth >= 60 && cellHeight >= 48;
-                final bool isTier2 =
-                    !isTier1 && cellWidth >= 42 && cellHeight >= 42;
-                final bool showChipIcon = cellWidth >= 72;
+                final bool compact = cellWidth < 40;
 
                 final bool hasTodayInMonth =
                     isCurrentMonth &&
@@ -228,9 +252,9 @@ class CalendarMonthCard extends StatelessWidget {
                                   monthDate: monthDate,
                                   dayTaskMap: dayTaskMap,
                                   today: today,
-                                  isTier1: isTier1,
-                                  isTier2: isTier2,
-                                  showChipIcon: showChipIcon,
+                                  selectedDay: selectedDay,
+                                  compact: compact,
+                                  peakMonthHours: peakMonthHours,
                                   onDayTap: onDayTap,
                                   labelsMap: labelsMap,
                                   userSettings: userSettings,
@@ -281,9 +305,9 @@ class CalendarDayCellSlot extends StatelessWidget {
   final DateTime monthDate;
   final Map<CivilDay, List<CalendarDayTask>> dayTaskMap;
   final CivilDay today;
-  final bool isTier1;
-  final bool isTier2;
-  final bool showChipIcon;
+  final CivilDay? selectedDay;
+  final bool compact;
+  final double peakMonthHours;
   final void Function(CivilDay day)? onDayTap;
   final Map<String, TaskLabel> labelsMap;
   final UserSettings? userSettings;
@@ -297,9 +321,9 @@ class CalendarDayCellSlot extends StatelessWidget {
     required this.monthDate,
     required this.dayTaskMap,
     required this.today,
-    required this.isTier1,
-    required this.isTier2,
-    this.showChipIcon = false,
+    this.selectedDay,
+    this.compact = false,
+    this.peakMonthHours = 0.0,
     this.onDayTap,
     this.labelsMap = const {},
     this.userSettings,
@@ -320,6 +344,7 @@ class CalendarDayCellSlot extends StatelessWidget {
       day: dayNum,
     );
     final isToday = civilDay == today;
+    final isSelected = selectedDay == civilDay;
     final isPast = civilDay.isBefore(today);
     final tasks = dayTaskMap[civilDay] ?? const [];
     final theme = Theme.of(context);
@@ -332,291 +357,197 @@ class CalendarDayCellSlot extends StatelessWidget {
       isPastDay: isPast,
     );
 
-    final dayContent = _buildResponsiveDayContent(
-      context,
-      civilDay,
-      dayNum,
-      isToday,
-      workload,
-      theme,
-      isTier1: isTier1,
-      isTier2: isTier2,
-    );
+    final double scaleCapacityHours = peakMonthHours > capacityHours
+        ? peakMonthHours
+        : capacityHours;
 
-    return InkWell(
-      onTap: () {
-        if (onDayTap != null) {
-          onDayTap!(civilDay);
-        } else {
-          CalendarDayDetailsSheet.show(context, day: civilDay);
-        }
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: dayContent,
-    );
-  }
-
-  Widget _buildResponsiveDayContent(
-    BuildContext context,
-    CivilDay civilDay,
-    int dayNum,
-    bool isToday,
-    CalendarDayWorkload workload,
-    ThemeData theme, {
-    required bool isTier1,
-    required bool isTier2,
-  }) {
-    if (isTier1) {
-      return _buildTier1Day(
-        context,
-        civilDay,
-        dayNum,
-        isToday,
-        workload,
-        theme,
+    final Color dayNumberColor;
+    if (isSelected || isToday) {
+      dayNumberColor = theme.colorScheme.primary;
+    } else if (workload.hasHighlightedTasks) {
+      dayNumberColor = theme.colorScheme.onSurface;
+    } else {
+      dayNumberColor = theme.colorScheme.onSurfaceVariant.withValues(
+        alpha: isPast ? 0.65 : 0.85,
       );
-    } else if (isTier2) {
-      return _buildTier2Day(
-        context,
-        civilDay,
-        dayNum,
-        isToday,
-        workload,
-        theme,
+    }
+
+    final BoxDecoration? cellDecoration;
+    if (isSelected) {
+      cellDecoration = BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.colorScheme.primary, width: 1.5),
+      );
+    } else if (workload.hasHighlightedTasks) {
+      cellDecoration = BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.22,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
       );
     } else {
-      return _buildTier3Day(dayNum, isToday, workload, theme);
+      cellDecoration = null;
     }
-  }
 
-  /// Tier 1: Wide space -> Day number row + standout task chip + (+N & hours row) + capacity bar
-  Widget _buildTier1Day(
-    BuildContext context,
-    CivilDay civilDay,
-    int dayNum,
-    bool isToday,
-    CalendarDayWorkload workload,
-    ThemeData theme,
-  ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(3.5, 3, 3.5, 3),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Row 1: Day number (and completed check icon if all done)
-          Row(
+      padding: const EdgeInsets.all(1.5),
+      child: InkWell(
+        key: Key('calendar_day_${civilDay.year}_${civilDay.month}_$dayNum'),
+        onTap: () {
+          if (onDayTap != null) {
+            onDayTap!(civilDay);
+          } else {
+            CalendarDayDetailsSheet.show(context, day: civilDay);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: cellDecoration,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 2.5 : 4.5,
+            vertical: 3.0,
+          ),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '$dayNum',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  height: 1.0,
-                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
-                  color: isToday
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-              if (workload.allCompleted)
-                Icon(
-                  Icons.check_circle,
-                  size: 9.5,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                ),
-            ],
-          ),
-          const SizedBox(height: 2.5),
-          // Row 2: Standout Hero Task Chip (rotates when multiple tasks are worth highlighting)
-          Expanded(
-            child: CalendarRotatingTaskChip(
-              candidates: workload.standoutCandidates,
-              day: civilDay,
-              labelsMap: labelsMap,
-              maxLines: 2,
-              compact: !showChipIcon,
-            ),
-          ),
-          if (workload.isNotEmpty) ...[
-            const SizedBox(height: 2.5),
-            // Row 3: +N overflow count on left, total planned hours on right
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (workload.additionalTasksCount > 0)
+              // Row 1: Day number (with subtle completed check when all done)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    '+${workload.additionalTasksCount}',
+                    '$dayNum',
                     style: TextStyle(
-                      fontSize: 8.5,
-                      height: 1.0,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.85),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      workload.formattedPlannedHours,
-                      style: TextStyle(
-                        fontSize: 8.5,
-                        height: 1.0,
-                        color: workload.isOverCapacity && !workload.allCompleted
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.8,
-                              ),
-                        fontWeight: FontWeight.w700,
-                      ),
+                      fontSize: compact ? 10.5 : 12.0,
+                      height: 1.1,
+                      fontWeight:
+                          (isToday ||
+                              isSelected ||
+                              workload.hasHighlightedTasks)
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: dayNumberColor,
                     ),
                   ),
+                  if (workload.allCompleted) ...[
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.check_circle,
+                      size: compact ? 8.5 : 9.5,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.75),
+                    ),
+                  ],
+                ],
+              ),
+              // Row 2: Label dots for one-off / rarer-than-weekly tasks only
+              CalendarHighlightedDotsRow(
+                key: Key(
+                  'highlighted_dots_${civilDay.year}_${civilDay.month}_$dayNum',
                 ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            // Row 4: Label-segmented capacity bar
-            CalendarLabelCapacityBar(workload: workload, height: 4.0),
-          ],
-        ],
+                dotColorKeys: workload.highlightedDotColorKeys,
+                dimmed: workload.allCompleted,
+                compact: compact,
+              ),
+              // Row 3: Folded capacity bar (routine + weekly + highlighted)
+              if (workload.isNotEmpty)
+                CalendarLabelCapacityBar(
+                  workload: workload,
+                  scaleCapacityHours: scaleCapacityHours,
+                  height: compact ? 3.0 : 3.5,
+                )
+              else
+                SizedBox(height: compact ? 3.0 : 3.5),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
 
-  /// Tier 2: Mobile portrait space -> Day number row + 2-line standout chip + (+N & hours row) + capacity bar
-  Widget _buildTier2Day(
-    BuildContext context,
-    CivilDay civilDay,
-    int dayNum,
-    bool isToday,
-    CalendarDayWorkload workload,
-    ThemeData theme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(3, 2.5, 3, 2.5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Row 1: Day number (and completed check icon if all done)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '$dayNum',
-                style: TextStyle(
-                  fontSize: 10,
-                  height: 1.0,
-                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
-                  color: isToday
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-              if (workload.allCompleted)
-                Icon(
-                  Icons.check_circle,
-                  size: 9,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          // Row 2: Standout Hero Task Chip (rotates when multiple tasks are worth highlighting)
-          Expanded(
-            child: CalendarRotatingTaskChip(
-              candidates: workload.standoutCandidates,
-              day: civilDay,
-              labelsMap: labelsMap,
-              maxLines: 2,
-              compact: true,
-            ),
-          ),
-          if (workload.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            // Row 3: +N overflow count on left, total planned hours on right
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (workload.additionalTasksCount > 0)
-                  Text(
-                    '+${workload.additionalTasksCount}',
-                    style: TextStyle(
-                      fontSize: 7.5,
-                      height: 1.0,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.85),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      workload.formattedPlannedHours,
-                      style: TextStyle(
-                        fontSize: 7.5,
-                        height: 1.0,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        color: workload.isOverCapacity && !workload.allCompleted
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.85,
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            // Row 4: Label-segmented capacity bar
-            CalendarLabelCapacityBar(workload: workload, height: 3.5),
-          ],
-        ],
-      ),
-    );
-  }
+/// Renders up to [maxDots] label-colored indicator dots for highlighted (one-off
+/// or rarer-than-weekly) tasks on a calendar day cell.
+class CalendarHighlightedDotsRow extends StatelessWidget {
+  static const int maxDots = 3;
 
-  /// Tier 3: Compact space -> Day number + label-segmented capacity bar
-  Widget _buildTier3Day(
-    int dayNum,
-    bool isToday,
-    CalendarDayWorkload workload,
-    ThemeData theme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-      child: Column(
+  final List<String?> dotColorKeys;
+  final bool dimmed;
+  final bool compact;
+
+  const CalendarHighlightedDotsRow({
+    super.key,
+    required this.dotColorKeys,
+    this.dimmed = false,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dotSize = compact ? 4.5 : 5.5;
+    if (dotColorKeys.isEmpty) {
+      return SizedBox(height: dotSize + 1.5);
+    }
+
+    final theme = Theme.of(context);
+    final visibleKeys = dotColorKeys.take(maxDots).toList(growable: false);
+    final hasOverflow = dotColorKeys.length > maxDots;
+
+    return SizedBox(
+      height: dotSize + 1.5,
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            '$dayNum',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              color: isToday ? theme.colorScheme.primary : null,
+          for (int i = 0; i < visibleKeys.length; i++) ...[
+            if (i > 0) SizedBox(width: compact ? 2.0 : 3.0),
+            Container(
+              width: dotSize,
+              height: dotSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _resolveDotColor(context, theme, visibleKeys[i]),
+              ),
             ),
-          ),
-          if (workload.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            CalendarLabelCapacityBar(workload: workload, height: 4.0),
+          ],
+          if (hasOverflow) ...[
+            SizedBox(width: compact ? 1.5 : 2.5),
+            Container(
+              width: dotSize * 0.65,
+              height: dotSize * 0.65,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: dimmed ? 0.35 : 0.65,
+                ),
+              ),
+            ),
           ],
         ],
       ),
     );
+  }
+
+  Color _resolveDotColor(
+    BuildContext context,
+    ThemeData theme,
+    String? colorKey,
+  ) {
+    final base = colorKey != null
+        ? LabelPalette.getColor(colorKey, context)
+        : theme.colorScheme.primary;
+    return dimmed ? base.withValues(alpha: 0.45) : base;
   }
 }
 
 /// Slowly undulating organic blob background rendered behind the current day cell.
 ///
 /// Uses a frame-gated 12 FPS timer (~83ms interval) and isolated [RepaintBoundary]
-/// layers so the ambient 36-second undulation stays visually smooth while avoiding
+/// layers so the ambient 24-second undulation stays visually smooth while avoiding
 /// 60–120 Hz ticker wakeups and never repainting the foreground day cell content.
 class CalendarTodayBlobBackground extends StatefulWidget {
   /// Full cycle duration for the blob undulation.
@@ -924,15 +855,23 @@ class CalendarTodayBlobPainter extends CustomPainter {
   }
 }
 
-/// Bottom capacity bar segmented proportionally by task label colors.
+/// Bottom capacity bar representing a day's total planned workload (including
+/// routine, weekly, and highlighted tasks), segmented proportionally by label
+/// colors and scaled cleanly across overloaded months.
 class CalendarLabelCapacityBar extends StatelessWidget {
   final CalendarDayWorkload workload;
   final double height;
 
+  /// Optional upper bound in hours used to normalize bar fill width across a
+  /// month so days above capacity remain visually distinguishable from each
+  /// other instead of clamping identically to 100%.
+  final double? scaleCapacityHours;
+
   const CalendarLabelCapacityBar({
     super.key,
     required this.workload,
-    this.height = 5.0,
+    this.height = 4.0,
+    this.scaleCapacityHours,
   });
 
   Color _resolveSegmentColor(
@@ -952,7 +891,17 @@ class CalendarLabelCapacityBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fillFraction = workload.loadRatio.clamp(0.0, 1.0);
+    final effectiveCap = workload.effectiveCapacityHours;
+    final denom =
+        (scaleCapacityHours != null && scaleCapacityHours! > effectiveCap)
+        ? scaleCapacityHours!
+        : effectiveCap;
+    final fillFraction = (workload.totalHours / denom).clamp(0.0, 1.0);
+    final showCapMarker =
+        denom > effectiveCap + 1e-6 &&
+        workload.isOverCapacity &&
+        !workload.allCompleted;
+    final capFraction = (effectiveCap / denom).clamp(0.05, 0.95);
 
     return Container(
       height: height,
@@ -961,347 +910,57 @@ class CalendarLabelCapacityBar extends StatelessWidget {
           theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
           theme.colorScheme.surface,
         ),
-        borderRadius: BorderRadius.circular(1.5),
+        borderRadius: BorderRadius.circular(2.0),
       ),
       clipBehavior: Clip.antiAlias,
       child: fillFraction <= 0 || workload.segments.isEmpty
           ? null
-          : FractionallySizedBox(
-              alignment: AlignmentDirectional.centerStart,
-              widthFactor: fillFraction,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var i = 0; i < workload.segments.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 1),
-                    Expanded(
-                      flex: (workload.segments[i].minutes * 10).round().clamp(
-                        1,
-                        100000,
-                      ),
-                      child: ColoredBox(
-                        color: _resolveSegmentColor(
-                          context,
-                          theme,
-                          workload.segments[i].colorKey,
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final barContent = FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: fillFraction,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < workload.segments.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 0.75),
+                        Expanded(
+                          flex: (workload.segments[i].minutes * 10)
+                              .round()
+                              .clamp(1, 100000),
+                          child: ColoredBox(
+                            color: _resolveSegmentColor(
+                              context,
+                              theme,
+                              workload.segments[i].colorKey,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ],
+                  ),
+                );
+
+                if (!showCapMarker || !constraints.hasBoundedWidth) {
+                  return barContent;
+                }
+
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    barContent,
+                    Positioned(
+                      left: (constraints.maxWidth * capFraction) - 0.75,
+                      top: 0,
+                      bottom: 0,
+                      width: 1.5,
+                      child: ColoredBox(color: theme.colorScheme.error),
                     ),
                   ],
-                ],
-              ),
+                );
+              },
             ),
-    );
-  }
-}
-
-/// Slowly rotates through [candidates] with per-day randomized staggering when
-/// a day has multiple standout tasks worth highlighting.
-///
-/// When [candidates] has 0 or 1 task, renders statically with zero timers.
-class CalendarRotatingTaskChip extends StatefulWidget {
-  /// Minimum initial delay before a day's first rotation.
-  static const int minInitialDelayMs = 2500;
-
-  /// Random jitter range added to the initial delay.
-  static const int initialDelayJitterMs = 6500;
-
-  /// Minimum dwell duration per task after the first rotation.
-  static const int minCycleDelayMs = 6000;
-
-  /// Random jitter range added to each subsequent dwell duration.
-  static const int cycleDelayJitterMs = 5000;
-
-  /// Crossfade/slide transition duration when switching tasks.
-  static const Duration switchDuration = Duration(milliseconds: 450);
-
-  /// Allows unit tests to explicitly enable staggered rotation under TestWidgetsFlutterBinding.
-  @visibleForTesting
-  static bool debugForceAnimateInTests = false;
-
-  final List<CalendarDayTask> candidates;
-  final CivilDay day;
-  final Map<String, TaskLabel> labelsMap;
-  final int maxLines;
-  final bool compact;
-
-  const CalendarRotatingTaskChip({
-    super.key,
-    required this.candidates,
-    required this.day,
-    this.labelsMap = const {},
-    this.maxLines = 2,
-    this.compact = false,
-  });
-
-  @override
-  State<CalendarRotatingTaskChip> createState() =>
-      _CalendarRotatingTaskChipState();
-}
-
-class _CalendarRotatingTaskChipState extends State<CalendarRotatingTaskChip> {
-  late math.Random _rng;
-  Timer? _rotationTimer;
-  int _currentIndex = 0;
-  bool _shouldAnimate = false;
-  bool _waitingForPostFrame = false;
-
-  static int _seedForDay(CivilDay day) =>
-      (day.year * 10007) ^ (day.month * 313) ^ (day.day * 97);
-
-  @override
-  void initState() {
-    super.initState();
-    _rng = math.Random(_seedForDay(widget.day));
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncRotationState();
-  }
-
-  @override
-  void didUpdateWidget(covariant CalendarRotatingTaskChip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.day != widget.day) {
-      _rng = math.Random(_seedForDay(widget.day));
-      _currentIndex = 0;
-      _cancelTimer();
-    } else if (widget.candidates.isNotEmpty &&
-        _currentIndex >= widget.candidates.length) {
-      _currentIndex = 0;
-    }
-    _syncRotationState();
-  }
-
-  void _syncRotationState() {
-    final isTestBinding = WidgetsBinding.instance.runtimeType
-        .toString()
-        .contains('TestWidgetsFlutterBinding');
-    final disableAnimations =
-        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final tickerEnabled = TickerMode.valuesOf(context).enabled;
-    final shouldAnimate =
-        widget.candidates.length > 1 &&
-        (CalendarRotatingTaskChip.debugForceAnimateInTests || !isTestBinding) &&
-        !disableAnimations &&
-        tickerEnabled;
-
-    if (shouldAnimate == _shouldAnimate) {
-      if (_shouldAnimate && _rotationTimer == null && !_waitingForPostFrame) {
-        _scheduleNextRotation(initial: true);
-      }
-      return;
-    }
-    _shouldAnimate = shouldAnimate;
-
-    if (_shouldAnimate) {
-      _scheduleNextRotation(initial: true);
-    } else {
-      _cancelTimer();
-    }
-  }
-
-  Duration _nextDelay({required bool initial}) {
-    if (initial) {
-      return Duration(
-        milliseconds:
-            CalendarRotatingTaskChip.minInitialDelayMs +
-            _rng.nextInt(CalendarRotatingTaskChip.initialDelayJitterMs),
-      );
-    }
-    return Duration(
-      milliseconds:
-          CalendarRotatingTaskChip.minCycleDelayMs +
-          _rng.nextInt(CalendarRotatingTaskChip.cycleDelayJitterMs),
-    );
-  }
-
-  void _scheduleNextRotation({required bool initial}) {
-    if (!mounted || !_shouldAnimate || _rotationTimer != null) return;
-    _rotationTimer = Timer(_nextDelay(initial: initial), _onRotationTick);
-  }
-
-  void _onRotationTick() {
-    _rotationTimer = null;
-    if (!mounted || !_shouldAnimate || widget.candidates.length <= 1) return;
-
-    setState(() {
-      _currentIndex = (_currentIndex + 1) % widget.candidates.length;
-    });
-
-    if (!_waitingForPostFrame) {
-      _waitingForPostFrame = true;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _waitingForPostFrame = false;
-        _scheduleNextRotation(initial: false);
-      });
-    }
-  }
-
-  void _cancelTimer() {
-    _rotationTimer?.cancel();
-    _rotationTimer = null;
-  }
-
-  @override
-  void dispose() {
-    _cancelTimer();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.candidates.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    if (widget.candidates.length == 1) {
-      return CalendarTaskChip(
-        task: widget.candidates.first,
-        labelsMap: widget.labelsMap,
-        showText: true,
-        maxLines: widget.maxLines,
-        compact: widget.compact,
-      );
-    }
-
-    final safeIndex = _currentIndex % widget.candidates.length;
-    final activeTask = widget.candidates[safeIndex];
-    final activeKey = ValueKey<String>('${activeTask.id}_$safeIndex');
-
-    return AnimatedSwitcher(
-      duration: CalendarRotatingTaskChip.switchDuration,
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          fit: StackFit.expand,
-          children: [...previousChildren, ?currentChild],
-        );
-      },
-      transitionBuilder: (child, animation) {
-        final isIncoming = child.key == activeKey;
-        final slideOffset = Tween<Offset>(
-          begin: Offset(0, isIncoming ? 0.16 : -0.16),
-          end: Offset.zero,
-        ).animate(animation);
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(position: slideOffset, child: child),
-        );
-      },
-      child: CalendarTaskChip(
-        key: activeKey,
-        task: activeTask,
-        labelsMap: widget.labelsMap,
-        showText: true,
-        maxLines: widget.maxLines,
-        compact: widget.compact,
-      ),
-    );
-  }
-}
-
-/// Compact chip displaying a standout task styled with its primary label color (or priority fallback).
-class CalendarTaskChip extends StatelessWidget {
-  final CalendarDayTask task;
-  final bool showText;
-  final Map<String, TaskLabel> labelsMap;
-  final int maxLines;
-  final bool compact;
-
-  const CalendarTaskChip({
-    super.key,
-    required this.task,
-    this.showText = true,
-    this.labelsMap = const {},
-    this.maxLines = 1,
-    this.compact = false,
-  });
-
-  TaskLabel? _resolvePrimaryLabel() {
-    for (final id in task.labelIds) {
-      final label = labelsMap[id];
-      if (label != null) return label;
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryLabel = _resolvePrimaryLabel();
-    final accentColor = primaryLabel != null
-        ? LabelPalette.getColor(primaryLabel.colorKey, context)
-        : getPriorityColor(theme.colorScheme, task.priority);
-
-    final isRoutine = task.isRoutineDaily;
-    final bgAlpha = task.isCompleted ? 0.07 : (isRoutine ? 0.12 : 0.20);
-    final stripeColor = task.isCompleted
-        ? theme.colorScheme.outline.withValues(alpha: 0.6)
-        : accentColor;
-
-    return Container(
-      alignment: Alignment.centerLeft,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 2.5 : 3.5,
-        vertical: 1.5,
-      ),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          accentColor.withValues(alpha: bgAlpha),
-          theme.colorScheme.surface,
-        ),
-        borderRadius: BorderRadius.circular(2.0),
-        border: Border(
-          left: BorderSide(color: stripeColor, width: compact ? 2.0 : 2.5),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (!compact && primaryLabel != null) ...[
-            Icon(
-              LabelIcons.getIcon(primaryLabel.iconKey),
-              size: 9.5,
-              color: stripeColor,
-            ),
-            const SizedBox(width: 2.5),
-          ] else if (!compact) ...[
-            Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: stripeColor,
-              ),
-            ),
-            const SizedBox(width: 2.5),
-          ],
-          if (showText)
-            Expanded(
-              child: Text(
-                task.title,
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: compact ? 8.5 : 9.0,
-                  height: 1.1,
-                  letterSpacing: compact ? -0.2 : -0.1,
-                  decoration: task.isCompleted
-                      ? TextDecoration.lineThrough
-                      : null,
-                  color: task.isCompleted
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
-                      : theme.colorScheme.onSurface,
-                  fontWeight: isRoutine ? FontWeight.w500 : FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

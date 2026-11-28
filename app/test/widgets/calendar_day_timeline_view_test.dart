@@ -588,4 +588,71 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'embedded mode hides standalone top toolbar and syncs when initialDay changes externally',
+    (tester) async {
+      tester.view.physicalSize = const Size(420, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final nextDay = const CivilDay(year: 2026, month: 3, day: 9);
+      final day9Task = TaskInstance(
+        id: 'I-day-9',
+        scheduleId: 'S-9',
+        ruleId: 'R-9',
+        title: 'Day Nine Review',
+        description: '',
+        priority: TaskPriority.medium,
+        scheduledDate: nextDay,
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+        status: TaskStatus.pending,
+      );
+
+      Widget buildEmbedded(CivilDay selected) {
+        return ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsRepositoryProvider.overrideWithValue(
+              mockUserSettingsRepository,
+            ),
+            userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+          ],
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: CalendarDayTimelineView(
+                initialDay: selected,
+                onBackToMonth: () {},
+                instances: [sampleTask, day9Task],
+                schedules: const [],
+                today: today,
+                embedded: true,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildEmbedded(today));
+      await tester.pumpAndSettle();
+
+      // Standalone top toolbar back button is omitted in embedded mode
+      expect(
+        find.byKey(const Key('calendar_back_to_month_button')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('timeline_task_I-timeline-1')),
+        findsOneWidget,
+      );
+
+      // Update initialDay externally to day 9 -> timeline jumps to day 9
+      await tester.pumpWidget(buildEmbedded(nextDay));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('timeline_task_I-day-9')), findsOneWidget);
+    },
+  );
 }
