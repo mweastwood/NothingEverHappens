@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -16,6 +16,7 @@ import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+import 'package:nothing_ever_happens/l10n/app_localizations_delegates.dart';
 import '../test_helper.dart';
 
 class MockSubscriptionService extends StateNotifier<SubscriptionState>
@@ -469,7 +470,7 @@ void main() {
               ),
             ],
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: appLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               home: Scaffold(body: TaskWidget(instance: unsyncedInstance)),
             ),
@@ -523,7 +524,7 @@ void main() {
             taskSyncServiceProvider.overrideWithValue(fakeSyncService),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: const Scaffold(body: UnsyncedBanner()),
           ),
@@ -563,7 +564,7 @@ void main() {
               taskSyncServiceProvider.overrideWithValue(FakeTaskSyncService()),
             ],
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: appLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               home: const Scaffold(body: UnsyncedDetailsSheet()),
             ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/scheduling_policy.dart';

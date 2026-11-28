@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../logic/dashboard_stats.dart';
 
 void centerTimelineOnIndex(

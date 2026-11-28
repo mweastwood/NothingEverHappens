@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:core/core.dart' as core;
 
 export 'package:core/core.dart'

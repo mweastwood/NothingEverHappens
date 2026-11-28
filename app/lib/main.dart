@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:material_ui/material_ui.dart' as material_ui;
 import 'package:firebase_core/firebase_core.dart';
@@ -21,6 +21,7 @@ import 'logic/unified_task_repository.dart';
 import 'logic/task_sync_service.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
+import 'l10n/app_localizations_delegates.dart';
 import 'logic/hive_local_data_source.dart';
 import 'logic/telemetry_service.dart';
 import 'logic/remote_config_service.dart';
@@ -288,7 +289,7 @@ class MyApp extends ConsumerWidget {
         return MaterialApp(
           key: ValueKey(user == null),
           title: 'Nothing Ever Happens',
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
           darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),

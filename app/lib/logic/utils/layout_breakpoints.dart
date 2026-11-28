@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The responsive breakpoint width in logical pixels.
 /// Screens with width >= 600.0 are considered wide screens.

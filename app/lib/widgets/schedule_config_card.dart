@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
 import '../logic/l10n_extension.dart';
