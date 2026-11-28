@@ -210,18 +210,16 @@ dynamic _callJs(
   String method, [
   List<Object?> args = const [],
 ]) {
-  if (target is js.JsObject) {
-    return args.isEmpty
-        ? target.callMethod(method)
-        : target.callMethod(method, args);
-  }
-  return js_util.callMethod(target, method, args);
+  final unwrappedTarget = _unwrapJsObject(target);
+  final unwrappedArgs = args.isEmpty
+      ? const <Object?>[]
+      : args.map(_unwrapJsObject).toList(growable: false);
+  return js_util.callMethod(unwrappedTarget, method, unwrappedArgs);
 }
 
 T? _getJsProp<T>(dynamic target, String property) {
-  final dynamic val = target is js.JsObject
-      ? target[property]
-      : js_util.getProperty(target, property);
+  final unwrapped = _unwrapJsObject(target);
+  final dynamic val = js_util.getProperty(unwrapped, property);
   return val as T?;
 }
 
@@ -254,9 +252,10 @@ class JsFirestoreDatabase implements FirestoreDatabase {
 
   @override
   Future<void> recursiveDelete(DocumentReference ref) async {
+    final unwrappedDb = _unwrapJsObject(_db);
     final jsRef = (ref as JsDocumentReference).rawJsRef;
-    if (js_util.hasProperty(_db, 'recursiveDelete')) {
-      final promise = _callJs(_db, 'recursiveDelete', [jsRef]);
+    if (js_util.hasProperty(unwrappedDb, 'recursiveDelete')) {
+      final promise = _callJs(unwrappedDb, 'recursiveDelete', [jsRef]);
       await _safePromiseToFuture(promise);
     } else {
       await ref.delete();
@@ -543,22 +542,24 @@ dynamic _convertValueForJs(
     return value;
   } else if (value == FieldValue.deleteToken) {
     return fieldValueClass != null
-        ? fieldValueClass.callMethod('delete')
+        ? _unwrapJsObject(fieldValueClass.callMethod('delete'))
         : null;
   } else if (value is DateTime) {
     if (timestampClass != null) {
-      return timestampClass.callMethod('fromMillis', [
-        value.millisecondsSinceEpoch,
-      ]);
+      return _unwrapJsObject(
+        timestampClass.callMethod('fromMillis', [
+          value.millisecondsSinceEpoch,
+        ]),
+      );
     }
     final dateObj = js.JsObject(js.context['Date'], [
       value.toUtc().toIso8601String(),
     ]);
-    return dateObj;
+    return _unwrapJsObject(dateObj);
   } else if (value is JsDocumentReference) {
-    return value.rawJsRef;
+    return _unwrapJsObject(value.rawJsRef);
   } else if (value is js.JsObject) {
-    return value;
+    return _unwrapJsObject(value);
   } else if (value is Map<String, dynamic>) {
     return _convertMapForJs(value, firestoreRef);
   } else if (value is Map) {
@@ -567,16 +568,19 @@ dynamic _convertValueForJs(
       firestoreRef,
     );
   } else if (value is Iterable) {
-    return js.JsArray.from(
-      value.map(
-        (item) => _convertValueForJs(
+    final arrayCtor = js_util.getProperty(js_util.globalThis, 'Array');
+    final jsArray = js_util.callConstructor(arrayCtor, const []);
+    for (final item in value) {
+      js_util.callMethod(jsArray, 'push', [
+        _convertValueForJs(
           item,
           firestoreRef,
           fieldValueClass,
           timestampClass,
         ),
-      ),
-    );
+      ]);
+    }
+    return jsArray;
   } else {
     return value;
   }
@@ -585,14 +589,18 @@ dynamic _convertValueForJs(
 dynamic _convertMapForJs(Map<String, dynamic> map, dynamic firestoreRef) {
   final fieldValueClass = _getFieldValueClass(firestoreRef);
   final timestampClass = _getTimestampClass(firestoreRef);
-  final jsObj = js.JsObject(js.context['Object']);
+  final jsObj = js_util.newObject();
 
   for (final entry in map.entries) {
-    jsObj[entry.key] = _convertValueForJs(
-      entry.value,
-      firestoreRef,
-      fieldValueClass,
-      timestampClass,
+    js_util.setProperty(
+      jsObj,
+      entry.key,
+      _convertValueForJs(
+        entry.value,
+        firestoreRef,
+        fieldValueClass,
+        timestampClass,
+      ),
     );
   }
   return jsObj;
