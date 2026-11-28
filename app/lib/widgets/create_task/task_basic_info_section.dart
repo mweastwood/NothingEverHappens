@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../logic/l10n_extension.dart';
 
 /// Section widget for task title and description fields in CreateTaskScreen.

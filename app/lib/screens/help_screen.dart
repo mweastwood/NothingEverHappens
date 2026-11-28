@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../logic/l10n_extension.dart';
 import '../widgets/basic_task_completion_tab.dart';
 import '../widgets/scheduling_playground_tab.dart';

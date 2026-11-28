@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+import 'package:nothing_ever_happens/l10n/app_localizations_delegates.dart';
 import 'package:nothing_ever_happens/logic/label_repository.dart';
 import 'package:nothing_ever_happens/logic/task_filter.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -54,7 +55,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(body: TaskFilterBottomSheet()),
           ),

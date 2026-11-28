@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 export 'package:core/core.dart' show TaskLabel, TaskLabelScope;
 
 /// Represents a single color entry in the 16-color label palette.

@@ -1,6 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:core/core.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A globally accessible, reactive mockable clock service.
 ///

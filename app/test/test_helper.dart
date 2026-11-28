@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'
+    show GlobalWidgetsLocalizations;
 import 'package:flutter_riverpod/misc.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+import 'package:nothing_ever_happens/l10n/app_localizations_delegates.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
@@ -51,11 +54,12 @@ gt.WidgetWrapper l10nMaterialAppWrapper({
   Iterable<Locale>? localeOverrides,
   ThemeData? theme,
 }) {
-  return gt.materialAppWrapper(
-    platform: platform,
-    localizations: localizations ?? AppLocalizations.localizationsDelegates,
-    navigatorObserver: navigatorObserver,
-    localeOverrides: localeOverrides ?? AppLocalizations.supportedLocales,
-    theme: theme,
+  return (child) => MaterialApp(
+    localizationsDelegates: localizations ?? appLocalizationsDelegates,
+    supportedLocales: localeOverrides ?? AppLocalizations.supportedLocales,
+    theme: theme?.copyWith(platform: platform),
+    debugShowCheckedModeBanner: false,
+    home: Material(child: child),
+    navigatorObservers: [?navigatorObserver],
   );
 }

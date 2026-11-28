@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Constructs a [LinearGradient] that preserves solid color segments for each
 /// color while smoothly blending only at the boundaries between adjacent colors.

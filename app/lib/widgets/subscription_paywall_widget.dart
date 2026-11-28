@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'app_snackbar.dart';
 
 /// A reusable paywall widget that displays premium features and an upgrade call-to-action.

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../logic/system_tasks/system_task.dart';
 
 enum SystemTaskWidgetVariant { card, banner }

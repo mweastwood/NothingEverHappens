@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Represents a start and due time of day for an occurrence on a given day.
 class DailyOccurrenceTime {

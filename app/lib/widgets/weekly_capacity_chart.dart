@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../logic/app_clock.dart';
 import '../logic/dashboard_stats.dart';
