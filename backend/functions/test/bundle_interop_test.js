@@ -591,6 +591,76 @@ async function runTests() {
   );
   console.log('✔ Default getFirebaseAdminDb() cold start initializes modular Firestore cleanly');
 
+  // 14. Verify real @google-cloud/firestore DocumentReference passes WriteBatch.delete validation
+  // Reproduces the production crash where passing a snapshot doc.ref (raw JS DocumentReference)
+  // to WriteBatch.delete on the default getFirebaseAdminDb() instance threw:
+  //   Error: Value for argument "documentRef" is not a valid DocumentReference.
+  {
+    const realRef1 = defaultDb.doc('families/fam_1/instances/inst_expired_1');
+    const realRef2 = defaultDb.doc('families/fam_1/instances/inst_expired_2');
+    const origCollectionGroup = defaultDb.collectionGroup;
+    const origBatch = defaultDb.batch;
+    let queryReturned = false;
+    let commitCalled = 0;
+
+    try {
+      defaultDb.collectionGroup = () => {
+        const q = {
+          where: () => q,
+          limit: () => q,
+          get: () => {
+            if (queryReturned) {
+              return Promise.resolve({ empty: true, size: 0, docs: [] });
+            }
+            queryReturned = true;
+            return Promise.resolve({
+              empty: false,
+              size: 2,
+              docs: [
+                {
+                  id: 'inst_expired_1',
+                  exists: true,
+                  ref: realRef1,
+                  data: () => ({ status: 'completed' })
+                },
+                {
+                  id: 'inst_expired_2',
+                  exists: true,
+                  ref: realRef2,
+                  data: () => ({ status: 'skipped' })
+                }
+              ]
+            });
+          }
+        };
+        return q;
+      };
+      defaultDb.batch = () => {
+        const realBatch = origBatch.call(defaultDb);
+        realBatch.commit = () => {
+          commitCalled++;
+          return Promise.resolve([]);
+        };
+        return realBatch;
+      };
+
+      const realBatchCleanupResult = await funcs.processHistoryCleanup(
+        undefined,
+        Date.now(),
+        10,
+        5
+      );
+      assert.strictEqual(realBatchCleanupResult.success, true);
+      assert.strictEqual(realBatchCleanupResult.totalDeleted, 2);
+      assert.strictEqual(realBatchCleanupResult.batchesProcessed, 1);
+      assert.strictEqual(commitCalled, 1);
+    } finally {
+      defaultDb.collectionGroup = origCollectionGroup;
+      defaultDb.batch = origBatch;
+    }
+  }
+  console.log('✔ processHistoryCleanup passes real Firestore DocumentReference to WriteBatch.delete cleanly');
+
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }
 
